@@ -35,7 +35,7 @@ What was tested, what failed and what wasn't tested. None of this shows the prot
 ## What wasn't tested
 
 - **No hardware.** Nothing has run on a device, and there are no timing or power measurements. Constant-time evidence is valgrind on x86 builds, and Xtensa was only read for wipes.
-- **No fuzzing or crash testing on Jade.** That's deliberate. Seven refusal vectors with malformed encoding were not sent to Jade, and neither was one valid exchange that its parser can't read, below.
+- **Seven refusal vectors weren't run on Jade.** They hold malformed encodings, which the reference and the C module refuse.
 - **Secret wipes in C.** The dead-memory scan noticed only 17 of 54 wipes when they were removed. Two it missed hold secret nonce data (`buf` in `schnorr_base` and `ecdsa_base`), so those rest on reading the source and on the Xtensa check.
 - **The exhaustive group test** ran at order 13 only. Order 199 would take about 270 days.
 - **Plain vectors can't reach some checks:** `t >= n`, `W` at infinity, ECDSA `V = ±W` with `x(V) mod n = r`, `V` at infinity, and the `x(W) >= n` double lift. Only seam tests in the C module cover them.
