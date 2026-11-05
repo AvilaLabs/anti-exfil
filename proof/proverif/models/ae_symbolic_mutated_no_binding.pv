@@ -1,0 +1,62 @@
+(* Exact normal model with only the host nonce-binding condition removed. *)
+(*
+  Bounded symbolic model: one honest host run, two separate
+  stateless signing services, common device key. Free-constructor model only;
+  it does NOT model secp256k1, SHA/HMAC, RFC6979, ECDSA, or malicious nonce bias.
+  ProVerif 2.05 input, per official manual/tutorial syntax.
+*)
+free net: channel.
+free o1, o2: bitstring.
+type skey.
+type pkey.
+fun pk(skey): pkey.
+fun sign(bitstring, skey): bitstring.
+reduc forall m:bitstring, r:bitstring, sk:skey;
+  checksign(sign((m,r), sk), pk(sk)) = (m,r).
+
+fun hdata(bitstring): bitstring.
+fun base_nonce(skey, bitstring, bitstring): bitstring.
+fun point(bitstring): bitstring.
+fun tweak(bitstring, bitstring): bitstring.
+fun add_nonce(bitstring, bitstring): bitstring.
+
+event deviceApproved(bitstring, bitstring).
+event hostAccepted(bitstring, bitstring).
+query m:bitstring, rho:bitstring;
+  event(hostAccepted(m,rho)) ==> event(deviceApproved(m,rho)).
+
+(* O1 and O2 are independently callable stateless services. They share only sk.
+   Identical (message,hc) yields the same symbolic base nonce term. *)
+let serviceO1(sk:skey) =
+  in(net, (=o1, m:bitstring, hc:bitstring));
+  let k0 = base_nonce(sk,m,hc) in
+  out(net, (o1,point(k0))).
+
+let serviceO2(sk:skey) =
+  in(net, (=o2, m:bitstring, rho:bitstring));
+  let hc = hdata(rho) in
+  let k0 = base_nonce(sk,m,hc) in
+  let r0 = point(k0) in
+  let w = add_nonce(r0,tweak(r0,rho)) in
+  event deviceApproved(m,rho);
+  out(net, (o2,w, sign((m,w),sk))).
+
+(* The host keeps its O1 R0 locally across the two service calls. Both service
+   calls and the opening use the public transport. The host checks the returned
+   signed message, nonce point, and R0/rho relation before acceptance. *)
+let host(pkdev:pkey) =
+  new rho:bitstring;
+  new m:bitstring;
+  let hc = hdata(rho) in
+  out(net,(o1,m,hc));
+  in(net,(=o1,r0:bitstring));
+  out(net,(o2,m,rho));
+  in(net,(=o2,w:bitstring,sig:bitstring));
+  let (=m,=w) = checksign(sig,pkdev) in
+  event hostAccepted(m,rho).
+
+process
+  new sk:skey;
+  let pkdev = pk(sk) in
+  out(net,pkdev);
+  ( !serviceO1(sk) | !serviceO2(sk) | !host(pkdev) )

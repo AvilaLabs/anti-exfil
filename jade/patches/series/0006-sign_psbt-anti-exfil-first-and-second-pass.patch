@@ -1,0 +1,405 @@
+From 668cc4050c6742874177c1baff8dc5499eb3e80e Mon Sep 17 00:00:00 2001
+From: Connor Avila <Connoravila@gmail.com>
+Date: Wed, 4 Nov 2026 16:27:13 -0500
+Subject: [PATCH 06/10] sign_psbt: anti-exfil first and second pass
+
+The first pass adds the nonce commitments and needs no approval. The second
+pass checks the commitments, asks for approval once, signs the pairs and
+removes all anti-exfil fields. Only serial (and QEMU TCP) may carry a request.
+---
+ libjade/libjade.c                      |   6 +
+ main/process.c                         |   2 +
+ main/process/sign_psbt.c               |  39 +++++-
+ main/process/sign_psbt_ae.c            | 163 +++++++++++++++++++++++++
+ main/process/sign_psbt_ae.h            |  21 ++++
+ tests/rpc/test_sign_psbt_anti_exfil.py |   6 +-
+ 6 files changed, 230 insertions(+), 7 deletions(-)
+
+diff --git a/libjade/libjade.c b/libjade/libjade.c
+index 8bc01aaa..c4cb13d8 100644
+--- a/libjade/libjade.c
++++ b/libjade/libjade.c
+@@ -442,6 +442,12 @@ void process_libjade_request(const cbor_msg_t* const ctx)
+             jade_process_reply_to_message_ok_ex(ctx);
+             return;
+         }
++    } else if (IS_JADE_REQUEST("get_test_sign_psbt_prompts")) {
++        // The number of times sign_psbt() asked the user to approve a transaction, little endian
++        const uint8_t output[4]
++            = { ae_test_prompts, ae_test_prompts >> 8, ae_test_prompts >> 16, ae_test_prompts >> 24 };
++        jade_process_reply_to_message_bytes(ctx, output, sizeof(output));
++        return;
+     } else if (IS_JADE_REQUEST("test_sign_psbt_no_process")) {
+         // Sign as the QR and USB storage modes do, ie. with no process or params
+         const uint8_t* bytes = NULL;
+diff --git a/main/process.c b/main/process.c
+index 9295a203..f87d23e4 100644
+--- a/main/process.c
++++ b/main/process.c
+@@ -321,6 +321,8 @@ void jade_process_transfer_current_message(jade_process_t* process, jade_process
+ void jade_process_free_current_message(jade_process_t* process)
+ {
+     if (process->ctx.cbor) {
++        // May hold secrets, eg. anti-exfil host randomness in a psbt
++        JADE_WALLY_VERIFY(wally_bzero(process->ctx.cbor, process->ctx.cbor_len));
+         free(process->ctx.cbor);
+         process->ctx.cbor = NULL;
+     }
+diff --git a/main/process/sign_psbt.c b/main/process/sign_psbt.c
+index 001f6aef..b82a56d1 100644
+--- a/main/process/sign_psbt.c
++++ b/main/process/sign_psbt.c
+@@ -730,12 +730,14 @@ int sign_psbt(jade_process_t* process, CborValue* params, const network_t networ
+     // whichever transport it arrived on (including those without process/params, ie. QR and
+     // USB storage, which would also display the host randomness).
+     bool has_ae_fields = false;
+-    if (!ae_psbt_has_fields(psbt, &has_ae_fields, errmsg) || has_ae_fields) {
+-        if (!*errmsg) {
+-            *errmsg = "Anti-exfil signing is not supported";
+-        }
++    if (!ae_psbt_has_fields(psbt, &has_ae_fields, errmsg)) {
++        return CBOR_RPC_BAD_PARAMETERS;
++    }
++    if (has_ae_fields && !ae_psbt_source_allowed(process)) {
++        *errmsg = "Anti-exfil signing is only available over USB";
+         return CBOR_RPC_BAD_PARAMETERS;
+     }
++    ae_request_t ae_request = { 0 };
+ 
+     size_t is_elements = 0;
+     JADE_WALLY_VERIFY(wally_psbt_is_elements(psbt, &is_elements));
+@@ -744,6 +746,10 @@ int sign_psbt(jade_process_t* process, CborValue* params, const network_t networ
+         return CBOR_RPC_BAD_PARAMETERS;
+     }
+     const bool for_liquid = is_elements;
++    if (for_liquid && has_ae_fields) {
++        *errmsg = "Anti-exfil signing is not supported for Liquid";
++        return CBOR_RPC_BAD_PARAMETERS;
++    }
+     // Liquid: Optional ELIP-0101 genesis blockhash can override test network defaults.
+     // Defers to params_genesis_hash() for validation (only needed for Liquid/PSET).
+     size_t has_genesis_blockhash = 0;
+@@ -807,6 +813,20 @@ int sign_psbt(jade_process_t* process, CborValue* params, const network_t networ
+     char wallet_name[NVS_KEY_NAME_MAX_SIZE] = { '\0' };
+     multisig_data_t* multisig_data = NULL;
+     descriptor_data_t* descriptor = NULL;
++
++    // Anti-exfil: validate the whole request before any prompt or output. The first pass only adds
++    // the nonce commitments and needs no approval, as no signature is made.
++    if (!ae_psbt_parse_request(psbt, &ae_request, errmsg)
++        || (ae_request.pairs
++            && (!ae_psbt_validate_request(psbt, tx, &ae_request, errmsg)
++                || !ae_psbt_commit(psbt, &ae_request, errmsg)))) {
++        retval = CBOR_RPC_BAD_PARAMETERS;
++        goto cleanup;
++    }
++    if (ae_request.pairs && !ae_request.second_pass) {
++        goto cleanup;
++    }
++
+     for (size_t index = 0; index < psbt->num_inputs; ++index) {
+         struct wally_psbt_input* input = &psbt->inputs[index];
+ 
+@@ -1051,6 +1071,7 @@ int sign_psbt(jade_process_t* process, CborValue* params, const network_t networ
+             goto cleanup;
+         }
+ 
++        AE_TEST_COUNT_PROMPT();
+         if (!show_btc_transaction_outputs_activity(network_id, tx, output_info)) {
+             *errmsg = "User declined to sign psbt";
+             retval = CBOR_RPC_USER_CANCELLED;
+@@ -1079,6 +1100,15 @@ int sign_psbt(jade_process_t* process, CborValue* params, const network_t networ
+     // Sign our inputs
+     JADE_WALLY_VERIFY(wally_psbt_signing_cache_enable(psbt, 0));
+ 
++    if (ae_request.pairs) {
++        // Only the pairs are signed, and with their own signing function
++        if (!ae_psbt_sign(psbt, &ae_request, errmsg)) {
++            retval = CBOR_RPC_INTERNAL_ERROR;
++            goto cleanup;
++        }
++        memset(sig_types, 0, psbt->num_inputs);
++    }
++
+     for (size_t index = 0; index < psbt->num_inputs; ++index) {
+         // See if we flagged this input for signing
+         if (!sig_types[index]) {
+@@ -1137,6 +1167,7 @@ cleanup:
+         JADE_WALLY_VERIFY(wally_bzero(psbt->genesis_blockhash, sizeof(psbt->genesis_blockhash)));
+     }
+ 
++    ae_request_free(&ae_request);
+     SENSITIVE_POP(&iter);
+     free(descriptor);
+     free(multisig_data);
+diff --git a/main/process/sign_psbt_ae.c b/main/process/sign_psbt_ae.c
+index 96eeb02a..c7d057ee 100644
+--- a/main/process/sign_psbt_ae.c
++++ b/main/process/sign_psbt_ae.c
+@@ -3,6 +3,8 @@
+ #include "../keychain.h"
+ #include "../sensitive.h"
+ #include "../utils/malloc_ext.h"
++#include "../utils/util.h"
++#include "../wallet.h"
+ #include "sign_utils.h"
+ 
+ #include <string.h>
+@@ -12,6 +14,7 @@
+ #include <wally_crypto.h>
+ #include <wally_map.h>
+ #include <wally_psbt.h>
++#include <wally_psbt_members.h>
+ #include <wally_script.h>
+ #include <wally_transaction.h>
+ 
+@@ -28,6 +31,26 @@
+ #define AE_KEY_ID_KEY_PATH_LEN EC_XONLY_PUBLIC_KEY_LEN
+ #define AE_KEY_ID_SCRIPT_PATH_LEN (EC_XONLY_PUBLIC_KEY_LEN + SHA256_LEN)
+ 
++#ifdef CONFIG_LIBJADE
++uint32_t ae_test_prompts = 0;
++#endif
++
++bool ae_psbt_source_allowed(const jade_process_t* process)
++{
++    if (!process) {
++        return false; // QR and USB storage
++    }
++    switch (process->ctx.source) {
++    case SOURCE_SERIAL:
++#ifdef CONFIG_ETH_USE_OPENETH
++    case SOURCE_QEMU_TCP:
++#endif
++        return true;
++    default:
++        return false; // Including BLE
++    }
++}
++
+ // Read the compact size at the start of a psbt key (the key type). Wally does not
+ // insist on the shortest encoding, so 0xfd2100 reaches us as an unknown field of type 0x21.
+ // Returns false if the key is truncated.
+@@ -493,9 +516,149 @@ bool ae_psbt_validate_request(
+             return false;
+         }
+     }
++
++    // As in ordinary signing every input needs its utxo, and the outputs can not exceed the inputs
++    uint64_t input_amount = 0, output_amount = 0;
++    for (size_t i = 0; i < psbt->num_inputs; ++i) {
++        const struct wally_tx_output* utxo = NULL;
++        if (wally_psbt_get_input_best_utxo(psbt, i, &utxo) != WALLY_OK || !utxo
++            || !checked_add_uint64(input_amount, utxo->satoshi, &input_amount)) {
++            *errmsg = "Input utxo missing";
++            return false;
++        }
++    }
++    if (wally_tx_get_total_output_satoshi(tx, &output_amount) != WALLY_OK || output_amount > input_amount) {
++        *errmsg = "Total input amounts less than total output amounts";
++        return false;
++    }
+     return true;
+ }
+ 
++static bool ae_pair_is_schnorr(const ae_pair_t* pair) { return pair->key_id_len == EC_XONLY_PUBLIC_KEY_LEN; }
++
++bool ae_psbt_commit(struct wally_psbt* psbt, const ae_request_t* request, const char** errmsg)
++{
++    JADE_ASSERT(psbt);
++    JADE_ASSERT(request && request->pairs);
++    JADE_INIT_OUT_PPTR(errmsg);
++
++    for (size_t i = 0; i < request->num_pairs; ++i) {
++        const ae_pair_t* pair = &request->pairs[i];
++        const bool is_schnorr = ae_pair_is_schnorr(pair);
++        uint8_t hc[WALLY_HOST_COMMITMENT_LEN], r0[EC_PUBLIC_KEY_LEN];
++        if (request->second_pass) {
++            // The commitment is that of the host randomness, whether it was sent or not
++            if (!wallet_ae_host_commit(is_schnorr, pair->rho, sizeof(pair->rho), hc, sizeof(hc))) {
++                *errmsg = "Failed to make anti-exfil host commitment";
++                return false;
++            }
++            if (pair->has_hc && memcmp(hc, pair->hc, sizeof(hc))) {
++                *errmsg = "Host commitment does not match the host randomness";
++                return false;
++            }
++        } else {
++            memcpy(hc, pair->hc, sizeof(hc));
++        }
++        if (!wallet_ae_signer_commit(is_schnorr, pair->path, pair->path_len, NULL, pair->message, sizeof(pair->message),
++                hc, sizeof(hc), r0, sizeof(r0))) {
++            *errmsg = "Failed to make anti-exfil nonce commitment";
++            return false;
++        }
++        if (pair->has_r0) {
++            // A wrong commitment is not replaced (adding a duplicate field would be ignored), it fails
++            if (memcmp(r0, pair->r0, sizeof(r0))) {
++                *errmsg = "Nonce commitment does not match the request";
++                return false;
++            }
++        } else if (!request->second_pass) {
++            uint8_t key[1 + EC_PUBLIC_KEY_LEN] = { PSBT_IN_AE_NONCE_COMMITMENT };
++            memcpy(key + 1, pair->key_id, pair->key_id_len);
++            if (wally_map_add(&psbt->inputs[pair->input_index].unknowns, key, 1 + pair->key_id_len, r0, sizeof(r0))
++                != WALLY_OK) {
++                *errmsg = "Failed to add anti-exfil nonce commitment";
++                return false;
++            }
++        }
++    }
++    return true;
++}
++
++// Remove the anti-exfil fields of every input. Backwards, as removing moves the later items down.
++static bool ae_psbt_remove_fields(struct wally_psbt* psbt)
++{
++    for (size_t i = 0; i < psbt->num_inputs; ++i) {
++        struct wally_map* unknowns = &psbt->inputs[i].unknowns;
++        for (size_t j = unknowns->num_items; j > 0; --j) {
++            uint32_t type;
++            size_t type_len;
++            const char* errmsg = NULL;
++            if (!ae_field_type(&unknowns->items[j - 1], &type, &type_len, &errmsg)) {
++                return false;
++            }
++            if (type) {
++                // Copy the key as it is freed while it is removed
++                uint8_t key[1 + EC_PUBLIC_KEY_LEN];
++                const size_t key_len = unknowns->items[j - 1].key_len;
++                JADE_ASSERT(key_len <= sizeof(key));
++                memcpy(key, unknowns->items[j - 1].key, key_len);
++                if (wally_map_remove(unknowns, key, key_len) != WALLY_OK) {
++                    return false;
++                }
++            }
++        }
++    }
++    return true;
++}
++
++bool ae_psbt_sign(struct wally_psbt* psbt, const ae_request_t* request, const char** errmsg)
++{
++    JADE_ASSERT(psbt);
++    JADE_ASSERT(request && request->pairs && request->second_pass);
++    JADE_INIT_OUT_PPTR(errmsg);
++
++    // Signature fields in the form of the psbt, ie. DER with the sighash
++    typedef struct {
++        uint8_t data[EC_SIGNATURE_DER_MAX_LEN + 1];
++        size_t len;
++    } ae_sig_t;
++    ae_sig_t* const sigs = JADE_CALLOC(request->num_pairs, sizeof(ae_sig_t));
++    bool ret = false;
++
++    for (size_t i = 0; i < request->num_pairs; ++i) {
++        const ae_pair_t* pair = &request->pairs[i];
++        ae_sig_t* sig = &sigs[i];
++        uint8_t compact[EC_SIGNATURE_LEN];
++        if (!wallet_ae_sign(false, pair->path, pair->path_len, NULL, pair->message, sizeof(pair->message), pair->rho,
++                sizeof(pair->rho), compact, sizeof(compact))
++            || wally_ec_sig_to_der(compact, sizeof(compact), sig->data, EC_SIGNATURE_DER_MAX_LEN, &sig->len)
++                != WALLY_OK) {
++            *errmsg = "Failed to generate anti-exfil signature";
++            goto cleanup;
++        }
++        sig->data[sig->len++] = pair->sighash;
++    }
++
++    // All made, now add them. Adding a signature updates the tx modifiable flags of version 2 psbts
++    for (size_t i = 0; i < request->num_pairs; ++i) {
++        const ae_pair_t* pair = &request->pairs[i];
++        if (wally_psbt_add_input_signature(
++                psbt, pair->input_index, pair->key_id, pair->key_id_len, sigs[i].data, sigs[i].len)
++            != WALLY_OK) {
++            *errmsg = "Failed to add anti-exfil signature";
++            goto cleanup;
++        }
++    }
++    if (!ae_psbt_remove_fields(psbt)) {
++        *errmsg = "Failed to remove anti-exfil fields";
++        goto cleanup;
++    }
++    ret = true;
++
++cleanup:
++    free(sigs);
++    return ret;
++}
++
+ void ae_request_free(ae_request_t* request)
+ {
+     JADE_ASSERT(request);
+diff --git a/main/process/sign_psbt_ae.h b/main/process/sign_psbt_ae.h
+index 8b2b5cbb..717d8a17 100644
+--- a/main/process/sign_psbt_ae.h
++++ b/main/process/sign_psbt_ae.h
+@@ -9,6 +9,7 @@
+ #include <wally_crypto.h>
+ 
+ #include "../jade_assert.h"
++#include "../process.h"
+ #include "../utils/cbor_rpc.h"
+ 
+ struct wally_psbt;
+@@ -46,6 +47,9 @@ typedef struct {
+     bool second_pass; // Host randomness is present, else only host commitments
+ } ae_request_t;
+ 
++// Anti-exfil signing is only done over USB: the host randomness must not be shown on a screen or written out
++bool ae_psbt_source_allowed(const jade_process_t* process);
++
+ // Set `found` if any input holds an anti-exfil field.
+ // Returns false (with errmsg set) if one is present in a non-canonical encoding.
+ WARN_UNUSED_RESULT bool ae_psbt_has_fields(const struct wally_psbt* psbt, bool* found, const char** errmsg);
+@@ -62,6 +66,23 @@ WARN_UNUSED_RESULT bool ae_psbt_parse_request(
+ WARN_UNUSED_RESULT bool ae_psbt_validate_request(
+     const struct wally_psbt* psbt, const struct wally_tx* tx, ae_request_t* request, const char** errmsg);
+ 
++// Make the signer commitment of every pair (the first pass: they are added to the psbt), or check that any in the
++// request, and any host commitment, are those that the host randomness gives (the second pass). Requires a request
++// that has been validated, and makes no signatures.
++WARN_UNUSED_RESULT bool ae_psbt_commit(struct wally_psbt* psbt, const ae_request_t* request, const char** errmsg);
++
++// Sign the pairs of a validated second pass request and remove all of the anti-exfil fields from the psbt.
++// Every signature is made before the psbt is changed, so on failure nothing is added.
++WARN_UNUSED_RESULT bool ae_psbt_sign(struct wally_psbt* psbt, const ae_request_t* request, const char** errmsg);
++
++#ifdef CONFIG_LIBJADE
++// Number of times the user was asked to approve outputs (libjade testing)
++extern uint32_t ae_test_prompts;
++#define AE_TEST_COUNT_PROMPT() ++ae_test_prompts
++#else
++#define AE_TEST_COUNT_PROMPT()
++#endif
++
+ // Pop, clear and free the pairs of a request
+ void ae_request_free(ae_request_t* request);
+ 
+diff --git a/tests/rpc/test_sign_psbt_anti_exfil.py b/tests/rpc/test_sign_psbt_anti_exfil.py
+index c64de7ed..c5dff21a 100644
+--- a/tests/rpc/test_sign_psbt_anti_exfil.py
++++ b/tests/rpc/test_sign_psbt_anti_exfil.py
+@@ -24,8 +24,8 @@ def _noncanonical_key(key_type):
+ 
+ @pytest.mark.mnemonic(mnemonics.singlesig)
+ @with_test_cases('tests/rpc/data/sign_psbt/psbt_ss_p2wpkh.json')
+-def test_sign_psbt_ae_fields_not_supported(jade, mnemonic, test_case):
+-    # Requests for anti-exfil signing are never signed in the ordinary way
++def test_sign_psbt_ae_invalid_fields_fail(jade, mnemonic, test_case):
++    # Requests that are not valid anti-exfil pairs are never signed in the ordinary way
+     psbt_bin = test_case['input']['psbt']
+     values = {
+         AE_HOST_COMMITMENT: bytes(32),
+@@ -43,7 +43,7 @@ def test_sign_psbt_ae_fields_not_supported(jade, mnemonic, test_case):
+ @pytest.mark.skipif(transport_is_not('libjade'), reason='libjade only')
+ @pytest.mark.mnemonic(mnemonics.singlesig)
+ @with_test_cases('tests/rpc/data/sign_psbt/psbt_ss_p2wpkh.json')
+-def test_sign_psbt_ae_fields_not_supported_without_process(jade, mnemonic, test_case):
++def test_sign_psbt_ae_fields_fail_without_process(jade, mnemonic, test_case):
+     # The QR and USB storage modes sign without a process (and display the result)
+     psbt_bin = test_case['input']['psbt']
+     for key_type in [AE_HOST_COMMITMENT, AE_NONCE_COMMITMENT, AE_HOST_RANDOMNESS]:
+-- 
+2.53.0
+

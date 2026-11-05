@@ -1,0 +1,388 @@
+{
+ "verdict": "OK",
+ "invalid": [],
+ "mismatch": [],
+ "binary_sha256": "05a83ee84eccb73906fcbfbe5e31f81b2351788ddd9afeee1234aa18d1685677",
+ "total_seconds": 29.76,
+ "numeric_checks": {
+  "toy_B256_n251": {
+   "zero_count": 2,
+   "fail_prob_equals_2_over_B": true,
+   "tv_exact": "246/15875",
+   "beta_formula": "246/15875",
+   "tv_equals_beta": true
+  },
+  "toy_B1024_n1021": {
+   "zero_count": 2,
+   "fail_prob_equals_2_over_B": true,
+   "tv_exact": "509/260610",
+   "beta_formula": "509/260610",
+   "tv_equals_beta": true
+  },
+  "secp256k1": {
+   "g_bits": 129,
+   "beta_float": 3.734455345040134e-39,
+   "beta_log2": -127.0,
+   "two_n_gt_B": true
+  }
+ },
+ "numeric_ok": true,
+ "runs": [
+  {
+   "model": "ga_bip340",
+   "goal": "G-A",
+   "control": false,
+   "path": "proof/cryptoverif/models/ga_bip340.ocv",
+   "sha256": "30e234876733cc5b047a36f6c223e6dcf159f66500c8f615ac9b7ab9da10351f",
+   "exit": 0,
+   "seconds": 10.38,
+   "maxrss_kb": 26364,
+   "all_queries_proved": true,
+   "timeout": false,
+   "queries": {
+    "extract": {
+     "expected": "proved_exact",
+     "got": "proved_exact",
+     "probability": null,
+     "match": true
+    },
+    "complete": {
+     "expected": "proved_exact",
+     "got": "proved_exact",
+     "probability": null,
+     "match": true
+    },
+    "cross": {
+     "expected": "proved_exact",
+     "got": "proved_exact",
+     "probability": null,
+     "match": true
+    },
+    "repeat_hidden": {
+     "expected": "proved_exact",
+     "got": "proved_exact",
+     "probability": null,
+     "match": true
+    },
+    "repeat_adv": {
+     "expected": "proved_exact",
+     "got": "proved_exact",
+     "probability": null,
+     "match": true
+    },
+    "table": {
+     "expected": "proved_exact",
+     "got": "proved_exact",
+     "probability": null,
+     "match": true
+    }
+   },
+   "unexpected_extra_results": [
+    "ctx_table"
+   ],
+   "output_tail": "RESULT Proved forall y: nonceout, x: nonceinput, c: hc, m: message; event(ContextLookup(m, c, x, y)) ==> event(NonceROUsed(x, y))\nRESULT Proved forall y2, y: nonceout, x: nonceinput; event(AdversaryHashQuery(x, y)) && event(AdversaryHashQuery(x, y2)) ==> (y = y2)\nRESULT Proved forall y2, y: nonceout, x2, x: nonceinput, c: hc, m: message; event(ContextLookup(m, c, x, y)) && event(ContextLookup(m, c, x2, y2)) ==> (y = y2)\nRESULT Proved forall y2, y: nonceout, x: nonceinput, c: hc, m: message; event(ContextLookup(m, c, x, y)) && event(AdversaryHashQuery(x, y2)) ==> (y = y2)\nRESULT Proved forall x: nonceinput; event(AdvQueryAt(x)) && event(HiddenInput(x)) ==> event(ExtractedAt(x))\nRESULT Proved forall g: bytes32, p: pkey; event(KeyExtracted(p, g)) ==> event(KeyGenerated(norm(g), p))\nAll queries proved."
+  },
+  {
+   "model": "ga_ecdsa",
+   "goal": "G-A",
+   "control": false,
+   "path": "proof/cryptoverif/models/ga_ecdsa.ocv",
+   "sha256": "295f81cd0a34d2d05bb06435449399eea22cd1f411a0905aa8ffb863d504c4e4",
+   "exit": 0,
+   "seconds": 7.58,
+   "maxrss_kb": 26112,
+   "all_queries_proved": true,
+   "timeout": false,
+   "queries": {
+    "extract": {
+     "expected": "proved_exact",
+     "got": "proved_exact",
+     "probability": null,
+     "match": true
+    },
+    "complete": {
+     "expected": "proved_exact",
+     "got": "proved_exact",
+     "probability": null,
+     "match": true
+    },
+    "cross": {
+     "expected": "proved_exact",
+     "got": "proved_exact",
+     "probability": null,
+     "match": true
+    },
+    "repeat_hidden": {
+     "expected": "proved_exact",
+     "got": "proved_exact",
+     "probability": null,
+     "match": true
+    },
+    "repeat_adv": {
+     "expected": "proved_exact",
+     "got": "proved_exact",
+     "probability": null,
+     "match": true
+    },
+    "table": {
+     "expected": "proved_exact",
+     "got": "proved_exact",
+     "probability": null,
+     "match": true
+    }
+   },
+   "unexpected_extra_results": [
+    "ctx_table"
+   ],
+   "output_tail": "RESULT Proved forall y: nonceout, x: nonceinput, c: hc, m: message; event(ContextLookup(m, c, x, y)) ==> event(NonceROUsed(x, y))\nRESULT Proved forall y2, y: nonceout, x: nonceinput; event(AdversaryHashQuery(x, y)) && event(AdversaryHashQuery(x, y2)) ==> (y = y2)\nRESULT Proved forall y2, y: nonceout, x2, x: nonceinput, c: hc, m: message; event(ContextLookup(m, c, x, y)) && event(ContextLookup(m, c, x2, y2)) ==> (y = y2)\nRESULT Proved forall y2, y: nonceout, x: nonceinput, c: hc, m: message; event(ContextLookup(m, c, x, y)) && event(AdversaryHashQuery(x, y2)) ==> (y = y2)\nRESULT Proved forall x: nonceinput; event(AdvQueryAt(x)) && event(HiddenInput(x)) ==> event(ExtractedAt(x))\nRESULT Proved forall g: bytes32, p: pkey; event(KeyExtracted(p, g)) ==> event(KeyGenerated(g, p))\nAll queries proved."
+  },
+  {
+   "model": "gb_bip340",
+   "goal": "G-B",
+   "control": false,
+   "path": "proof/cryptoverif/models/gb_bip340.ocv",
+   "sha256": "b86230a43398a5cf0fec1afbfa562493ab29f7119c6fa6534267db94bd53eec2",
+   "exit": 0,
+   "seconds": 0.85,
+   "maxrss_kb": 17004,
+   "all_queries_proved": true,
+   "timeout": false,
+   "queries": {
+    "indistinguishability": {
+     "expected": "proved_exact",
+     "got": "proved_exact",
+     "probability": null,
+     "match": true
+    }
+   },
+   "unexpected_extra_results": [],
+   "output_tail": "RESULT Proved indistinguishability between game 1 and game 2\nAll queries proved."
+  },
+  {
+   "model": "gb_ecdsa",
+   "goal": "G-B",
+   "control": false,
+   "path": "proof/cryptoverif/models/gb_ecdsa.ocv",
+   "sha256": "6446f93b219762b1c891c572692e670091427b19fe8ba9c831dfda3f25996cff",
+   "exit": 0,
+   "seconds": 0.74,
+   "maxrss_kb": 17020,
+   "all_queries_proved": true,
+   "timeout": false,
+   "queries": {
+    "indistinguishability": {
+     "expected": "proved_exact",
+     "got": "proved_exact",
+     "probability": null,
+     "match": true
+    }
+   },
+   "unexpected_extra_results": [],
+   "output_tail": "RESULT Proved indistinguishability between game 1 and game 2\nAll queries proved."
+  },
+  {
+   "model": "gc_bad2",
+   "goal": "G-C",
+   "control": false,
+   "path": "proof/cryptoverif/models/gc_bad2.ocv",
+   "sha256": "e7afda8fad4aabbe4b69ae6071664cddaf6ebc24b9632e7f38b86d8275197d8c",
+   "exit": 0,
+   "seconds": 1.14,
+   "maxrss_kb": 19444,
+   "all_queries_proved": true,
+   "timeout": false,
+   "queries": {
+    "Bad2": {
+     "expected": "proved_prob",
+     "got": "proved_prob",
+     "probability": "(2.5 * qO2^2 + 1.5 * qD^2 + 2 * qO2 * qD + qO1 * qO2) / |hc| + (qT * qO1 + qO2 * qO1 + qT * qO2 + qO2^2) / |point|",
+     "match": true
+    }
+   },
+   "unexpected_extra_results": [],
+   "output_tail": "RESULT Proved event(Bad2) ==> false up to probability (2.5 * qO2^2 + 1.5 * qD^2 + 2 * qO2 * qD + qO1 * qO2) / |hc| + (qT * qO1 + qO2 * qO1 + qT * qO2 + qO2^2) / |point|\nAll queries proved."
+  },
+  {
+   "model": "gc_bad3",
+   "goal": "G-C",
+   "control": false,
+   "path": "proof/cryptoverif/models/gc_bad3.ocv",
+   "sha256": "4265634303e5af3fe25ba35a4145036aa08a789b0c05e80e811c17d367df0a9c",
+   "exit": 0,
+   "seconds": 1.54,
+   "maxrss_kb": 21560,
+   "all_queries_proved": true,
+   "timeout": false,
+   "queries": {
+    "Bad3": {
+     "expected": "proved_prob",
+     "got": "proved_prob",
+     "probability": "(qD^2 + 2 * qD * qO2 + 3 * qO2^2 + qO1 * qD + qO1 * qO2) / |hc| + (qT * qO1 + qO2 * qO1 + qT * qO2 + qO2^2) / |point|",
+     "match": true
+    }
+   },
+   "unexpected_extra_results": [],
+   "output_tail": "RESULT Proved event(Bad3) ==> false up to probability (qD^2 + 2 * qD * qO2 + 3 * qO2^2 + qO1 * qD + qO1 * qO2) / |hc| + (qT * qO1 + qO2 * qO1 + qT * qO2 + qO2^2) / |point|\nAll queries proved."
+  },
+  {
+   "model": "gc_bad4",
+   "goal": "G-C",
+   "control": false,
+   "path": "proof/cryptoverif/models/gc_bad4.ocv",
+   "sha256": "ac6bfa42ea78fe5cf96a7fefc684916cc6ef3c0fb9f98a4c03e5be823b839f0c",
+   "exit": 0,
+   "seconds": 1.15,
+   "maxrss_kb": 19324,
+   "all_queries_proved": true,
+   "timeout": false,
+   "queries": {
+    "Bad4": {
+     "expected": "proved_prob",
+     "got": "proved_prob",
+     "probability": "(qD^2 + qD * qO2 + 2 * qO2^2 + qO1 * qO2) / |hc| + (qT * qO1 + qO2 * qO1 + qT * qO2 + qO2^2) / |point|",
+     "match": true
+    }
+   },
+   "unexpected_extra_results": [],
+   "output_tail": "RESULT Proved event(Bad4) ==> false up to probability (qD^2 + qD * qO2 + 2 * qO2^2 + qO1 * qO2) / |hc| + (qT * qO1 + qO2 * qO1 + qT * qO2 + qO2^2) / |point|\nAll queries proved."
+  },
+  {
+   "model": "gc_o2unres",
+   "goal": "G-C",
+   "control": false,
+   "path": "proof/cryptoverif/models/gc_o2unres.ocv",
+   "sha256": "8daace56d01578b59a0d209289fd1bdcab976f87f637b30adb8ce88e5408f978",
+   "exit": 0,
+   "seconds": 2.45,
+   "maxrss_kb": 25192,
+   "all_queries_proved": true,
+   "timeout": false,
+   "queries": {
+    "O2Unres": {
+     "expected": "proved_prob",
+     "got": "proved_prob",
+     "probability": "(qD^2 + qD * qO2 + 3 * qO2^2 + qO1 * qD + 2 * qO1 * qO2) / |hc| + (qT * qO1 + qO2 * qO1 + 2 * qT * qO2 + qO2^2) / |point|",
+     "match": true
+    }
+   },
+   "unexpected_extra_results": [],
+   "output_tail": "RESULT Proved event(O2Unres) ==> false up to probability (qD^2 + qD * qO2 + 3 * qO2^2 + qO1 * qD + 2 * qO1 * qO2) / |hc| + (qT * qO1 + qO2 * qO1 + 2 * qT * qO2 + qO2^2) / |point|\nAll queries proved."
+  },
+  {
+   "model": "gd_coupling",
+   "goal": "G-D",
+   "control": false,
+   "path": "proof/cryptoverif/models/gd_coupling.ocv",
+   "sha256": "be2bb96e310face2edd71eeca68ab6b73a496c1cdbd3987784a456fad738c542",
+   "exit": 0,
+   "seconds": 0.44,
+   "maxrss_kb": 15992,
+   "all_queries_proved": false,
+   "timeout": false,
+   "queries": {
+    "indistinguishability": {
+     "expected": "not_proved",
+     "got": "not_proved",
+     "probability": null,
+     "match": true
+    }
+   },
+   "unexpected_extra_results": [],
+   "output_tail": "RESULT Could not prove indistinguishability between game 1 and game 2."
+  },
+  {
+   "model": "gd_xor_toy",
+   "goal": "G-D",
+   "control": false,
+   "path": "proof/cryptoverif/models/gd_xor_toy.ocv",
+   "sha256": "195d5de7fd36d613ab761a2960da6806c4a9a0e14b3a29bb5cfa4126e9cd79fe",
+   "exit": 0,
+   "seconds": 0.34,
+   "maxrss_kb": 15864,
+   "all_queries_proved": false,
+   "timeout": false,
+   "queries": {
+    "indistinguishability": {
+     "expected": "not_proved",
+     "got": "not_proved",
+     "probability": null,
+     "match": true
+    }
+   },
+   "unexpected_extra_results": [],
+   "output_tail": "RESULT Could not prove indistinguishability between game 1 and game 2."
+  },
+  {
+   "model": "m1_ga_nomask",
+   "goal": "M1",
+   "control": true,
+   "path": "proof/cryptoverif/models/m1_ga_nomask.ocv",
+   "sha256": "0533ca8af51635fe9bb860850911125d854b2662a840c453891fdb60321aee74",
+   "exit": 0,
+   "seconds": 1.05,
+   "maxrss_kb": 17528,
+   "all_queries_proved": false,
+   "timeout": false,
+   "queries": {
+    "extract": {
+     "expected": "proved_exact",
+     "got": "proved_exact",
+     "probability": null,
+     "match": true
+    },
+    "complete": {
+     "expected": "not_proved",
+     "got": "not_proved",
+     "probability": null,
+     "match": true
+    }
+   },
+   "unexpected_extra_results": [],
+   "output_tail": "RESULT Proved forall g: bytes32, p: pkey; event(KeyExtracted(p, g)) ==> event(KeyGenerated(g, p))\nRESULT Could not prove forall x: nonceinput; event(AdvQueryAt(x)) && event(HiddenInput(x)) ==> event(ExtractedAt(x))."
+  },
+  {
+   "model": "m1_gb_nomask",
+   "goal": "M1",
+   "control": true,
+   "path": "proof/cryptoverif/models/m1_gb_nomask.ocv",
+   "sha256": "71eafe80bfdde8e35bf00c22fbf6685b72b818f3ef0baec6768b8ae4ffb6613f",
+   "exit": 0,
+   "seconds": 0.85,
+   "maxrss_kb": 16996,
+   "all_queries_proved": false,
+   "timeout": false,
+   "queries": {
+    "indistinguishability": {
+     "expected": "not_proved",
+     "got": "not_proved",
+     "probability": null,
+     "match": true
+    }
+   },
+   "unexpected_extra_results": [],
+   "output_tail": "RESULT Could not prove indistinguishability between game 1 and game 2."
+  },
+  {
+   "model": "m2_gc_o2unres",
+   "goal": "M2",
+   "control": true,
+   "path": "proof/cryptoverif/models/m2_gc_o2unres.ocv",
+   "sha256": "02b2c59ee4a01c5cc483db1b87d79cb838005cfb619e259f3a5bf83d7487b461",
+   "exit": 0,
+   "seconds": 1.25,
+   "maxrss_kb": 19252,
+   "all_queries_proved": false,
+   "timeout": false,
+   "queries": {
+    "O2Unres": {
+     "expected": "not_proved",
+     "got": "not_proved",
+     "probability": null,
+     "match": true
+    }
+   },
+   "unexpected_extra_results": [],
+   "output_tail": "RESULT Could not prove event(O2Unres) ==> false."
+  }
+ ]
+}

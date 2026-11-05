@@ -1,0 +1,245 @@
+{
+  "tool_sha256": "c7a68c19d72f72a88a4a0abbce35697d440fdfbf201c55f0ab8ba2bc25c5c501",
+  "lib_sha256": "f60b3fb973dbfb172398ca8b6f4c06a5acba1d609a70b97097320754a75ac38f",
+  "protocol_sha256": "2c03df6e156176ef8dcbc8182015ba3bf1b1432638f0901deb4860641f94740d",
+  "records": [
+    {
+      "model": "setupB.pv",
+      "sha256": "02316cf3a778078391bccb88fc95a71d1b2b46ca89cd0d6d7756c225b4bbdcea",
+      "returncode": 0,
+      "trace_present": false,
+      "queries": [
+        {
+          "query": "Q1",
+          "role": "real",
+          "expected": "true",
+          "result": "true",
+          "as_expected": true
+        },
+        {
+          "query": "Q2",
+          "role": "real",
+          "expected": "true",
+          "result": "true",
+          "as_expected": true
+        },
+        {
+          "query": "Q4a",
+          "role": "real",
+          "expected": "true",
+          "result": "true",
+          "as_expected": true
+        },
+        {
+          "query": "Q4b",
+          "role": "real",
+          "expected": "true",
+          "result": "true",
+          "as_expected": true
+        }
+      ]
+    },
+    {
+      "model": "setupA.pv",
+      "sha256": "8c3654afed94376e0762178ab99c98bb2216dd33ebed80a58c735c2bb7cfedfb",
+      "returncode": 0,
+      "trace_present": true,
+      "queries": [
+        {
+          "query": "Q3",
+          "role": "real",
+          "expected": "true",
+          "result": "true",
+          "as_expected": true
+        },
+        {
+          "query": "Q4a",
+          "role": "real",
+          "expected": "true",
+          "result": "true",
+          "as_expected": true
+        },
+        {
+          "query": "Q4b",
+          "role": "real",
+          "expected": "true",
+          "result": "true",
+          "as_expected": true
+        },
+        {
+          "query": "Q4c",
+          "role": "real",
+          "expected": "true",
+          "result": "true",
+          "as_expected": true
+        },
+        {
+          "query": "Q6a",
+          "role": "real",
+          "expected": "true",
+          "result": "true",
+          "as_expected": true
+        },
+        {
+          "query": "Q6b",
+          "role": "real",
+          "expected": "true",
+          "result": "true",
+          "as_expected": true
+        },
+        {
+          "query": "Q7",
+          "role": "real",
+          "expected": "true",
+          "result": "true",
+          "as_expected": true
+        },
+        {
+          "query": "K1",
+          "role": "control",
+          "expected": "false",
+          "result": "false",
+          "as_expected": true
+        }
+      ]
+    },
+    {
+      "model": "setupA_private.pv",
+      "sha256": "c6c822cc113044d650b03e11dbd27d39156a1f66cfc5b5f1d8b4e314c04d183c",
+      "returncode": 0,
+      "trace_present": false,
+      "queries": [
+        {
+          "query": "Q5a",
+          "role": "real",
+          "expected": "true",
+          "result": "true",
+          "as_expected": true
+        }
+      ]
+    },
+    {
+      "model": "setupA_preopen.pv",
+      "sha256": "fe37ea6b4319fa363fc51fd90cb9e243fa3424bf72b7670f5f2058806c9a6607",
+      "returncode": 0,
+      "trace_present": false,
+      "queries": [
+        {
+          "query": "Q5c",
+          "role": "real",
+          "expected": "true",
+          "result": "true",
+          "as_expected": true
+        }
+      ]
+    },
+    {
+      "model": "mut_M1_early_rho.pv",
+      "sha256": "b4b7aa0fe6209e88526f50451548da27909bd19a08d346217cbcd18fdc7a06aa",
+      "returncode": 0,
+      "trace_present": true,
+      "queries": [
+        {
+          "query": "Q1",
+          "role": "control M1",
+          "expected": "false",
+          "result": "false",
+          "as_expected": true
+        }
+      ]
+    },
+    {
+      "model": "mut_M2_no_compare.pv",
+      "sha256": "55d5e264ba7081f3cf1052d5cad58c5967adc24c046815fa90efadfbd75a8d60",
+      "returncode": 0,
+      "trace_present": true,
+      "queries": [
+        {
+          "query": "Q2",
+          "role": "control M2",
+          "expected": "false",
+          "result": "false",
+          "as_expected": true
+        }
+      ]
+    },
+    {
+      "model": "mut_M3_reuse_rho.pv",
+      "sha256": "9d2b9fd65d3876af94307f24e1c4c505c1d6ca6067722df23f4d0c13d8fd2d1e",
+      "returncode": 0,
+      "trace_present": true,
+      "queries": [
+        {
+          "query": "Q4a",
+          "role": "control M3",
+          "expected": "false",
+          "result": "false",
+          "as_expected": true
+        },
+        {
+          "query": "Q4b",
+          "role": "control M3",
+          "expected": "false",
+          "result": "false",
+          "as_expected": true
+        }
+      ]
+    },
+    {
+      "model": "mut_M4_no_approval.pv",
+      "sha256": "1f58ca51a435ba343cbde72ea81d86379337017f2faaec0be39507fe4930713b",
+      "returncode": 0,
+      "trace_present": true,
+      "queries": [
+        {
+          "query": "Q7",
+          "role": "control M4",
+          "expected": "false",
+          "result": "false",
+          "as_expected": true
+        }
+      ]
+    },
+    {
+      "model": "mut_M5_r0_from_response.pv",
+      "sha256": "d3ead0faf8c3c2fff15f6b68ecb535fde88e8816bf7a3c938879bfdd1edb9251",
+      "returncode": 0,
+      "trace_present": true,
+      "queries": [
+        {
+          "query": "Q2",
+          "role": "control M5",
+          "expected": "false",
+          "result": "false",
+          "as_expected": true
+        }
+      ]
+    },
+    {
+      "model": "mut_M6_fresh_nonce.pv",
+      "sha256": "fc4bc914293eeb59b5eecdf25f3efad9a9013bb8f5f527bcdda94e80a2f2301a",
+      "returncode": 0,
+      "trace_present": true,
+      "queries": [
+        {
+          "query": "Q6a",
+          "role": "side",
+          "expected": "true",
+          "result": "true",
+          "as_expected": true
+        },
+        {
+          "query": "Q6b",
+          "role": "control M6",
+          "expected": "false",
+          "result": "false",
+          "as_expected": true
+        }
+      ]
+    }
+  ],
+  "controls_fire": true,
+  "real_queries_as_expected": true,
+  "verdict": "PASS",
+  "scope": "symbolic, free constructors; no curve, hash or bias"
+}

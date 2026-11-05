@@ -1,0 +1,860 @@
+File "lazy_nonce_extractor.ocv", line 132, characters 16-24:
+Warning: Foreach uses the same parameter qService with oracle O2 as foreach at line 120, characters 16-24 with oracle O1. Avoid reusing parameters for multiple foreach with different oracles to avoid losing precision in the probability bound.
+Doing expand get, insert and prove unique annotations... Done.
+Doing simplify (non-expanded game)... No change.
+Doing expand... Done.
+Doing remove assignments of findcond... Done.
+Doing simplify... Doing global dependency analysis on sk_2 inside simplify... At 15, returned message p_1 depends on sk_2.
+No change
+Doing global dependency analysis on sk_2 inside simplify... At 15, returned message p_1 depends on sk_2.
+No change
+Run simplify 2 time(s). Fixpoint reached.
+Done.
+Doing move all binders... No change.
+Doing SA rename new without array accesses and remove assignments of findcond... No change.
+Doing merge branches... No change.
+Proved query forall dguess: bytes32, p: pkey; event(KeyExtracted(p, dguess)) ==> event(KeyGenerated(dguess, p))
+Proved query forall y: nonceout, x: nonceinput, c: hc, m: message; event(ContextLookup(m, c, x, y)) ==> event(NonceROUsed(x, y))
+Proved query forall y: nonceout, x: nonceinput; event(AdversaryHashQuery(x, y)) ==> event(NonceROUsed(x, y))
+===================== Proof starts =======================
+Initial state
+Game 1 is
+      Ostart() :=
+      sk_2 <-R scalar;
+      skbytes: bytes32 <- tobytes(sk_2);
+      p_1: pkey <- pubbytes(skbytes);
+      event KeyGenerated(skbytes, p_1);
+      return(p_1);
+      ((
+        foreach i <= qHash do
+        QNonce(dmask_1: bytes32, m_2: message, c_2: hc) :=
+        guess: bytes32 <- xor(dmask_1, aux(c_2));
+        if canonical(guess) && (pubbytes(guess) = p_1) then
+          event KeyExtracted(p_1, guess);
+          x_4: nonceinput <- nin(dmask_1, p_1, m_2, c_2);
+          y_6: nonceout <- (get nonceRO(=x_4, y_5: nonceout) in event NonceROUsed(x_4, y_5); y_5 else y_4 <-R nonceout; insert nonceRO(x_4, y_4); event NonceROUsed(x_4, y_4); y_4);
+          event AdversaryHashQuery(x_4, y_6);
+          return(y_6)
+        else
+          x_5: nonceinput <- nin(dmask_1, p_1, m_2, c_2);
+          y_9: nonceout <- (get nonceRO(=x_5, y_8: nonceout) in event NonceROUsed(x_5, y_8); y_8 else y_7 <-R nonceout; insert nonceRO(x_5, y_7); event NonceROUsed(x_5, y_7); y_7);
+          event AdversaryHashQuery(x_5, y_9);
+          return(y_9)
+      ) | (
+        foreach i_1 <= qService do
+        O1(m_3: message, c_3: hc) :=
+        y_14: nonceout <- (dmask_2: bytes32 <- xor(tobytes(sk_2), aux(c_3)); x_6: nonceinput <- nin(dmask_2, p_1, m_3, c_3); get baseCache(=m_3, =c_3, y_13: nonceout) in event ContextLookup(m_3, c_3, x_6, y_13); y_13 else y_12: nonceout <- (get nonceRO(=x_6, y_11: nonceout) in event NonceROUsed(x_6, y_11); y_11 else y_10 <-R nonceout; insert nonceRO(x_6, y_10); event NonceROUsed(x_6, y_10); y_10); insert baseCache(m_3, c_3, y_12); event ContextLookup(m_3, c_3, x_6, y_12); y_12);
+        if valid(y_14) then
+          r: outcome <- opened(R0(y_14));
+          event CommitOut(m_3, c_3, r);
+          return(r)
+        else
+          event CommitOut(m_3, c_3, fail);
+          return(fail)
+      ) | (
+        foreach j <= qService do
+        O2(m_4: message, r_1: rho) :=
+        c_4: hc <- hdata(r_1);
+        y_19: nonceout <- (dmask_3: bytes32 <- xor(tobytes(sk_2), aux(c_4)); x_7: nonceinput <- nin(dmask_3, p_1, m_4, c_4); get baseCache(=m_4, =c_4, y_18: nonceout) in event ContextLookup(m_4, c_4, x_7, y_18); y_18 else y_17: nonceout <- (get nonceRO(=x_7, y_16: nonceout) in event NonceROUsed(x_7, y_16); y_16 else y_15 <-R nonceout; insert nonceRO(x_7, y_15); event NonceROUsed(x_7, y_15); y_15); insert baseCache(m_4, c_4, y_17); event ContextLookup(m_4, c_4, x_7, y_17); y_17);
+        if valid(y_19) then
+          out: outcome <- opened(R0(y_19));
+          event RevealOut(m_4, r_1, out);
+          return(out)
+        else
+          event RevealOut(m_4, r_1, fail);
+          return(fail)
+      ))
+
+
+Applying expand get, insert and prove unique annotations
+  - Expand get/insert for table nonceRO
+  - Expand get/insert for table baseCache
+yields
+
+Game 2 is
+      Ostart() :=
+      sk_2 <-R scalar;
+      skbytes: bytes32 <- tobytes(sk_2);
+      p_1: pkey <- pubbytes(skbytes);
+      event KeyGenerated(skbytes, p_1);
+      return(p_1);
+      ((
+        foreach i <= qHash do
+        QNonce(dmask_1: bytes32, m_2: message, c_2: hc) :=
+        guess: bytes32 <- xor(dmask_1, aux(c_2));
+        if canonical(guess) && (pubbytes(guess) = p_1) then
+          event KeyExtracted(p_1, guess);
+          x_4: nonceinput <- nin(dmask_1, p_1, m_2, c_2);
+          y_6: nonceout <- (find u_32 = u_33 <= qHash suchthat defined(nonceRO_7[u_33], nonceRO_8[u_33]) && (nonceRO_7[u_33] = x_4) then event NonceROUsed(x_4, nonceRO_8[u_32]); nonceRO_8[u_32] orfind u_34 = u_35 <= qHash suchthat defined(nonceRO_5[u_35], nonceRO_6[u_35]) && (nonceRO_5[u_35] = x_4) then event NonceROUsed(x_4, nonceRO_6[u_34]); nonceRO_6[u_34] orfind u_36 = u_37 <= qService suchthat defined(nonceRO_3[u_37], nonceRO_4[u_37]) && (nonceRO_3[u_37] = x_4) then event NonceROUsed(x_4, nonceRO_4[u_36]); nonceRO_4[u_36] orfind u_38 = u_39 <= qService suchthat defined(nonceRO_1[u_39], nonceRO_2[u_39]) && (nonceRO_1[u_39] = x_4) then event NonceROUsed(x_4, nonceRO_2[u_38]); nonceRO_2[u_38] else y_4 <-R nonceout; nonceRO_7: nonceinput <- x_4; nonceRO_8: nonceout <- y_4; event NonceROUsed(x_4, y_4); y_4);
+          event AdversaryHashQuery(x_4, y_6);
+          return(y_6)
+        else
+          x_5: nonceinput <- nin(dmask_1, p_1, m_2, c_2);
+          y_9: nonceout <- (find u_24 = u_25 <= qHash suchthat defined(nonceRO_7[u_25], nonceRO_8[u_25]) && (nonceRO_7[u_25] = x_5) then event NonceROUsed(x_5, nonceRO_8[u_24]); nonceRO_8[u_24] orfind u_26 = u_27 <= qHash suchthat defined(nonceRO_5[u_27], nonceRO_6[u_27]) && (nonceRO_5[u_27] = x_5) then event NonceROUsed(x_5, nonceRO_6[u_26]); nonceRO_6[u_26] orfind u_28 = u_29 <= qService suchthat defined(nonceRO_3[u_29], nonceRO_4[u_29]) && (nonceRO_3[u_29] = x_5) then event NonceROUsed(x_5, nonceRO_4[u_28]); nonceRO_4[u_28] orfind u_30 = u_31 <= qService suchthat defined(nonceRO_1[u_31], nonceRO_2[u_31]) && (nonceRO_1[u_31] = x_5) then event NonceROUsed(x_5, nonceRO_2[u_30]); nonceRO_2[u_30] else y_7 <-R nonceout; nonceRO_5: nonceinput <- x_5; nonceRO_6: nonceout <- y_7; event NonceROUsed(x_5, y_7); y_7);
+          event AdversaryHashQuery(x_5, y_9);
+          return(y_9)
+      ) | (
+        foreach i_1 <= qService do
+        O1(m_3: message, c_3: hc) :=
+        y_14: nonceout <- (dmask_2: bytes32 <- xor(tobytes(sk_2), aux(c_3)); x_6: nonceinput <- nin(dmask_2, p_1, m_3, c_3); find u_20 = u_21 <= qService suchthat defined(baseCache_4[u_21], baseCache_5[u_21], baseCache_6[u_21]) && (baseCache_4[u_21] = m_3) && (baseCache_5[u_21] = c_3) then event ContextLookup(m_3, c_3, x_6, baseCache_6[u_20]); baseCache_6[u_20] orfind u_22 = u_23 <= qService suchthat defined(baseCache_1[u_23], baseCache_2[u_23], baseCache_3[u_23]) && (baseCache_1[u_23] = m_3) && (baseCache_2[u_23] = c_3) then event ContextLookup(m_3, c_3, x_6, baseCache_3[u_22]); baseCache_3[u_22] else y_12: nonceout <- (find u_12 = u_13 <= qHash suchthat defined(nonceRO_7[u_13], nonceRO_8[u_13]) && (nonceRO_7[u_13] = x_6) then event NonceROUsed(x_6, nonceRO_8[u_12]); nonceRO_8[u_12] orfind u_14 = u_15 <= qHash suchthat defined(nonceRO_5[u_15], nonceRO_6[u_15]) && (nonceRO_5[u_15] = x_6) then event NonceROUsed(x_6, nonceRO_6[u_14]); nonceRO_6[u_14] orfind u_16 = u_17 <= qService suchthat defined(nonceRO_3[u_17], nonceRO_4[u_17]) && (nonceRO_3[u_17] = x_6) then event NonceROUsed(x_6, nonceRO_4[u_16]); nonceRO_4[u_16] orfind u_18 = u_19 <= qService suchthat defined(nonceRO_1[u_19], nonceRO_2[u_19]) && (nonceRO_1[u_19] = x_6) then event NonceROUsed(x_6, nonceRO_2[u_18]); nonceRO_2[u_18] else y_10 <-R nonceout; nonceRO_3: nonceinput <- x_6; nonceRO_4: nonceout <- y_10; event NonceROUsed(x_6, y_10); y_10); baseCache_4: message <- m_3; baseCache_5: hc <- c_3; baseCache_6: nonceout <- y_12; event ContextLookup(m_3, c_3, x_6, y_12); y_12);
+        if valid(y_14) then
+          r: outcome <- opened(R0(y_14));
+          event CommitOut(m_3, c_3, r);
+          return(r)
+        else
+          event CommitOut(m_3, c_3, fail);
+          return(fail)
+      ) | (
+        foreach j <= qService do
+        O2(m_4: message, r_1: rho) :=
+        c_4: hc <- hdata(r_1);
+        y_19: nonceout <- (dmask_3: bytes32 <- xor(tobytes(sk_2), aux(c_4)); x_7: nonceinput <- nin(dmask_3, p_1, m_4, c_4); find u_8 = u_9 <= qService suchthat defined(baseCache_4[u_9], baseCache_5[u_9], baseCache_6[u_9]) && (baseCache_4[u_9] = m_4) && (baseCache_5[u_9] = c_4) then event ContextLookup(m_4, c_4, x_7, baseCache_6[u_8]); baseCache_6[u_8] orfind u_10 = u_11 <= qService suchthat defined(baseCache_1[u_11], baseCache_2[u_11], baseCache_3[u_11]) && (baseCache_1[u_11] = m_4) && (baseCache_2[u_11] = c_4) then event ContextLookup(m_4, c_4, x_7, baseCache_3[u_10]); baseCache_3[u_10] else y_17: nonceout <- (find u = u_1 <= qHash suchthat defined(nonceRO_7[u_1], nonceRO_8[u_1]) && (nonceRO_7[u_1] = x_7) then event NonceROUsed(x_7, nonceRO_8[u]); nonceRO_8[u] orfind u_2 = u_3 <= qHash suchthat defined(nonceRO_5[u_3], nonceRO_6[u_3]) && (nonceRO_5[u_3] = x_7) then event NonceROUsed(x_7, nonceRO_6[u_2]); nonceRO_6[u_2] orfind u_4 = u_5 <= qService suchthat defined(nonceRO_3[u_5], nonceRO_4[u_5]) && (nonceRO_3[u_5] = x_7) then event NonceROUsed(x_7, nonceRO_4[u_4]); nonceRO_4[u_4] orfind u_6 = u_7 <= qService suchthat defined(nonceRO_1[u_7], nonceRO_2[u_7]) && (nonceRO_1[u_7] = x_7) then event NonceROUsed(x_7, nonceRO_2[u_6]); nonceRO_2[u_6] else y_15 <-R nonceout; nonceRO_1: nonceinput <- x_7; nonceRO_2: nonceout <- y_15; event NonceROUsed(x_7, y_15); y_15); baseCache_1: message <- m_4; baseCache_2: hc <- c_4; baseCache_3: nonceout <- y_17; event ContextLookup(m_4, c_4, x_7, y_17); y_17);
+        if valid(y_19) then
+          out: outcome <- opened(R0(y_19));
+          event RevealOut(m_4, r_1, out);
+          return(out)
+        else
+          event RevealOut(m_4, r_1, fail);
+          return(fail)
+      ))
+
+
+Applying expand
+  - Expand if/find/let
+yields
+
+Game 3 is
+      Ostart() :=
+      sk_2 <-R scalar;
+      skbytes: bytes32 <- tobytes(sk_2);
+      p_1: pkey <- pubbytes(skbytes);
+      event KeyGenerated(skbytes, p_1);
+      return(p_1);
+      ((
+        foreach i <= qHash do
+        QNonce(dmask_1: bytes32, m_2: message, c_2: hc) :=
+        guess: bytes32 <- xor(dmask_1, aux(c_2));
+        if canonical(guess) && (pubbytes(guess) = p_1) then
+          event KeyExtracted(p_1, guess);
+          x_4: nonceinput <- nin(dmask_1, p_1, m_2, c_2);
+          find u_32 = u_33 <= qHash suchthat defined(nonceRO_7[u_33], nonceRO_8[u_33]) && (nonceRO_7[u_33] = x_4) then
+            event NonceROUsed(x_4, nonceRO_8[u_32]);
+            y_6: nonceout <- nonceRO_8[u_32];
+            event AdversaryHashQuery(x_4, y_6);
+            return(y_6)
+          orfind u_34 = u_35 <= qHash suchthat defined(nonceRO_5[u_35], nonceRO_6[u_35]) && (nonceRO_5[u_35] = x_4) then
+            event NonceROUsed(x_4, nonceRO_6[u_34]);
+            y_6: nonceout <- nonceRO_6[u_34];
+            event AdversaryHashQuery(x_4, y_6);
+            return(y_6)
+          orfind u_36 = u_37 <= qService suchthat defined(nonceRO_3[u_37], nonceRO_4[u_37]) && (nonceRO_3[u_37] = x_4) then
+            event NonceROUsed(x_4, nonceRO_4[u_36]);
+            y_6: nonceout <- nonceRO_4[u_36];
+            event AdversaryHashQuery(x_4, y_6);
+            return(y_6)
+          orfind u_38 = u_39 <= qService suchthat defined(nonceRO_1[u_39], nonceRO_2[u_39]) && (nonceRO_1[u_39] = x_4) then
+            event NonceROUsed(x_4, nonceRO_2[u_38]);
+            y_6: nonceout <- nonceRO_2[u_38];
+            event AdversaryHashQuery(x_4, y_6);
+            return(y_6)
+          else
+            y_4 <-R nonceout;
+            nonceRO_7: nonceinput <- x_4;
+            nonceRO_8: nonceout <- y_4;
+            event NonceROUsed(x_4, y_4);
+            y_6: nonceout <- y_4;
+            event AdversaryHashQuery(x_4, y_6);
+            return(y_6)
+        else
+          x_5: nonceinput <- nin(dmask_1, p_1, m_2, c_2);
+          find u_24 = u_25 <= qHash suchthat defined(nonceRO_7[u_25], nonceRO_8[u_25]) && (nonceRO_7[u_25] = x_5) then
+            event NonceROUsed(x_5, nonceRO_8[u_24]);
+            y_9: nonceout <- nonceRO_8[u_24];
+            event AdversaryHashQuery(x_5, y_9);
+            return(y_9)
+          orfind u_26 = u_27 <= qHash suchthat defined(nonceRO_5[u_27], nonceRO_6[u_27]) && (nonceRO_5[u_27] = x_5) then
+            event NonceROUsed(x_5, nonceRO_6[u_26]);
+            y_9: nonceout <- nonceRO_6[u_26];
+            event AdversaryHashQuery(x_5, y_9);
+            return(y_9)
+          orfind u_28 = u_29 <= qService suchthat defined(nonceRO_3[u_29], nonceRO_4[u_29]) && (nonceRO_3[u_29] = x_5) then
+            event NonceROUsed(x_5, nonceRO_4[u_28]);
+            y_9: nonceout <- nonceRO_4[u_28];
+            event AdversaryHashQuery(x_5, y_9);
+            return(y_9)
+          orfind u_30 = u_31 <= qService suchthat defined(nonceRO_1[u_31], nonceRO_2[u_31]) && (nonceRO_1[u_31] = x_5) then
+            event NonceROUsed(x_5, nonceRO_2[u_30]);
+            y_9: nonceout <- nonceRO_2[u_30];
+            event AdversaryHashQuery(x_5, y_9);
+            return(y_9)
+          else
+            y_7 <-R nonceout;
+            nonceRO_5: nonceinput <- x_5;
+            nonceRO_6: nonceout <- y_7;
+            event NonceROUsed(x_5, y_7);
+            y_9: nonceout <- y_7;
+            event AdversaryHashQuery(x_5, y_9);
+            return(y_9)
+      ) | (
+        foreach i_1 <= qService do
+        O1(m_3: message, c_3: hc) :=
+        dmask_2: bytes32 <- xor(tobytes(sk_2), aux(c_3));
+        x_6: nonceinput <- nin(dmask_2, p_1, m_3, c_3);
+        find u_20 = u_21 <= qService suchthat defined(baseCache_4[u_21], baseCache_5[u_21], baseCache_6[u_21]) && (baseCache_4[u_21] = m_3) && (baseCache_5[u_21] = c_3) then
+          event ContextLookup(m_3, c_3, x_6, baseCache_6[u_20]);
+          y_14: nonceout <- baseCache_6[u_20];
+          if valid(y_14) then
+            r: outcome <- opened(R0(y_14));
+            return(r)
+          else
+            return(fail)
+        orfind u_22 = u_23 <= qService suchthat defined(baseCache_1[u_23], baseCache_2[u_23], baseCache_3[u_23]) && (baseCache_1[u_23] = m_3) && (baseCache_2[u_23] = c_3) then
+          event ContextLookup(m_3, c_3, x_6, baseCache_3[u_22]);
+          y_14: nonceout <- baseCache_3[u_22];
+          if valid(y_14) then
+            r: outcome <- opened(R0(y_14));
+            return(r)
+          else
+            return(fail)
+        else
+          find u_12 = u_13 <= qHash suchthat defined(nonceRO_7[u_13], nonceRO_8[u_13]) && (nonceRO_7[u_13] = x_6) then
+            event NonceROUsed(x_6, nonceRO_8[u_12]);
+            y_12: nonceout <- nonceRO_8[u_12];
+            baseCache_4: message <- m_3;
+            baseCache_5: hc <- c_3;
+            baseCache_6: nonceout <- y_12;
+            event ContextLookup(m_3, c_3, x_6, y_12);
+            y_14: nonceout <- y_12;
+            if valid(y_14) then
+              r: outcome <- opened(R0(y_14));
+              return(r)
+            else
+              return(fail)
+          orfind u_14 = u_15 <= qHash suchthat defined(nonceRO_5[u_15], nonceRO_6[u_15]) && (nonceRO_5[u_15] = x_6) then
+            event NonceROUsed(x_6, nonceRO_6[u_14]);
+            y_12: nonceout <- nonceRO_6[u_14];
+            baseCache_4: message <- m_3;
+            baseCache_5: hc <- c_3;
+            baseCache_6: nonceout <- y_12;
+            event ContextLookup(m_3, c_3, x_6, y_12);
+            y_14: nonceout <- y_12;
+            if valid(y_14) then
+              r: outcome <- opened(R0(y_14));
+              return(r)
+            else
+              return(fail)
+          orfind u_16 = u_17 <= qService suchthat defined(nonceRO_3[u_17], nonceRO_4[u_17]) && (nonceRO_3[u_17] = x_6) then
+            event NonceROUsed(x_6, nonceRO_4[u_16]);
+            y_12: nonceout <- nonceRO_4[u_16];
+            baseCache_4: message <- m_3;
+            baseCache_5: hc <- c_3;
+            baseCache_6: nonceout <- y_12;
+            event ContextLookup(m_3, c_3, x_6, y_12);
+            y_14: nonceout <- y_12;
+            if valid(y_14) then
+              r: outcome <- opened(R0(y_14));
+              return(r)
+            else
+              return(fail)
+          orfind u_18 = u_19 <= qService suchthat defined(nonceRO_1[u_19], nonceRO_2[u_19]) && (nonceRO_1[u_19] = x_6) then
+            event NonceROUsed(x_6, nonceRO_2[u_18]);
+            y_12: nonceout <- nonceRO_2[u_18];
+            baseCache_4: message <- m_3;
+            baseCache_5: hc <- c_3;
+            baseCache_6: nonceout <- y_12;
+            event ContextLookup(m_3, c_3, x_6, y_12);
+            y_14: nonceout <- y_12;
+            if valid(y_14) then
+              r: outcome <- opened(R0(y_14));
+              return(r)
+            else
+              return(fail)
+          else
+            y_10 <-R nonceout;
+            nonceRO_3: nonceinput <- x_6;
+            nonceRO_4: nonceout <- y_10;
+            event NonceROUsed(x_6, y_10);
+            y_12: nonceout <- y_10;
+            baseCache_4: message <- m_3;
+            baseCache_5: hc <- c_3;
+            baseCache_6: nonceout <- y_12;
+            event ContextLookup(m_3, c_3, x_6, y_12);
+            y_14: nonceout <- y_12;
+            if valid(y_14) then
+              r: outcome <- opened(R0(y_14));
+              return(r)
+            else
+              return(fail)
+      ) | (
+        foreach j <= qService do
+        O2(m_4: message, r_1: rho) :=
+        c_4: hc <- hdata(r_1);
+        dmask_3: bytes32 <- xor(tobytes(sk_2), aux(c_4));
+        x_7: nonceinput <- nin(dmask_3, p_1, m_4, c_4);
+        find u_8 = u_9 <= qService suchthat defined(baseCache_4[u_9], baseCache_5[u_9], baseCache_6[u_9]) && (baseCache_4[u_9] = m_4) && (baseCache_5[u_9] = c_4) then
+          event ContextLookup(m_4, c_4, x_7, baseCache_6[u_8]);
+          y_19: nonceout <- baseCache_6[u_8];
+          if valid(y_19) then
+            out: outcome <- opened(R0(y_19));
+            return(out)
+          else
+            return(fail)
+        orfind u_10 = u_11 <= qService suchthat defined(baseCache_1[u_11], baseCache_2[u_11], baseCache_3[u_11]) && (baseCache_1[u_11] = m_4) && (baseCache_2[u_11] = c_4) then
+          event ContextLookup(m_4, c_4, x_7, baseCache_3[u_10]);
+          y_19: nonceout <- baseCache_3[u_10];
+          if valid(y_19) then
+            out: outcome <- opened(R0(y_19));
+            return(out)
+          else
+            return(fail)
+        else
+          find u = u_1 <= qHash suchthat defined(nonceRO_7[u_1], nonceRO_8[u_1]) && (nonceRO_7[u_1] = x_7) then
+            event NonceROUsed(x_7, nonceRO_8[u]);
+            y_17: nonceout <- nonceRO_8[u];
+            baseCache_1: message <- m_4;
+            baseCache_2: hc <- c_4;
+            baseCache_3: nonceout <- y_17;
+            event ContextLookup(m_4, c_4, x_7, y_17);
+            y_19: nonceout <- y_17;
+            if valid(y_19) then
+              out: outcome <- opened(R0(y_19));
+              return(out)
+            else
+              return(fail)
+          orfind u_2 = u_3 <= qHash suchthat defined(nonceRO_5[u_3], nonceRO_6[u_3]) && (nonceRO_5[u_3] = x_7) then
+            event NonceROUsed(x_7, nonceRO_6[u_2]);
+            y_17: nonceout <- nonceRO_6[u_2];
+            baseCache_1: message <- m_4;
+            baseCache_2: hc <- c_4;
+            baseCache_3: nonceout <- y_17;
+            event ContextLookup(m_4, c_4, x_7, y_17);
+            y_19: nonceout <- y_17;
+            if valid(y_19) then
+              out: outcome <- opened(R0(y_19));
+              return(out)
+            else
+              return(fail)
+          orfind u_4 = u_5 <= qService suchthat defined(nonceRO_3[u_5], nonceRO_4[u_5]) && (nonceRO_3[u_5] = x_7) then
+            event NonceROUsed(x_7, nonceRO_4[u_4]);
+            y_17: nonceout <- nonceRO_4[u_4];
+            baseCache_1: message <- m_4;
+            baseCache_2: hc <- c_4;
+            baseCache_3: nonceout <- y_17;
+            event ContextLookup(m_4, c_4, x_7, y_17);
+            y_19: nonceout <- y_17;
+            if valid(y_19) then
+              out: outcome <- opened(R0(y_19));
+              return(out)
+            else
+              return(fail)
+          orfind u_6 = u_7 <= qService suchthat defined(nonceRO_1[u_7], nonceRO_2[u_7]) && (nonceRO_1[u_7] = x_7) then
+            event NonceROUsed(x_7, nonceRO_2[u_6]);
+            y_17: nonceout <- nonceRO_2[u_6];
+            baseCache_1: message <- m_4;
+            baseCache_2: hc <- c_4;
+            baseCache_3: nonceout <- y_17;
+            event ContextLookup(m_4, c_4, x_7, y_17);
+            y_19: nonceout <- y_17;
+            if valid(y_19) then
+              out: outcome <- opened(R0(y_19));
+              return(out)
+            else
+              return(fail)
+          else
+            y_15 <-R nonceout;
+            nonceRO_1: nonceinput <- x_7;
+            nonceRO_2: nonceout <- y_15;
+            event NonceROUsed(x_7, y_15);
+            y_17: nonceout <- y_15;
+            baseCache_1: message <- m_4;
+            baseCache_2: hc <- c_4;
+            baseCache_3: nonceout <- y_17;
+            event ContextLookup(m_4, c_4, x_7, y_17);
+            y_19: nonceout <- y_17;
+            if valid(y_19) then
+              out: outcome <- opened(R0(y_19));
+              return(out)
+            else
+              return(fail)
+      ))
+
+
+Applying remove assignments of findcond
+  - Remove assignments on nonceRO_1 (definition removed, all usages removed)
+  - Remove assignments on nonceRO_2 (definition removed, all usages removed)
+  - Remove assignments on y_17 (definition removed, all usages removed)
+  - Remove assignments on y_19 (definition removed, all usages removed)
+  - Remove assignments on y_17 (definition removed, all usages removed)
+  - Remove assignments on y_19 (definition removed, all usages removed)
+  - Remove assignments on y_17 (definition removed, all usages removed)
+  - Remove assignments on y_19 (definition removed, all usages removed)
+  - Remove assignments on y_17 (definition removed, all usages removed)
+  - Remove assignments on y_19 (definition removed, all usages removed)
+  - Remove assignments on y_17 (definition removed, all usages removed)
+  - Remove assignments on y_19 (definition removed, all usages removed)
+  - Remove assignments on y_19 (definition removed, all usages removed)
+  - Remove assignments on y_19 (definition removed, all usages removed)
+  - Remove assignments on nonceRO_3 (definition removed, all usages removed)
+  - Remove assignments on nonceRO_4 (definition removed, all usages removed)
+  - Remove assignments on y_12 (definition removed, all usages removed)
+  - Remove assignments on y_14 (definition removed, all usages removed)
+  - Remove assignments on y_12 (definition removed, all usages removed)
+  - Remove assignments on y_14 (definition removed, all usages removed)
+  - Remove assignments on y_12 (definition removed, all usages removed)
+  - Remove assignments on y_14 (definition removed, all usages removed)
+  - Remove assignments on y_12 (definition removed, all usages removed)
+  - Remove assignments on y_14 (definition removed, all usages removed)
+  - Remove assignments on y_12 (definition removed, all usages removed)
+  - Remove assignments on y_14 (definition removed, all usages removed)
+  - Remove assignments on y_14 (definition removed, all usages removed)
+  - Remove assignments on y_14 (definition removed, all usages removed)
+  - Remove assignments on nonceRO_5 (definition removed, all usages removed)
+  - Remove assignments on nonceRO_6 (definition removed, all usages removed)
+  - Remove assignments on y_9 (definition removed, all usages removed)
+  - Remove assignments on y_9 (definition removed, all usages removed)
+  - Remove assignments on y_9 (definition removed, all usages removed)
+  - Remove assignments on y_9 (definition removed, all usages removed)
+  - Remove assignments on y_9 (definition removed, all usages removed)
+  - Remove assignments on nonceRO_7 (definition removed, all usages removed)
+  - Remove assignments on nonceRO_8 (definition removed, all usages removed)
+  - Remove assignments on y_6 (definition removed, all usages removed)
+  - Remove assignments on y_6 (definition removed, all usages removed)
+  - Remove assignments on y_6 (definition removed, all usages removed)
+  - Remove assignments on y_6 (definition removed, all usages removed)
+  - Remove assignments on y_6 (definition removed, all usages removed)
+yields
+
+Game 4 is
+      Ostart() :=
+      sk_2 <-R scalar;
+      skbytes: bytes32 <- tobytes(sk_2);
+      p_1: pkey <- pubbytes(skbytes);
+      event KeyGenerated(skbytes, p_1);
+      return(p_1);
+      ((
+        foreach i <= qHash do
+        QNonce(dmask_1: bytes32, m_2: message, c_2: hc) :=
+        guess: bytes32 <- xor(dmask_1, aux(c_2));
+        if {28}(canonical(guess) && (pubbytes(guess) = p_1)) then
+          event KeyExtracted(p_1, guess);
+          x_4: nonceinput <- nin(dmask_1, p_1, m_2, c_2);
+  {53}    find u_32 = u_33 <= qHash suchthat defined(x_4[u_33], y_4[u_33]) && {56}(x_4[u_33] = x_4) then
+            event NonceROUsed(x_4, y_4[u_32]);
+            event AdversaryHashQuery(x_4, y_4[u_32]);
+            return(y_4[u_32])
+          orfind u_34 = u_35 <= qHash suchthat defined(x_5[u_35], y_7[u_35]) && {86}(x_5[u_35] = x_4) then
+            event NonceROUsed(x_4, y_7[u_34]);
+            event AdversaryHashQuery(x_4, y_7[u_34]);
+            return(y_7[u_34])
+          orfind u_36 = u_37 <= qService suchthat defined(x_6[u_37], y_10[u_37]) && {116}(x_6[u_37] = x_4) then
+            event NonceROUsed(x_4, y_10[u_36]);
+            event AdversaryHashQuery(x_4, y_10[u_36]);
+            return(y_10[u_36])
+          orfind u_38 = u_39 <= qService suchthat defined(x_7[u_39], y_15[u_39]) && {146}(x_7[u_39] = x_4) then
+            event NonceROUsed(x_4, y_15[u_38]);
+            event AdversaryHashQuery(x_4, y_15[u_38]);
+            return(y_15[u_38])
+          else
+            y_4 <-R nonceout;
+            event NonceROUsed(x_4, y_4);
+            event AdversaryHashQuery(x_4, y_4);
+            return(y_4)
+        else
+          x_5: nonceinput <- nin(dmask_1, p_1, m_2, c_2);
+ {205}    find u_24 = u_25 <= qHash suchthat defined(x_4[u_25], y_4[u_25]) && {208}(x_4[u_25] = x_5) then
+            event NonceROUsed(x_5, y_4[u_24]);
+            event AdversaryHashQuery(x_5, y_4[u_24]);
+            return(y_4[u_24])
+          orfind u_26 = u_27 <= qHash suchthat defined(x_5[u_27], y_7[u_27]) && {238}(x_5[u_27] = x_5) then
+            event NonceROUsed(x_5, y_7[u_26]);
+            event AdversaryHashQuery(x_5, y_7[u_26]);
+            return(y_7[u_26])
+          orfind u_28 = u_29 <= qService suchthat defined(x_6[u_29], y_10[u_29]) && {268}(x_6[u_29] = x_5) then
+            event NonceROUsed(x_5, y_10[u_28]);
+            event AdversaryHashQuery(x_5, y_10[u_28]);
+            return(y_10[u_28])
+          orfind u_30 = u_31 <= qService suchthat defined(x_7[u_31], y_15[u_31]) && {298}(x_7[u_31] = x_5) then
+            event NonceROUsed(x_5, y_15[u_30]);
+            event AdversaryHashQuery(x_5, y_15[u_30]);
+            return(y_15[u_30])
+          else
+            y_7 <-R nonceout;
+            event NonceROUsed(x_5, y_7);
+            event AdversaryHashQuery(x_5, y_7);
+            return(y_7)
+      ) | (
+        foreach i_1 <= qService do
+        O1(m_3: message, c_3: hc) :=
+        dmask_2: bytes32 <- xor(tobytes(sk_2), aux(c_3));
+        x_6: nonceinput <- nin(dmask_2, p_1, m_3, c_3);
+        find u_20 = u_21 <= qService suchthat defined(baseCache_4[u_21], baseCache_5[u_21], baseCache_6[u_21]) && (baseCache_4[u_21] = m_3) && (baseCache_5[u_21] = c_3) then
+          event ContextLookup(m_3, c_3, x_6, baseCache_6[u_20]);
+          if valid(baseCache_6[u_20]) then
+            r: outcome <- opened(R0(baseCache_6[u_20]));
+            return(r)
+          else
+            return(fail)
+        orfind u_22 = u_23 <= qService suchthat defined(baseCache_1[u_23], baseCache_2[u_23], baseCache_3[u_23]) && (baseCache_1[u_23] = m_3) && (baseCache_2[u_23] = c_3) then
+          event ContextLookup(m_3, c_3, x_6, baseCache_3[u_22]);
+          if valid(baseCache_3[u_22]) then
+            r: outcome <- opened(R0(baseCache_3[u_22]));
+            return(r)
+          else
+            return(fail)
+        else
+ {460}    find u_12 = u_13 <= qHash suchthat defined(x_4[u_13], y_4[u_13]) && {463}(x_4[u_13] = x_6) then
+            event NonceROUsed(x_6, y_4[u_12]);
+            baseCache_4: message <- m_3;
+            baseCache_5: hc <- c_3;
+            baseCache_6: nonceout <- y_4[u_12];
+            event ContextLookup(m_3, c_3, x_6, y_4[u_12]);
+            if valid(y_4[u_12]) then
+              r: outcome <- opened(R0(y_4[u_12]));
+              return(r)
+            else
+              return(fail)
+          orfind u_14 = u_15 <= qHash suchthat defined(x_5[u_15], y_7[u_15]) && {524}(x_5[u_15] = x_6) then
+            event NonceROUsed(x_6, y_7[u_14]);
+            baseCache_4: message <- m_3;
+            baseCache_5: hc <- c_3;
+            baseCache_6: nonceout <- y_7[u_14];
+            event ContextLookup(m_3, c_3, x_6, y_7[u_14]);
+            if valid(y_7[u_14]) then
+              r: outcome <- opened(R0(y_7[u_14]));
+              return(r)
+            else
+              return(fail)
+          orfind u_16 = u_17 <= qService suchthat defined(x_6[u_17], y_10[u_17]) && {585}(x_6[u_17] = x_6) then
+            event NonceROUsed(x_6, y_10[u_16]);
+            baseCache_4: message <- m_3;
+            baseCache_5: hc <- c_3;
+            baseCache_6: nonceout <- y_10[u_16];
+            event ContextLookup(m_3, c_3, x_6, y_10[u_16]);
+            if valid(y_10[u_16]) then
+              r: outcome <- opened(R0(y_10[u_16]));
+              return(r)
+            else
+              return(fail)
+          orfind u_18 = u_19 <= qService suchthat defined(x_7[u_19], y_15[u_19]) && {646}(x_7[u_19] = x_6) then
+            event NonceROUsed(x_6, y_15[u_18]);
+            baseCache_4: message <- m_3;
+            baseCache_5: hc <- c_3;
+            baseCache_6: nonceout <- y_15[u_18];
+            event ContextLookup(m_3, c_3, x_6, y_15[u_18]);
+            if valid(y_15[u_18]) then
+              r: outcome <- opened(R0(y_15[u_18]));
+              return(r)
+            else
+              return(fail)
+          else
+            y_10 <-R nonceout;
+            event NonceROUsed(x_6, y_10);
+            baseCache_4: message <- m_3;
+            baseCache_5: hc <- c_3;
+            baseCache_6: nonceout <- y_10;
+            event ContextLookup(m_3, c_3, x_6, y_10);
+            if valid(y_10) then
+              r: outcome <- opened(R0(y_10));
+              return(r)
+            else
+              return(fail)
+      ) | (
+        foreach j <= qService do
+        O2(m_4: message, r_1: rho) :=
+        c_4: hc <- hdata(r_1);
+        dmask_3: bytes32 <- xor(tobytes(sk_2), aux(c_4));
+        x_7: nonceinput <- nin(dmask_3, p_1, m_4, c_4);
+        find u_8 = u_9 <= qService suchthat defined(baseCache_4[u_9], baseCache_5[u_9], baseCache_6[u_9]) && (baseCache_4[u_9] = m_4) && (baseCache_5[u_9] = c_4) then
+          event ContextLookup(m_4, c_4, x_7, baseCache_6[u_8]);
+          if valid(baseCache_6[u_8]) then
+            out: outcome <- opened(R0(baseCache_6[u_8]));
+            return(out)
+          else
+            return(fail)
+        orfind u_10 = u_11 <= qService suchthat defined(baseCache_1[u_11], baseCache_2[u_11], baseCache_3[u_11]) && (baseCache_1[u_11] = m_4) && (baseCache_2[u_11] = c_4) then
+          event ContextLookup(m_4, c_4, x_7, baseCache_3[u_10]);
+          if valid(baseCache_3[u_10]) then
+            out: outcome <- opened(R0(baseCache_3[u_10]));
+            return(out)
+          else
+            return(fail)
+        else
+ {872}    find u = u_1 <= qHash suchthat defined(x_4[u_1], y_4[u_1]) && {875}(x_4[u_1] = x_7) then
+            event NonceROUsed(x_7, y_4[u]);
+            baseCache_1: message <- m_4;
+            baseCache_2: hc <- c_4;
+            baseCache_3: nonceout <- y_4[u];
+            event ContextLookup(m_4, c_4, x_7, y_4[u]);
+            if valid(y_4[u]) then
+              out: outcome <- opened(R0(y_4[u]));
+              return(out)
+            else
+              return(fail)
+          orfind u_2 = u_3 <= qHash suchthat defined(x_5[u_3], y_7[u_3]) && {936}(x_5[u_3] = x_7) then
+            event NonceROUsed(x_7, y_7[u_2]);
+            baseCache_1: message <- m_4;
+            baseCache_2: hc <- c_4;
+            baseCache_3: nonceout <- y_7[u_2];
+            event ContextLookup(m_4, c_4, x_7, y_7[u_2]);
+            if valid(y_7[u_2]) then
+              out: outcome <- opened(R0(y_7[u_2]));
+              return(out)
+            else
+              return(fail)
+          orfind u_4 = u_5 <= qService suchthat defined(x_6[u_5], y_10[u_5]) && {997}(x_6[u_5] = x_7) then
+            event NonceROUsed(x_7, y_10[u_4]);
+            baseCache_1: message <- m_4;
+            baseCache_2: hc <- c_4;
+            baseCache_3: nonceout <- y_10[u_4];
+            event ContextLookup(m_4, c_4, x_7, y_10[u_4]);
+            if valid(y_10[u_4]) then
+              out: outcome <- opened(R0(y_10[u_4]));
+              return(out)
+            else
+              return(fail)
+          orfind u_6 = u_7 <= qService suchthat defined(x_7[u_7], y_15[u_7]) && {1058}(x_7[u_7] = x_7) then
+            event NonceROUsed(x_7, y_15[u_6]);
+            baseCache_1: message <- m_4;
+            baseCache_2: hc <- c_4;
+            baseCache_3: nonceout <- y_15[u_6];
+            event ContextLookup(m_4, c_4, x_7, y_15[u_6]);
+            if valid(y_15[u_6]) then
+              out: outcome <- opened(R0(y_15[u_6]));
+              return(out)
+            else
+              return(fail)
+          else
+            y_15 <-R nonceout;
+            event NonceROUsed(x_7, y_15);
+            baseCache_1: message <- m_4;
+            baseCache_2: hc <- c_4;
+            baseCache_3: nonceout <- y_15;
+            event ContextLookup(m_4, c_4, x_7, y_15);
+            if valid(y_15) then
+              out: outcome <- opened(R0(y_15));
+              return(out)
+            else
+              return(fail)
+      ))
+
+
+Applying simplify
+  - Simplification pass
+    - Replaced (x_7[u_7] = x_7) with ((m_4[u_7] = m_4) && (c_4[u_7] = c_4)) at 1058
+    - Remove branch 4 in find at 872
+    - Replaced (x_6[u_5] = x_7) with ((m_3[u_5] = m_4) && (c_3[u_5] = c_4)) at 997
+    - Remove branch 3 in find at 872
+    - Replaced (x_5[u_3] = x_7) with ((dmask_1[u_3] = dmask_3) && (m_2[u_3] = m_4) && (c_2[u_3] = c_4)) at 936
+    - Replaced defined condition x_5[u_3], y_7[u_3] with y_7[u_3], c_2[u_3], m_2[u_3], dmask_1[u_3] in find at 872
+    - Replaced (x_4[u_1] = x_7) with ((dmask_1[u_1] = dmask_3) && (m_2[u_1] = m_4) && (c_2[u_1] = c_4)) at 875
+    - Replaced defined condition x_4[u_1], y_4[u_1] with y_4[u_1], c_2[u_1], m_2[u_1], dmask_1[u_1] in find at 872
+    - Replaced (x_7[u_19] = x_6) with ((m_4[u_19] = m_3) && (c_4[u_19] = c_3)) at 646
+    - Remove branch 4 in find at 460
+    - Replaced (x_6[u_17] = x_6) with ((m_3[u_17] = m_3) && (c_3[u_17] = c_3)) at 585
+    - Remove branch 3 in find at 460
+    - Replaced (x_5[u_15] = x_6) with ((dmask_1[u_15] = dmask_2) && (m_2[u_15] = m_3) && (c_2[u_15] = c_3)) at 524
+    - Replaced defined condition x_5[u_15], y_7[u_15] with y_7[u_15], c_2[u_15], m_2[u_15], dmask_1[u_15] in find at 460
+    - Replaced (x_4[u_13] = x_6) with ((dmask_1[u_13] = dmask_2) && (m_2[u_13] = m_3) && (c_2[u_13] = c_3)) at 463
+    - Replaced defined condition x_4[u_13], y_4[u_13] with y_4[u_13], c_2[u_13], m_2[u_13], dmask_1[u_13] in find at 460
+    - Replaced (canonical(guess) && (pubbytes(guess) = p_1)) with (canonical(guess) && (guess = skbytes)) at 28
+    - Replaced (x_7[u_31] = x_5) with ((dmask_3[u_31] = dmask_1) && (m_4[u_31] = m_2) && (c_4[u_31] = c_2)) at 298
+    - Replaced defined condition x_7[u_31], y_15[u_31] with y_15[u_31], c_4[u_31], m_4[u_31], dmask_3[u_31] in find at 205
+    - Replaced (x_6[u_29] = x_5) with ((dmask_2[u_29] = dmask_1) && (m_3[u_29] = m_2) && (c_3[u_29] = c_2)) at 268
+    - Replaced defined condition x_6[u_29], y_10[u_29] with y_10[u_29], c_3[u_29], m_3[u_29], dmask_2[u_29] in find at 205
+    - Replaced (x_5[u_27] = x_5) with ((dmask_1[u_27] = dmask_1) && (m_2[u_27] = m_2) && (c_2[u_27] = c_2)) at 238
+    - Replaced defined condition x_5[u_27], y_7[u_27] with y_7[u_27], c_2[u_27], m_2[u_27], dmask_1[u_27] in find at 205
+    - Replaced (x_4[u_25] = x_5) with ((dmask_1[u_25] = dmask_1) && (m_2[u_25] = m_2) && (c_2[u_25] = c_2)) at 208
+    - Replaced defined condition x_4[u_25], y_4[u_25] with y_4[u_25], c_2[u_25], m_2[u_25], dmask_1[u_25] in find at 205
+    - Replaced (x_7[u_39] = x_4) with ((dmask_3[u_39] = dmask_1) && (m_4[u_39] = m_2) && (c_4[u_39] = c_2)) at 146
+    - Replaced defined condition x_7[u_39], y_15[u_39] with y_15[u_39], c_4[u_39], m_4[u_39], dmask_3[u_39] in find at 53
+    - Replaced (x_6[u_37] = x_4) with ((dmask_2[u_37] = dmask_1) && (m_3[u_37] = m_2) && (c_3[u_37] = c_2)) at 116
+    - Replaced defined condition x_6[u_37], y_10[u_37] with y_10[u_37], c_3[u_37], m_3[u_37], dmask_2[u_37] in find at 53
+    - Replaced (x_5[u_35] = x_4) with ((dmask_1[u_35] = dmask_1) && (m_2[u_35] = m_2) && (c_2[u_35] = c_2)) at 86
+    - Replaced defined condition x_5[u_35], y_7[u_35] with y_7[u_35], c_2[u_35], m_2[u_35], dmask_1[u_35] in find at 53
+    - Replaced (x_4[u_33] = x_4) with ((dmask_1[u_33] = dmask_1) && (m_2[u_33] = m_2) && (c_2[u_33] = c_2)) at 56
+    - Replaced defined condition x_4[u_33], y_4[u_33] with y_4[u_33], c_2[u_33], m_2[u_33], dmask_1[u_33] in find at 53
+yields
+
+Game 5 is
+      Ostart() :=
+      sk_2 <-R scalar;
+      skbytes: bytes32 <- tobytes(sk_2);
+      p_1: pkey <- pubbytes(skbytes);
+      event KeyGenerated(skbytes, p_1);
+      return(p_1);
+      ((
+        foreach i <= qHash do
+        QNonce(dmask_1: bytes32, m_2: message, c_2: hc) :=
+        guess: bytes32 <- xor(dmask_1, aux(c_2));
+        if canonical(guess) && (guess = skbytes) then
+          event KeyExtracted(p_1, guess);
+          x_4: nonceinput <- nin(dmask_1, p_1, m_2, c_2);
+          find u_32 = u_33 <= qHash suchthat defined(y_4[u_33], c_2[u_33], m_2[u_33], dmask_1[u_33]) && (dmask_1[u_33] = dmask_1) && (m_2[u_33] = m_2) && (c_2[u_33] = c_2) then
+            event NonceROUsed(x_4, y_4[u_32]);
+            event AdversaryHashQuery(x_4, y_4[u_32]);
+            return(y_4[u_32])
+          orfind u_34 = u_35 <= qHash suchthat defined(y_7[u_35], c_2[u_35], m_2[u_35], dmask_1[u_35]) && (dmask_1[u_35] = dmask_1) && (m_2[u_35] = m_2) && (c_2[u_35] = c_2) then
+            event NonceROUsed(x_4, y_7[u_34]);
+            event AdversaryHashQuery(x_4, y_7[u_34]);
+            return(y_7[u_34])
+          orfind u_36 = u_37 <= qService suchthat defined(y_10[u_37], c_3[u_37], m_3[u_37], dmask_2[u_37]) && (dmask_2[u_37] = dmask_1) && (m_3[u_37] = m_2) && (c_3[u_37] = c_2) then
+            event NonceROUsed(x_4, y_10[u_36]);
+            event AdversaryHashQuery(x_4, y_10[u_36]);
+            return(y_10[u_36])
+          orfind u_38 = u_39 <= qService suchthat defined(y_15[u_39], c_4[u_39], m_4[u_39], dmask_3[u_39]) && (dmask_3[u_39] = dmask_1) && (m_4[u_39] = m_2) && (c_4[u_39] = c_2) then
+            event NonceROUsed(x_4, y_15[u_38]);
+            event AdversaryHashQuery(x_4, y_15[u_38]);
+            return(y_15[u_38])
+          else
+            y_4 <-R nonceout;
+            event NonceROUsed(x_4, y_4);
+            event AdversaryHashQuery(x_4, y_4);
+            return(y_4)
+        else
+          x_5: nonceinput <- nin(dmask_1, p_1, m_2, c_2);
+          find u_24 = u_25 <= qHash suchthat defined(y_4[u_25], c_2[u_25], m_2[u_25], dmask_1[u_25]) && (dmask_1[u_25] = dmask_1) && (m_2[u_25] = m_2) && (c_2[u_25] = c_2) then
+            event NonceROUsed(x_5, y_4[u_24]);
+            event AdversaryHashQuery(x_5, y_4[u_24]);
+            return(y_4[u_24])
+          orfind u_26 = u_27 <= qHash suchthat defined(y_7[u_27], c_2[u_27], m_2[u_27], dmask_1[u_27]) && (dmask_1[u_27] = dmask_1) && (m_2[u_27] = m_2) && (c_2[u_27] = c_2) then
+            event NonceROUsed(x_5, y_7[u_26]);
+            event AdversaryHashQuery(x_5, y_7[u_26]);
+            return(y_7[u_26])
+          orfind u_28 = u_29 <= qService suchthat defined(y_10[u_29], c_3[u_29], m_3[u_29], dmask_2[u_29]) && (dmask_2[u_29] = dmask_1) && (m_3[u_29] = m_2) && (c_3[u_29] = c_2) then
+            event NonceROUsed(x_5, y_10[u_28]);
+            event AdversaryHashQuery(x_5, y_10[u_28]);
+            return(y_10[u_28])
+          orfind u_30 = u_31 <= qService suchthat defined(y_15[u_31], c_4[u_31], m_4[u_31], dmask_3[u_31]) && (dmask_3[u_31] = dmask_1) && (m_4[u_31] = m_2) && (c_4[u_31] = c_2) then
+            event NonceROUsed(x_5, y_15[u_30]);
+            event AdversaryHashQuery(x_5, y_15[u_30]);
+            return(y_15[u_30])
+          else
+            y_7 <-R nonceout;
+            event NonceROUsed(x_5, y_7);
+            event AdversaryHashQuery(x_5, y_7);
+            return(y_7)
+      ) | (
+        foreach i_1 <= qService do
+        O1(m_3: message, c_3: hc) :=
+        dmask_2: bytes32 <- xor(tobytes(sk_2), aux(c_3));
+        x_6: nonceinput <- nin(dmask_2, p_1, m_3, c_3);
+        find u_20 = u_21 <= qService suchthat defined(baseCache_4[u_21], baseCache_5[u_21], baseCache_6[u_21]) && (baseCache_4[u_21] = m_3) && (baseCache_5[u_21] = c_3) then
+          event ContextLookup(m_3, c_3, x_6, baseCache_6[u_20]);
+          if valid(baseCache_6[u_20]) then
+            r: outcome <- opened(R0(baseCache_6[u_20]));
+            return(r)
+          else
+            return(fail)
+        orfind u_22 = u_23 <= qService suchthat defined(baseCache_1[u_23], baseCache_2[u_23], baseCache_3[u_23]) && (baseCache_1[u_23] = m_3) && (baseCache_2[u_23] = c_3) then
+          event ContextLookup(m_3, c_3, x_6, baseCache_3[u_22]);
+          if valid(baseCache_3[u_22]) then
+            r: outcome <- opened(R0(baseCache_3[u_22]));
+            return(r)
+          else
+            return(fail)
+        else
+          find u_12 = u_13 <= qHash suchthat defined(y_4[u_13], c_2[u_13], m_2[u_13], dmask_1[u_13]) && (dmask_1[u_13] = dmask_2) && (m_2[u_13] = m_3) && (c_2[u_13] = c_3) then
+            event NonceROUsed(x_6, y_4[u_12]);
+            baseCache_4: message <- m_3;
+            baseCache_5: hc <- c_3;
+            baseCache_6: nonceout <- y_4[u_12];
+            event ContextLookup(m_3, c_3, x_6, y_4[u_12]);
+            if valid(y_4[u_12]) then
+              r: outcome <- opened(R0(y_4[u_12]));
+              return(r)
+            else
+              return(fail)
+          orfind u_14 = u_15 <= qHash suchthat defined(y_7[u_15], c_2[u_15], m_2[u_15], dmask_1[u_15]) && (dmask_1[u_15] = dmask_2) && (m_2[u_15] = m_3) && (c_2[u_15] = c_3) then
+            event NonceROUsed(x_6, y_7[u_14]);
+            baseCache_4: message <- m_3;
+            baseCache_5: hc <- c_3;
+            baseCache_6: nonceout <- y_7[u_14];
+            event ContextLookup(m_3, c_3, x_6, y_7[u_14]);
+            if valid(y_7[u_14]) then
+              r: outcome <- opened(R0(y_7[u_14]));
+              return(r)
+            else
+              return(fail)
+          else
+            y_10 <-R nonceout;
+            event NonceROUsed(x_6, y_10);
+            baseCache_4: message <- m_3;
+            baseCache_5: hc <- c_3;
+            baseCache_6: nonceout <- y_10;
+            event ContextLookup(m_3, c_3, x_6, y_10);
+            if valid(y_10) then
+              r: outcome <- opened(R0(y_10));
+              return(r)
+            else
+              return(fail)
+      ) | (
+        foreach j <= qService do
+        O2(m_4: message, r_1: rho) :=
+        c_4: hc <- hdata(r_1);
+        dmask_3: bytes32 <- xor(tobytes(sk_2), aux(c_4));
+        x_7: nonceinput <- nin(dmask_3, p_1, m_4, c_4);
+        find u_8 = u_9 <= qService suchthat defined(baseCache_4[u_9], baseCache_5[u_9], baseCache_6[u_9]) && (baseCache_4[u_9] = m_4) && (baseCache_5[u_9] = c_4) then
+          event ContextLookup(m_4, c_4, x_7, baseCache_6[u_8]);
+          if valid(baseCache_6[u_8]) then
+            out: outcome <- opened(R0(baseCache_6[u_8]));
+            return(out)
+          else
+            return(fail)
+        orfind u_10 = u_11 <= qService suchthat defined(baseCache_1[u_11], baseCache_2[u_11], baseCache_3[u_11]) && (baseCache_1[u_11] = m_4) && (baseCache_2[u_11] = c_4) then
+          event ContextLookup(m_4, c_4, x_7, baseCache_3[u_10]);
+          if valid(baseCache_3[u_10]) then
+            out: outcome <- opened(R0(baseCache_3[u_10]));
+            return(out)
+          else
+            return(fail)
+        else
+          find u = u_1 <= qHash suchthat defined(y_4[u_1], c_2[u_1], m_2[u_1], dmask_1[u_1]) && (dmask_1[u_1] = dmask_3) && (m_2[u_1] = m_4) && (c_2[u_1] = c_4) then
+            event NonceROUsed(x_7, y_4[u]);
+            baseCache_1: message <- m_4;
+            baseCache_2: hc <- c_4;
+            baseCache_3: nonceout <- y_4[u];
+            event ContextLookup(m_4, c_4, x_7, y_4[u]);
+            if valid(y_4[u]) then
+              out: outcome <- opened(R0(y_4[u]));
+              return(out)
+            else
+              return(fail)
+          orfind u_2 = u_3 <= qHash suchthat defined(y_7[u_3], c_2[u_3], m_2[u_3], dmask_1[u_3]) && (dmask_1[u_3] = dmask_3) && (m_2[u_3] = m_4) && (c_2[u_3] = c_4) then
+            event NonceROUsed(x_7, y_7[u_2]);
+            baseCache_1: message <- m_4;
+            baseCache_2: hc <- c_4;
+            baseCache_3: nonceout <- y_7[u_2];
+            event ContextLookup(m_4, c_4, x_7, y_7[u_2]);
+            if valid(y_7[u_2]) then
+              out: outcome <- opened(R0(y_7[u_2]));
+              return(out)
+            else
+              return(fail)
+          else
+            y_15 <-R nonceout;
+            event NonceROUsed(x_7, y_15);
+            baseCache_1: message <- m_4;
+            baseCache_2: hc <- c_4;
+            baseCache_3: nonceout <- y_15;
+            event ContextLookup(m_4, c_4, x_7, y_15);
+            if valid(y_15) then
+              out: outcome <- opened(R0(y_15));
+              return(out)
+            else
+              return(fail)
+      ))
+
+
+Proved forall y: nonceout, x: nonceinput; event(AdversaryHashQuery(x, y)) ==> event(NonceROUsed(x, y)) in game 5
+Proved forall y: nonceout, x: nonceinput, c: hc, m: message; event(ContextLookup(m, c, x, y)) ==> event(NonceROUsed(x, y)) in game 5
+Proved forall dguess: bytes32, p: pkey; event(KeyExtracted(p, dguess)) ==> event(KeyGenerated(dguess, p)) in game 5
+Adv[Game 1: forall y: nonceout, x: nonceinput; event(AdversaryHashQuery(x, y)) ==> event(NonceROUsed(x, y))] <= Adv[Game 5: forall y: nonceout, x: nonceinput; event(AdversaryHashQuery(x, y)) ==> event(NonceROUsed(x, y))]
+Adv[Game 5: forall y: nonceout, x: nonceinput; event(AdversaryHashQuery(x, y)) ==> event(NonceROUsed(x, y))] <= 0
+RESULT Proved forall y: nonceout, x: nonceinput; event(AdversaryHashQuery(x, y)) ==> event(NonceROUsed(x, y))
+Adv[Game 1: forall y: nonceout, x: nonceinput, c: hc, m: message; event(ContextLookup(m, c, x, y)) ==> event(NonceROUsed(x, y))] <= Adv[Game 5: forall y: nonceout, x: nonceinput, c: hc, m: message; event(ContextLookup(m, c, x, y)) ==> event(NonceROUsed(x, y))]
+Adv[Game 5: forall y: nonceout, x: nonceinput, c: hc, m: message; event(ContextLookup(m, c, x, y)) ==> event(NonceROUsed(x, y))] <= 0
+RESULT Proved forall y: nonceout, x: nonceinput, c: hc, m: message; event(ContextLookup(m, c, x, y)) ==> event(NonceROUsed(x, y))
+Adv[Game 1: forall dguess: bytes32, p: pkey; event(KeyExtracted(p, dguess)) ==> event(KeyGenerated(dguess, p))] <= Adv[Game 5: forall dguess: bytes32, p: pkey; event(KeyExtracted(p, dguess)) ==> event(KeyGenerated(dguess, p))]
+Adv[Game 5: forall dguess: bytes32, p: pkey; event(KeyExtracted(p, dguess)) ==> event(KeyGenerated(dguess, p))] <= 0
+RESULT Proved forall dguess: bytes32, p: pkey; event(KeyExtracted(p, dguess)) ==> event(KeyGenerated(dguess, p))
+All queries proved.

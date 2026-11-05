@@ -1,0 +1,159 @@
+From ff92b16f5ee63762966e5edf34d4ecb7434cc10c Mon Sep 17 00:00:00 2001
+From: Connor Avila <Connoravila@gmail.com>
+Date: Wed, 4 Nov 2026 16:16:34 -0500
+Subject: [PATCH 03/10] wallet: add anti-exfil commit and sign helpers
+
+Wrap the module calls for ecdsa and for taproot key path so that key
+derivation, the BIP341 tweak and clearing of secrets stay in wallet.c, next
+to the existing anti-exfil signer commitment.
+---
+ main/wallet.c | 104 ++++++++++++++++++++++++++++++++++++++++++++++++++
+ main/wallet.h |  10 +++++
+ 2 files changed, 114 insertions(+)
+
+diff --git a/main/wallet.c b/main/wallet.c
+index 5dfd0a6c..0c204ecc 100644
+--- a/main/wallet.c
++++ b/main/wallet.c
+@@ -27,6 +27,10 @@
+ #include <mbedtls/base64.h>
+ #include <sodium/utils.h>
+ 
++#include <secp256k1.h>
++#include <secp256k1_anti_exfil.h>
++#include <secp256k1_extrakeys.h>
++
+ // GA derived key index, and fixed GA key message
+ static const uint32_t GA_PATH_ROOT = BIP32_INITIAL_HARDENED_CHILD + 0x4741;
+ static const uint8_t GA_KEY_MSG[] = "GreenAddress.it HD wallet path";
+@@ -1140,6 +1144,106 @@ bool wallet_get_signer_commitment(const uint8_t* signature_hash, const size_t si
+     return true;
+ }
+ 
++// Anti-exfil host commitment hc for the host randomness rho, using the scheme tag of the key type.
++bool wallet_ae_host_commit(
++    const bool is_schnorr, const uint8_t* rho, const size_t rho_len, uint8_t* hc, const size_t hc_len)
++{
++    if (!rho || rho_len != WALLY_S2C_DATA_LEN || !hc || hc_len != WALLY_HOST_COMMITMENT_LEN) {
++        return false;
++    }
++    const secp256k1_context* ctx = wally_get_secp_context();
++    return is_schnorr ? secp256k1_anti_exfil_schnorr_host_commit(ctx, hc, rho)
++                      : secp256k1_anti_exfil_ecdsa_host_commit(ctx, hc, rho);
++}
++
++// Derive the key at 'path' to sign with. For schnorr (taproot key path) it is the key tweaked as BIP341, with
++// the optional merkle root. Output must be of size EC_PRIVATE_KEY_LEN, and be pushed as sensitive by the caller.
++static bool wallet_ae_get_key(const bool is_schnorr, const uint32_t* path, const size_t path_len,
++    const uint8_t* merkle_root, uint8_t* output, const size_t output_len)
++{
++    wallet_get_privkey(path, path_len, output, output_len);
++    if (!is_schnorr) {
++        return true;
++    }
++    uint8_t tweaked[EC_PRIVATE_KEY_LEN];
++    SENSITIVE_PUSH(tweaked, sizeof(tweaked));
++    const int wret = wally_ec_private_key_bip341_tweak(
++        output, output_len, merkle_root, merkle_root ? SHA256_LEN : 0, 0, tweaked, sizeof(tweaked));
++    if (wret == WALLY_OK) {
++        memcpy(output, tweaked, sizeof(tweaked));
++    }
++    SENSITIVE_POP(tweaked);
++    return wret == WALLY_OK;
++}
++
++// Anti-exfil signer commitment R0 (33 bytes) for the message (a 32 byte hash for ecdsa), given the host
++// commitment hc. 'merkle_root' is only used for schnorr and may be NULL.
++bool wallet_ae_signer_commit(const bool is_schnorr, const uint32_t* path, const size_t path_len,
++    const uint8_t* merkle_root, const uint8_t* msg, const size_t msg_len, const uint8_t* hc, const size_t hc_len,
++    uint8_t* output, const size_t output_len)
++{
++    if (!path || !path_len || !msg || msg_len != SHA256_LEN || !hc || hc_len != WALLY_HOST_COMMITMENT_LEN || !output
++        || output_len != EC_PUBLIC_KEY_LEN) {
++        return false;
++    }
++
++    uint8_t privkey[EC_PRIVATE_KEY_LEN];
++    SENSITIVE_PUSH(privkey, sizeof(privkey));
++    bool ret = wallet_ae_get_key(is_schnorr, path, path_len, merkle_root, privkey, sizeof(privkey));
++    if (ret) {
++        const secp256k1_context* ctx = wally_get_secp_context();
++        if (is_schnorr) {
++            secp256k1_keypair keypair;
++            SENSITIVE_PUSH(&keypair, sizeof(keypair));
++            ret = secp256k1_keypair_create(ctx, &keypair, privkey)
++                && secp256k1_anti_exfil_schnorr_signer_commit(ctx, output, msg, msg_len, &keypair, hc);
++            SENSITIVE_POP(&keypair);
++        } else {
++            ret = secp256k1_anti_exfil_ecdsa_signer_commit(ctx, output, msg, privkey, hc);
++        }
++    }
++    SENSITIVE_POP(privkey);
++    if (!ret) {
++        JADE_LOGE("Failed to get anti-exfil signer commitment");
++    }
++    return ret;
++}
++
++// Anti-exfil signature (64 bytes, compact for ecdsa) for the message given the host randomness rho.
++// As with the commitment, the nonce is recomputed from rho and nothing is kept between the two steps.
++bool wallet_ae_sign(const bool is_schnorr, const uint32_t* path, const size_t path_len, const uint8_t* merkle_root,
++    const uint8_t* msg, const size_t msg_len, const uint8_t* rho, const size_t rho_len, uint8_t* output,
++    const size_t output_len)
++{
++    if (!path || !path_len || !msg || msg_len != SHA256_LEN || !rho || rho_len != WALLY_S2C_DATA_LEN || !output
++        || output_len != EC_SIGNATURE_LEN) {
++        return false;
++    }
++
++    uint8_t privkey[EC_PRIVATE_KEY_LEN];
++    SENSITIVE_PUSH(privkey, sizeof(privkey));
++    bool ret = wallet_ae_get_key(is_schnorr, path, path_len, merkle_root, privkey, sizeof(privkey));
++    if (ret) {
++        const secp256k1_context* ctx = wally_get_secp_context();
++        if (is_schnorr) {
++            secp256k1_keypair keypair;
++            SENSITIVE_PUSH(&keypair, sizeof(keypair));
++            ret = secp256k1_keypair_create(ctx, &keypair, privkey)
++                && secp256k1_anti_exfil_schnorr_sign(ctx, output, msg, msg_len, &keypair, rho);
++            SENSITIVE_POP(&keypair);
++        } else {
++            secp256k1_ecdsa_signature sig;
++            ret = secp256k1_anti_exfil_ecdsa_sign(ctx, &sig, msg, privkey, rho)
++                && secp256k1_ecdsa_signature_serialize_compact(ctx, output, &sig);
++        }
++    }
++    SENSITIVE_POP(privkey);
++    if (!ret) {
++        JADE_LOGE("Failed to make anti-exfil signature");
++    }
++    return ret;
++}
++
+ // Function to sign an input hash with a derived key - cannot be the root key, and value must be a sha256 hash.
+ // If 'ae_host_entropy' is passed it is used to generate an 'anti-exfil' signature, otherwise a standard EC signature
+ // (ie. using rfc6979) is created.  The output signature is returned in DER format, with a SIGHASH_<xxx> postfix.
+diff --git a/main/wallet.h b/main/wallet.h
+index 104e1443..687ded60 100644
+--- a/main/wallet.h
++++ b/main/wallet.h
+@@ -143,6 +143,16 @@ WARN_UNUSED_RESULT bool wallet_get_tx_input_hash(struct wally_tx* tx, size_t ind
+ WARN_UNUSED_RESULT bool wallet_get_signer_commitment(const uint8_t* signature_hash, size_t signature_hash_len,
+     const uint32_t* path, size_t path_len, const uint8_t* commitment, size_t commitment_len, uint8_t* output,
+     size_t output_len);
++// Anti-exfil signing with the key at 'path', for ecdsa or schnorr (taproot key path, tweaked as BIP341
++// with the optional 'merkle_root')
++WARN_UNUSED_RESULT bool wallet_ae_host_commit(
++    bool is_schnorr, const uint8_t* rho, size_t rho_len, uint8_t* hc, size_t hc_len);
++WARN_UNUSED_RESULT bool wallet_ae_signer_commit(bool is_schnorr, const uint32_t* path, size_t path_len,
++    const uint8_t* merkle_root, const uint8_t* msg, size_t msg_len, const uint8_t* hc, size_t hc_len, uint8_t* output,
++    size_t output_len);
++WARN_UNUSED_RESULT bool wallet_ae_sign(bool is_schnorr, const uint32_t* path, size_t path_len,
++    const uint8_t* merkle_root, const uint8_t* msg, size_t msg_len, const uint8_t* rho, size_t rho_len, uint8_t* output,
++    size_t output_len);
+ // Sign the signature hash in input_data.
+ WARN_UNUSED_RESULT bool wallet_sign_tx_input_hash(
+     network_t network_id, input_data_t* input_data, const uint8_t* ae_host_entropy, size_t ae_host_entropy_len);
+-- 
+2.53.0
+

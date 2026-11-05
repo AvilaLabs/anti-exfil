@@ -1,0 +1,217 @@
+[
+ {
+  "id": "M-R03-step3-tx",
+  "class": "beyond_vectors",
+  "reason": "Needs the host's PSBT supplied again at step 3. Contract version 3 adds only reset, the decline answers, the user stop and the log, so no vector can carry it."
+ },
+ {
+  "id": "M-R04-step3-pairs",
+  "class": "beyond_vectors",
+  "reason": "Needs the host's PSBT supplied again at step 3; see M-R03."
+ },
+ {
+  "id": "M-PA06b-hybrid",
+  "class": "not_required",
+  "sentence": "spec/bip-anti-exfil-psbt.md: \"It SHOULD also tell the user about ... a device key found only in an uncompressed derivation record\"",
+  "reason": "The line the mutant changes (prefixes 4, 6, 7 versus 4) now only decides the notice; the refusal for a pair's input is made in spend.py for every prefix."
+ },
+ {
+  "id": "M-PA06c-no-leaf-note",
+  "class": "not_required",
+  "sentence": "spec/bip-anti-exfil-psbt.md: \"It SHOULD also tell the user about a listed leaf with no script, a `PSBT_IN_TAP_BIP32_DERIVATION` record that lists no leaf and names a device key other than the internal key, a device key found only in an uncompressed derivation record, and a device key found only in a script with no derivation record, since none of these forms a pair.\"",
+  "reason": "Only a SHOULD, and only a notice."
+ },
+ {
+  "id": "M-PA06-uncompressed",
+  "class": "not_required",
+  "sentence": "spec/bip-anti-exfil-psbt.md: \"It SHOULD also tell the user about ... a device key found only in an uncompressed derivation record\"",
+  "reason": "With the reference as changed the host no longer refuses for an uncompressed record on an input with no pair; the line the mutant disables only adds the notice, which is a SHOULD."
+ },
+ {
+  "id": "M-L09-unreadable-device",
+  "class": "beyond_vectors",
+  "reason": "One device record unreadable inside an otherwise readable store can only be built in the implementation's own store format, which the contract leaves to the implementer; no format-independent fixed value makes it."
+ },
+ {
+  "id": "M-L11-same-rho",
+  "class": "not_required",
+  "sentence": "spec/bip-anti-exfil.md: \"After a failure event past step 2, it SHOULD repeat steps 3 and 4 with the same `rho` rather than start a new attempt, because a new attempt gives the device a fresh choice.\"",
+  "reason": "Only a SHOULD: the mutant draws a new rho on a retry within the attempt; every rho is still fresh."
+ },
+ {
+  "id": "M-L23-same-tx",
+  "class": "not_required",
+  "sentence": "spec/bip-anti-exfil.md: \"Until an attempt completes, a new attempt after a failure SHOULD carry the same core transaction unless the user chooses to change it\"",
+  "reason": "Only a SHOULD (the MUST NOT in the sentence is about the host changing fee or coins itself, which the mutant does not do)."
+ },
+ {
+  "id": "M-L24-user-choice",
+  "class": "not_required",
+  "sentence": "spec/bip-anti-exfil.md: \"Until an attempt completes, a new attempt after a failure SHOULD carry the same core transaction unless the user chooses to change it\"",
+  "reason": "Only a SHOULD, and the user's choice is the exception to it."
+ },
+ {
+  "id": "M-L25-recovered-failed-mark",
+  "class": "not_required",
+  "sentence": "spec/bip-anti-exfil.md: \"Until an attempt completes, a new attempt after a failure SHOULD carry the same core transaction unless the user chooses to change it\"",
+  "reason": "Only a SHOULD, applied to an attempt recovered as failed."
+ },
+ {
+  "id": "M-L26-completed-clears",
+  "class": "not_required",
+  "sentence": "spec/bip-anti-exfil.md: \"Until an attempt completes, a new attempt after a failure SHOULD carry the same core transaction unless the user chooses to change it\"",
+  "reason": "Only a SHOULD, and the sentence ends the rule at completion."
+ },
+ {
+  "id": "M-L29-poll-counts",
+  "class": "beyond_vectors",
+  "reason": "poll() is called by a user-interface loop the CLI does not run; an unsolicited line during an attempt is covered by lifecycle scenarios through the exchange path."
+ },
+ {
+  "id": "M-L31-reset-keeps-warned",
+  "class": "beyond_vectors",
+  "reason": "Differs only when a reset happens during an acknowledged attempt, in the same process; the store held by a running host would overwrite a reset made by another process, and the contract has no mid-attempt reset."
+ },
+ {
+  "id": "M-L32-unreadable-two",
+  "class": "beyond_vectors",
+  "reason": "Same as M-L09: the count charged for one unreadable device record needs a record that is unreadable inside a readable store, which only the implementation's own format can express."
+ },
+ {
+  "id": "M-L33b-step2-own-budget",
+  "class": "not_required",
+  "sentence": "spec/bip-anti-exfil.md: \"It MAY repeat step 2 with the same `(m, hc)`\"",
+  "reason": "Repeating step 2 is optional and off in the CLI; how a failed repeat counts is not stated as a MUST."
+ },
+ {
+  "id": "M-G40-purpose-check",
+  "class": "not_required",
+  "sentence": "spec/bip-anti-exfil-psbt.md: \"A signer SHOULD keep each key to one scheme, by failing on a pair whose derivation path purpose does not match the input's script type where it can tell.\"",
+  "reason": "Only a SHOULD."
+ },
+ {
+  "id": "M-L33-step2-budget",
+  "class": "not_required",
+  "sentence": "spec/bip-anti-exfil.md: \"It MAY repeat step 2 with the same `(m, hc)`\"",
+  "reason": "Repeating step 2 is optional and off in the CLI; the budget of the repeat is not stated as a MUST."
+ },
+ {
+  "id": "M-L16-fsync",
+  "class": "beyond_vectors",
+  "reason": "Whether the file reached stable storage is not visible in any message, exit code or store content that a replay can read; it takes a crash of the machine or a trace of system calls."
+ },
+ {
+  "id": "M-L19-failure-limit",
+  "class": "not_required",
+  "sentence": "spec/bip-anti-exfil.md: \"It SHOULD refuse further attempts past a small limit on the count.\"",
+  "reason": "Only a SHOULD is broken: a host that sets no limit conforms."
+ },
+ {
+  "id": "M-L20-secrets",
+  "class": "beyond_vectors",
+  "reason": "The harness supplies every rho through --rho, so where the host draws randomness is never exercised, and no fixed value shows the quality of a random source."
+ },
+ {
+  "id": "M-S07-approval",
+  "class": "equivalent",
+  "reason": "Differs only for an approval answer that is neither True nor False (None, 1, a string). The contract's approval is boolean (approve, or --decline), so no CLI run produces such an answer; with False both versions refuse."
+ },
+ {
+  "id": "M-S08-key-ownership",
+  "class": "equivalent",
+  "reason": "The signer builds its key table from the secrets themselves, so the secret held for an x-only key always matches it; the check cannot fire through the constructor or the CLI (the unit test overwrites the private table)."
+ },
+ {
+  "id": "M-X18-zero-ecdsa",
+  "class": "equivalent",
+  "reason": "With the check off the next test (h not in ECDSA_TYPES, which does not hold 0) refuses the same input; only the reason code differs, and the contract does not expose it."
+ },
+ {
+  "id": "M-X26-optional",
+  "class": "beyond_vectors",
+  "reason": "The signer option optional_forms=False is not selectable through the contract (the CLI signer always supports the optional forms), so the refusal cannot be reached for this reference. A flag would make it a vector gap."
+ },
+ {
+  "id": "W-host-signature-bytes-from-response",
+  "class": "equivalent",
+  "reason": "A response field is accepted only if it is strict DER (or a 64/65-byte BIP340 field with the expected sighash byte) and verifies; the rebuild from the verified values produces the same bytes, because strict DER is unique for a pair (r, s). The result is byte-identical for every accepted response."
+ },
+ {
+  "id": "W-host-rho-reused-across-attempts",
+  "class": "beyond_vectors",
+  "reason": "The CLI process draws rho once per run and the harness supplies it; reuse inside one host object across attempts, or a stale value, shows only in a long-lived host, and no fixed rho list tells a reuse from a new draw."
+ },
+ {
+  "id": "W-host-rho-stored-on-disk",
+  "class": "beyond_vectors",
+  "reason": "Writing rho to a file does not change any message, exit code or count; a replay cannot see a file the contract does not name."
+ },
+ {
+  "id": "W-signer-skips-t-range-bip340",
+  "class": "beyond_vectors",
+  "reason": "The failure needs a (R0, rho) pair whose tweak hash is at least n; finding one takes about 2^128 hash evaluations, so no fixed value can be produced."
+ },
+ {
+  "id": "W-signer-skips-t-range-ecdsa",
+  "class": "beyond_vectors",
+  "reason": "Same: a tweak hash at least n cannot be found by anyone."
+ },
+ {
+  "id": "W-host-skips-t-range",
+  "class": "beyond_vectors",
+  "reason": "Same: a tweak hash at least n cannot be found by anyone, so no response can reach the branch."
+ },
+ {
+  "id": "W-signer-signs-before-approval",
+  "class": "beyond_vectors",
+  "reason": "The order of the signing computation and the approval inside the signer is not visible: the process prints nothing and exits 3 in both when the user declines, and prints the same bytes when the user approves."
+ },
+ {
+  "id": "W-signer-prompts-on-first-pass",
+  "class": "not_required",
+  "sentence": "spec/bip-anti-exfil.md: \"Step 2 releases no signature and needs no approval.\"",
+  "reason": "The text says step 2 needs no approval and does not forbid asking; the MUST is that approval covers every run of step 4."
+ },
+ {
+  "id": "W-signer-keeps-failed-request-on-disk",
+  "class": "beyond_vectors",
+  "reason": "A file written in the working directory is not part of the signer's input or output in the contract; no message or exit code differs."
+ },
+ {
+  "id": "W-signer-backdoor-triggered",
+  "class": "beyond_vectors",
+  "reason": "The shortcut differs from the reference only for messages beginning with bytes de ad (confirmed: nonce differs for 4 of 8 keys when it triggers). No vector message begins that way, and no finite set of fixed messages rules out an unknown trigger; honest outputs on all others are identical."
+ },
+ {
+  "id": "M-Y2-recover-own-device",
+  "class": "beyond_vectors",
+  "reason": "Needs a second host for another device using the same store while the first has a live attempt; the contract names one device per run and the identity is fixed by the CLI."
+ },
+ {
+  "id": "M-Y3-count-after-recovery",
+  "class": "beyond_vectors",
+  "reason": "Needs a second process to recover the store while the first attempt is live, then a failure in the first; a running host keeps its own copy of the record, so the case can only be built inside one process."
+ },
+ {
+  "id": "M-Y4-keep-count",
+  "class": "beyond_vectors",
+  "reason": "A partly readable device record with a kept count can only be written in the implementation's own store format, which the contract leaves to the implementer (as M-L09)."
+ },
+ {
+  "id": "M-Y5-erase-req2",
+  "class": "not_required",
+  "sentence": "spec/bip-anti-exfil.md: \"The host SHOULD erase it when the attempt ends.\"",
+  "reason": "Only a SHOULD, and memory contents are not visible to a replay."
+ },
+ {
+  "id": "M-Y7-fee-raw-error",
+  "class": "not_required",
+  "sentence": "spec/bip-anti-exfil.md, the definition of Fail: \"How a failure is reported, including which one when several apply, is left to implementations.\"",
+  "reason": "A raw error is a failure, and how a failure is reported is left to implementations; the mutant only changes how a refusal is reported. (The sentence that lets a host go on with an unverifiable fee shown as unverified is separate and also leaves no refusal to require.)"
+ },
+ {
+  "id": "M-X10-depth",
+  "class": "equivalent",
+  "reason": "The parser's shape check refuses the same input with the same code, tap_control_depth. Removing both is caught."
+ }
+]

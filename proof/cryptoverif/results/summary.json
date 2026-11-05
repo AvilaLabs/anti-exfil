@@ -1,0 +1,28 @@
+{
+  "status": "INCOMPLETE_OR_UNEXPECTED_QUERY_RESULTS",
+  "exit_code": 0,
+  "timeout": false,
+  "model_sha256": "93b026dfe2007533b5e2b3e9dde10e2ddf154398b3a5f61bff31657a93181a38",
+  "binary_sha256": "05a83ee84eccb73906fcbfbe5e31f81b2351788ddd9afeee1234aa18d1685677",
+  "tool_version": "2.13",
+  "ocamlc_version": "4.14.2",
+  "query_declarations": 3,
+  "result_lines": [
+    "RESULT Proved forall y: nonceout, x: nonceinput; event(AdversaryHashQuery(x, y)) ==> event(NonceROUsed(x, y))",
+    "RESULT Proved forall y: nonceout, x: nonceinput, c: hc, m: message; event(ContextLookup(m, c, x, y)) ==> event(NonceROUsed(x, y))",
+    "RESULT Proved forall dguess: bytes32, p: pkey; event(KeyExtracted(p, dguess)) ==> event(KeyGenerated(dguess, p))"
+  ],
+  "failed_result_lines": [],
+  "expected_goal_labels_found_as_true": {
+    "KeyExtracted": false,
+    "ContextLookup": false,
+    "AdversaryHashQuery": false
+  },
+  "full_output": "proof/cryptoverif/results/full-output.txt",
+  "command": [
+    "cryptoverif",
+    "lazy_nonce_extractor.ocv"
+  ],
+  "started_utc": "2026-11-04T00:16:17.354893+00:00",
+  "scope": "three computational-model correspondences only; not the G0/G1 ECDSA coupling or full UF-CMA reduction"
+}

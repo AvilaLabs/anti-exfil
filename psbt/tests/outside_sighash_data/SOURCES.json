@@ -1,0 +1,18 @@
+{
+ "what": "Signature hash test data written by others, downloaded read-only from raw.githubusercontent.com on 2026-11-05 and used unchanged by test_outside_sighash.py",
+ "files": {
+  "bip341_wallet-test-vectors.json": {
+   "url": "https://raw.githubusercontent.com/bitcoin/bips/ada341963ab3916e74c98e6de4ba48babc024a75/bip-0341/wallet-test-vectors.json",
+   "repository": "bitcoin/bips", "commit": "ada341963ab3916e74c98e6de4ba48babc024a75", "path": "bip-0341/wallet-test-vectors.json",
+   "sha256": "403e19fb81dd1f31e745699216308f61fb403774b2aafa87b631b8f7c042d37f"},
+  "bip-0143.mediawiki": {
+   "url": "https://raw.githubusercontent.com/bitcoin/bips/ada341963ab3916e74c98e6de4ba48babc024a75/bip-0143.mediawiki",
+   "repository": "bitcoin/bips", "commit": "ada341963ab3916e74c98e6de4ba48babc024a75", "path": "bip-0143.mediawiki",
+   "sha256": "62bc71351563e68baeb12643c68355d217953ae9eb6a6e68b2b0323275b6beec"},
+  "core_v31.1_sighash.json": {
+   "url": "https://raw.githubusercontent.com/bitcoin/bitcoin/v31.1/src/test/data/sighash.json",
+   "repository": "bitcoin/bitcoin", "tag": "v31.1", "path": "src/test/data/sighash.json",
+   "sha256": "52cf23c2076e7f129c71d5508631d3e5ae3be1b1cb0585c0e23bbb4bb373e924"}
+ },
+ "note": "The bitcoin/bips commit is the one pinned in notes/psbt_facts.md. The tag v31.1 names the Bitcoin Core release."
+}

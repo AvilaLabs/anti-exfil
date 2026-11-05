@@ -1,0 +1,292 @@
+From 40d627fcae165232ff985d933ff0fa485d0a37ec Mon Sep 17 00:00:00 2001
+From: Connor Avila <Connoravila@gmail.com>
+Date: Wed, 4 Nov 2026 16:18:35 -0500
+Subject: [PATCH 04/10] sign_psbt: parse the anti-exfil fields into pairs
+
+Collect the fields of each input by key identifier and check what needs no
+transaction data: field and identifier lengths, a single phase for the
+whole request, and no taproot script path.
+---
+ main/process/sign_psbt_ae.c | 170 ++++++++++++++++++++++++++++++++++--
+ main/process/sign_psbt_ae.h |  33 +++++++
+ 2 files changed, 194 insertions(+), 9 deletions(-)
+
+diff --git a/main/process/sign_psbt_ae.c b/main/process/sign_psbt_ae.c
+index d0e2feb1..10a13b3e 100644
+--- a/main/process/sign_psbt_ae.c
++++ b/main/process/sign_psbt_ae.c
+@@ -1,23 +1,34 @@
+ #ifndef AMALGAMATED_BUILD
+ #include "sign_psbt_ae.h"
++#include "../sensitive.h"
++#include "../utils/malloc_ext.h"
++
++#include <string.h>
+ 
+ #include <wally_core.h>
+ #include <wally_map.h>
+ #include <wally_psbt.h>
+ 
++#define AE_KEY_ID_ECDSA_LEN EC_PUBLIC_KEY_LEN
++#define AE_KEY_ID_KEY_PATH_LEN EC_XONLY_PUBLIC_KEY_LEN
++#define AE_KEY_ID_SCRIPT_PATH_LEN (EC_XONLY_PUBLIC_KEY_LEN + SHA256_LEN)
++
+ // Read the compact size at the start of a psbt key (the key type). Wally does not
+ // insist on the shortest encoding, so 0xfd2100 reaches us as an unknown field of type 0x21.
+ // Returns false if the key is truncated.
+-static bool ae_read_key_type(const uint8_t* key, const size_t key_len, uint64_t* type, bool* is_canonical)
++static bool ae_read_key_type(
++    const uint8_t* key, const size_t key_len, uint64_t* type, bool* is_canonical, size_t* type_len)
+ {
+     JADE_ASSERT(key);
+     JADE_ASSERT(type);
+     JADE_ASSERT(is_canonical);
++    JADE_ASSERT(type_len);
+ 
+     if (!key_len) {
+         return false;
+     }
+     *is_canonical = true;
++    *type_len = 1;
+     if (key[0] < 0xfd) {
+         *type = key[0];
+         return true;
+@@ -26,6 +37,7 @@ static bool ae_read_key_type(const uint8_t* key, const size_t key_len, uint64_t*
+     if (key_len < 1 + num_bytes) {
+         return false;
+     }
++    *type_len += num_bytes;
+     uint64_t value = 0;
+     for (size_t i = num_bytes; i > 0; --i) {
+         value = (value << 8) | key[i];
+@@ -35,6 +47,25 @@ static bool ae_read_key_type(const uint8_t* key, const size_t key_len, uint64_t*
+     return true;
+ }
+ 
++// Whether an unknown input field is an anti-exfil one, and the length of its key type.
++// Returns false (with errmsg set) if the key type is not canonically encoded.
++static bool ae_field_type(const struct wally_map_item* item, uint32_t* type_out, size_t* type_len, const char** errmsg)
++{
++    uint64_t type;
++    bool is_canonical;
++    *type_out = 0;
++    if (!ae_read_key_type(item->key, item->key_len, &type, &is_canonical, type_len) || type < PSBT_IN_AE_HOST_COMMITMENT
++        || type > PSBT_IN_AE_HOST_RANDOMNESS) {
++        return true;
++    }
++    if (!is_canonical) {
++        *errmsg = "Non-canonical anti-exfil field";
++        return false;
++    }
++    *type_out = type;
++    return true;
++}
++
+ bool ae_psbt_has_fields(const struct wally_psbt* psbt, bool* found, const char** errmsg)
+ {
+     JADE_ASSERT(psbt);
+@@ -45,19 +76,140 @@ bool ae_psbt_has_fields(const struct wally_psbt* psbt, bool* found, const char**
+     for (size_t i = 0; i < psbt->num_inputs; ++i) {
+         const struct wally_map* unknowns = &psbt->inputs[i].unknowns;
+         for (size_t j = 0; j < unknowns->num_items; ++j) {
+-            uint64_t type;
+-            bool is_canonical;
+-            if (!ae_read_key_type(unknowns->items[j].key, unknowns->items[j].key_len, &type, &is_canonical)
+-                || type < PSBT_IN_AE_HOST_COMMITMENT || type > PSBT_IN_AE_HOST_RANDOMNESS) {
+-                continue;
++            uint32_t type;
++            size_t type_len;
++            if (!ae_field_type(&unknowns->items[j], &type, &type_len, errmsg)) {
++                return false;
+             }
+-            if (!is_canonical) {
+-                *errmsg = "Non-canonical anti-exfil field";
++            *found |= type != 0;
++        }
++    }
++    return true;
++}
++
++// Get the pair for an input and key identifier, adding it if new. Returns NULL if there is no room.
++static ae_pair_t* ae_get_pair(ae_pair_t* pairs, size_t* num_pairs, const size_t max_pairs, const size_t input_index,
++    const uint8_t* key_id, const size_t key_id_len)
++{
++    // Pairs are added in input order, so only those of the latest input can match
++    for (size_t i = *num_pairs; i > 0 && pairs[i - 1].input_index == input_index; --i) {
++        if (pairs[i - 1].key_id_len == key_id_len && !memcmp(pairs[i - 1].key_id, key_id, key_id_len)) {
++            return &pairs[i - 1];
++        }
++    }
++    if (*num_pairs == max_pairs) {
++        return NULL;
++    }
++    ae_pair_t* pair = &pairs[(*num_pairs)++];
++    pair->input_index = input_index;
++    pair->key_id_len = key_id_len;
++    memcpy(pair->key_id, key_id, key_id_len);
++    return pair;
++}
++
++bool ae_psbt_parse_request(const struct wally_psbt* psbt, ae_request_t* request, const char** errmsg)
++{
++    JADE_ASSERT(psbt);
++    JADE_ASSERT(request);
++    JADE_INIT_OUT_PPTR(errmsg);
++
++    memset(request, 0, sizeof(*request));
++
++    // Count the fields, and those that start a pair (a valid request has one of these for each)
++    size_t num_fields = 0, max_pairs = 0;
++    for (size_t i = 0; i < psbt->num_inputs; ++i) {
++        for (size_t j = 0; j < psbt->inputs[i].unknowns.num_items; ++j) {
++            uint32_t type;
++            size_t type_len;
++            if (!ae_field_type(&psbt->inputs[i].unknowns.items[j], &type, &type_len, errmsg)) {
+                 return false;
+             }
+-            *found = true;
++            num_fields += type != 0;
++            max_pairs += type == PSBT_IN_AE_HOST_COMMITMENT || type == PSBT_IN_AE_HOST_RANDOMNESS;
+         }
+     }
++    if (!num_fields) {
++        return true; // Not a request
++    }
++    if (!max_pairs || max_pairs > AE_MAX_PAIRS) {
++        *errmsg = max_pairs ? "Too many anti-exfil pairs" : "Anti-exfil nonce commitment without request";
++        return false;
++    }
++
++    ae_pair_t* const pairs = JADE_CALLOC(max_pairs, sizeof(ae_pair_t));
++    SENSITIVE_PUSH(pairs, max_pairs * sizeof(ae_pair_t));
++    size_t num_pairs = 0;
++    for (size_t i = 0; i < psbt->num_inputs; ++i) {
++        const struct wally_map* unknowns = &psbt->inputs[i].unknowns;
++        for (size_t j = 0; j < unknowns->num_items; ++j) {
++            const struct wally_map_item* item = &unknowns->items[j];
++            uint32_t type;
++            size_t type_len;
++            if (!ae_field_type(item, &type, &type_len, errmsg)) {
++                goto fail;
++            }
++            if (!type) {
++                continue;
++            }
++
++            const uint8_t* key_id = item->key + type_len;
++            const size_t key_id_len = item->key_len - type_len;
++            if (key_id_len == AE_KEY_ID_SCRIPT_PATH_LEN) {
++                *errmsg = "Anti-exfil signing of taproot script paths is not supported";
++                goto fail;
++            }
++            if (key_id_len != AE_KEY_ID_ECDSA_LEN && key_id_len != AE_KEY_ID_KEY_PATH_LEN) {
++                *errmsg = "Invalid anti-exfil key identifier";
++                goto fail;
++            }
++            const size_t value_len = type == PSBT_IN_AE_NONCE_COMMITMENT ? EC_PUBLIC_KEY_LEN : WALLY_S2C_DATA_LEN;
++            if (item->value_len != value_len) {
++                *errmsg = "Invalid anti-exfil field length";
++                goto fail;
++            }
++            ae_pair_t* pair = ae_get_pair(pairs, &num_pairs, max_pairs, i, key_id, key_id_len);
++            if (!pair) {
++                *errmsg = "Anti-exfil request with mixed or incomplete phases";
++                goto fail;
++            }
++            if (type == PSBT_IN_AE_HOST_COMMITMENT) {
++                pair->has_hc = true;
++                memcpy(pair->hc, item->value, value_len);
++            } else if (type == PSBT_IN_AE_NONCE_COMMITMENT) {
++                pair->has_r0 = true;
++                memcpy(pair->r0, item->value, value_len);
++            } else {
++                pair->has_rho = true;
++                memcpy(pair->rho, item->value, value_len);
++            }
++        }
++    }
++
++    // All pairs are in one phase: host randomness present (second pass), or just host commitments
++    request->second_pass = pairs[0].has_rho;
++    for (size_t i = 0; i < num_pairs; ++i) {
++        if (pairs[i].has_rho != request->second_pass || (!request->second_pass && !pairs[i].has_hc)) {
++            *errmsg = "Anti-exfil request with mixed or incomplete phases";
++            goto fail;
++        }
++    }
++    request->pairs = pairs;
++    request->num_pairs = num_pairs;
+     return true;
++
++fail:
++    SENSITIVE_POP(pairs);
++    free(pairs);
++    return false;
++}
++
++void ae_request_free(ae_request_t* request)
++{
++    JADE_ASSERT(request);
++    if (request->pairs) {
++        SENSITIVE_POP(request->pairs);
++        free(request->pairs);
++    }
++    memset(request, 0, sizeof(*request));
+ }
+ #endif // AMALGAMATED_BUILD
+diff --git a/main/process/sign_psbt_ae.h b/main/process/sign_psbt_ae.h
+index aa4c9167..3171c5b8 100644
+--- a/main/process/sign_psbt_ae.h
++++ b/main/process/sign_psbt_ae.h
+@@ -5,6 +5,9 @@
+ #include <stddef.h>
+ #include <stdint.h>
+ 
++#include <wally_anti_exfil.h>
++#include <wally_crypto.h>
++
+ #include "../jade_assert.h"
+ 
+ struct wally_psbt;
+@@ -14,8 +17,38 @@ struct wally_psbt;
+ #define PSBT_IN_AE_NONCE_COMMITMENT 0x22
+ #define PSBT_IN_AE_HOST_RANDOMNESS 0x23
+ 
++// Limit on the number of (input, key) pairs in a request
++#define AE_MAX_PAIRS 256
++
++// One pair: an input and a key identifier, which is the pubkey for ecdsa or the x-only
++// internal key for a taproot key path. Holds secrets (host randomness), so treat as sensitive.
++typedef struct {
++    size_t input_index;
++    uint8_t key_id[EC_PUBLIC_KEY_LEN];
++    size_t key_id_len;
++    bool has_hc, has_r0, has_rho;
++    uint8_t hc[WALLY_HOST_COMMITMENT_LEN];
++    uint8_t r0[EC_PUBLIC_KEY_LEN];
++    uint8_t rho[WALLY_S2C_DATA_LEN];
++} ae_pair_t;
++
++typedef struct {
++    ae_pair_t* pairs; // NULL if the psbt is not a request
++    size_t num_pairs;
++    bool second_pass; // Host randomness is present, else only host commitments
++} ae_request_t;
++
+ // Set `found` if any input holds an anti-exfil field.
+ // Returns false (with errmsg set) if one is present in a non-canonical encoding.
+ WARN_UNUSED_RESULT bool ae_psbt_has_fields(const struct wally_psbt* psbt, bool* found, const char** errmsg);
+ 
++// Collect the pairs named by the anti-exfil fields in the psbt inputs, and check their structure:
++// field and key identifier lengths, one phase only, one signing path per input.
++// The pairs are heap allocated, pushed as sensitive and must be released with ae_request_free().
++WARN_UNUSED_RESULT bool ae_psbt_parse_request(
++    const struct wally_psbt* psbt, ae_request_t* request, const char** errmsg);
++
++// Pop, clear and free the pairs of a request
++void ae_request_free(ae_request_t* request);
++
+ #endif /* SIGN_PSBT_AE_H_ */
+-- 
+2.53.0
+

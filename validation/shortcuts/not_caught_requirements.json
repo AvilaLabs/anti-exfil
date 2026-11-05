@@ -1,0 +1,136 @@
+[
+ {
+  "id": "N02-keyid-length",
+  "class": "equivalent",
+  "reason": "A key identifier whose length is not 33, 32 or 64 reaches resolve_pair, whose classify_keyid raises SpendError bad_keyid_length, which the signer reports with the same code; every pair is resolved before any output, so no input succeeds in either version. Only the choice among several applicable failure codes can differ, and the protocol leaves that to implementations."
+ },
+ {
+  "id": "N21-tweaked-key-check",
+  "class": "equivalent",
+  "reason": "Reached only after public_key(sk)==x was checked and tweaked_xonly succeeded with qx==program. With d the even-y normalisation of sk, (d+t)*G = P+t*G = Q, so public_key(sk_t) is x(Q)=pr.pk for every input; the removed comparison can never be false."
+ },
+ {
+  "id": "N32-r0-length",
+  "class": "equivalent",
+  "reason": "AE._parse33 itself returns the point at infinity unless len(data)==33, so the removed length test is subsumed by the parse33 test that remains."
+ },
+ {
+  "id": "N125-ecdsa-key-oncurve",
+  "class": "equivalent",
+  "reason": "Through the host and signer entry points an off-curve ECDSA key identifier can never succeed: the host takes keys from Wallet.keys, which the constructor requires to be valid; the signer needs the key in its held map, built from real public keys, so it fails with key_not_held. Both versions fail; only the code differs. (Calling spend.resolve_pair directly would differ; it is not an entry point of the host or signer.)"
+ },
+ {
+  "id": "N126-ecdsa-key-prefix",
+  "class": "equivalent",
+  "reason": "The keyid is 33 bytes and AE._parse33 returns infinity for any first byte other than 2 or 3, so key[0]==4 implies the parse33 test also fires; the first operand is redundant for all inputs."
+ },
+ {
+  "id": "N100-single-off",
+  "class": "beyond_vectors",
+  "reason": "With optional forms on, as the contract's signer has them, `<key> OP_CHECKSIG` falls through to the optional-form path and gives the same pairs. The mutant shows only in a signer with optional forms off, and the contract has no switch for optional forms, as M-X26."
+ },
+ {
+  "id": "N30-reveal-state",
+  "class": "beyond_vectors",
+  "reason": "Reached only by calling reveal() before commit() through the API. The command line always drives the steps in order, so no vector can reach it."
+ },
+ {
+  "id": "N34-rho-reused",
+  "class": "beyond_vectors",
+  "reason": "The same `rho` for every attempt of one Host object. Each command line run is a new process that draws `rho` from the harness, so a repeat across attempts cannot be seen; as W-host-rho-reused-across-attempts."
+ },
+ {
+  "id": "N41-device-identity",
+  "class": "beyond_vectors",
+  "reason": "The contract gives the host no device-reported identity; the device is named by the keys given on the command line, so a host that trusted a reported identity cannot be shown."
+ },
+ {
+  "id": "N43-nonatomic-write",
+  "class": "beyond_vectors",
+  "reason": "Needs a crash in the middle of a write to the store, which a vector cannot cause."
+ },
+ {
+  "id": "N52-changed-request-fails",
+  "class": "beyond_vectors",
+  "reason": "Needs a different PSBT supplied at step 3, which contract version 3 cannot carry; as M-R03."
+ },
+ {
+  "id": "N53-optional-always",
+  "class": "beyond_vectors",
+  "reason": "The mutant always resolves pairs with optional forms enabled, and the contract has no switch for optional forms, as M-X26."
+ },
+ {
+  "id": "N107-optional-off-ignored",
+  "class": "beyond_vectors",
+  "reason": "The mutant accepts optional script forms when they are switched off, and the contract has no switch for optional forms, as M-X26."
+ },
+ {
+  "id": "N19-cap-pairs-truncate",
+  "class": "beyond_vectors",
+  "reason": "The cap on the number of pairs is the implementation's and is not in the text, so no vector knows where it falls."
+ },
+ {
+  "id": "N63-cap-psbt-size",
+  "class": "beyond_vectors",
+  "reason": "The cap on the size of a PSBT is the implementation's and is not in the text, so no vector knows where it falls."
+ },
+ {
+  "id": "N64-cap-script",
+  "class": "beyond_vectors",
+  "reason": "The cap on the size of a script is the implementation's and is not in the text, so no vector knows where it falls."
+ },
+ {
+  "id": "N36-erase",
+  "class": "not_required",
+  "reason": "What the host keeps in memory after an attempt is not visible through the command line, and the sentence is a SHOULD.",
+  "sentence": "spec/bip-anti-exfil.md: \"The host SHOULD erase it when the attempt ends.\""
+ },
+ {
+  "id": "N47-probe-rejects",
+  "class": "not_required",
+  "reason": "Repeating step 2 is optional, so a host that treats it as a failed check is allowed.",
+  "sentence": "spec/bip-anti-exfil.md: \"It MAY repeat step 2 with the same `(m, hc)`\""
+ },
+ {
+  "id": "N58-no-skip-notice",
+  "class": "not_required",
+  "reason": "A notice about a skipped pair is a SHOULD, and the notice has no output in the contract.",
+  "sentence": "spec/bip-anti-exfil-psbt.md: \"The host skips a pair whose signature is already in its PSBT and SHOULD tell the user, because it cannot tell how that signature was made.\""
+ },
+ {
+  "id": "N59-no-leaf-notice",
+  "class": "not_required",
+  "reason": "A notice about a listed leaf with no script is a SHOULD.",
+  "sentence": "spec/bip-anti-exfil-psbt.md: \"It SHOULD also tell the user about a listed leaf with no script, a `PSBT_IN_TAP_BIP32_DERIVATION` record that lists no leaf and names a device key other than the internal key, a device key found only in an uncompressed derivation record, and a device key found only in a script with no derivation record, since none of these forms a pair.\""
+ },
+ {
+  "id": "N60-no-script-key-notice",
+  "class": "not_required",
+  "reason": "A notice about a device key found only in a script is a SHOULD.",
+  "sentence": "spec/bip-anti-exfil-psbt.md: \"It SHOULD also tell the user about a listed leaf with no script, a `PSBT_IN_TAP_BIP32_DERIVATION` record that lists no leaf and names a device key other than the internal key, a device key found only in an uncompressed derivation record, and a device key found only in a script with no derivation record, since none of these forms a pair.\""
+ },
+ {
+  "id": "N65-cap-inputs",
+  "class": "not_required",
+  "reason": "The cap is the implementation's to set, so no vector knows where it falls.",
+  "sentence": "spec/bip-anti-exfil-psbt.md: \"An implementation MAY cap sizes and counts; exceeding a cap fails and never truncates.\""
+ },
+ {
+  "id": "N70-ser-unsorted",
+  "class": "not_required",
+  "reason": "The order in which maps are serialized is not compared; the harness reads PSBTs as maps.",
+  "sentence": "spec/bip-anti-exfil-psbt.md: \"The host compares maps by key and does not depend on their order.\""
+ },
+ {
+  "id": "N108-uncompressed-any",
+  "class": "not_required",
+  "reason": "A signer that holds a seed may fail on any uncompressed derivation record, so no signer vector can require it to accept one.",
+  "sentence": "spec/bip-anti-exfil-psbt.md: \"A signer that cannot tell whether such a key is a device key, because it holds a seed and not a list of keys, MAY fail on any uncompressed derivation record\""
+ },
+ {
+  "id": "N61-host-uncompressed-any",
+  "class": "not_required",
+  "reason": "The patched branch only appends a notice: a device key in an uncompressed derivation record is told to the user on an input with no pair, and the mutant tells the user about any such record. Telling the user is a SHOULD and the notice has no output in the contract. The mutant's description, 'refuses', is stale. The host-only vector host-accepts-uncompressed-record-of-a-key-that-is-not-a-device-key stays in the file.",
+  "sentence": "spec/bip-anti-exfil-psbt.md: \"It SHOULD also tell the user about a listed leaf with no script, a `PSBT_IN_TAP_BIP32_DERIVATION` record that lists no leaf and names a device key other than the internal key, a device key found only in an uncompressed derivation record, and a device key found only in a script with no derivation record, since none of these forms a pair.\""
+ }
+]

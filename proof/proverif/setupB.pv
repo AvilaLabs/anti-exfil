@@ -1,0 +1,43 @@
+(* Setup B: malicious device. The attacker holds the device key (skB is a
+   public name) and answers every device message itself; the channel is
+   attacker-controlled. Only the host is modelled. Queries Q1, Q2, Q4. *)
+set preciseActions = true.
+free skB: skey.
+
+(* Q1: the R0 the host accepts was received before rho was released, and
+   rho was released before acceptance. *)
+query att:bitstring, m:bitstring, rho:bitstring, r0:bitstring, w:bitstring, sg:bitstring,
+      i:time, j:time, k:time;
+  event(HostAccept(att,m,rho,r0,w,sg))@k ==>
+    event(HostRecv(att,r0))@i && event(HostRelease(att,rho))@j && i < j && j < k.
+(* Q2: the accepted nonce point is add(R0, tweak(R0, rho)) for the R0 stored
+   and the rho drawn in the same attempt. *)
+query att:bitstring, m:bitstring, rho:bitstring, r0:bitstring, w:bitstring, sg:bitstring;
+  event(HostAccept(att,m,rho,r0,w,sg)) ==>
+    event(HostDraw(att,rho)) && event(HostRecv(att,r0)) && w = add(r0,tweak(r0,rho)).
+(* Q4a: one rho serves at most one accepted attempt. *)
+query a1:bitstring, a2:bitstring, m1:bitstring, m2:bitstring, rho:bitstring,
+      r1:bitstring, r2:bitstring, w1:bitstring, w2:bitstring, s1:bitstring, s2:bitstring;
+  event(HostAccept(a1,m1,rho,r1,w1,s1)) && event(HostAccept(a2,m2,rho,r2,w2,s2)) ==> a1 = a2.
+(* Q4b: one nonce point is accepted in at most one attempt, so a recorded
+   signature is not accepted in a later attempt. *)
+query a1:bitstring, a2:bitstring, m1:bitstring, m2:bitstring, rho1:bitstring, rho2:bitstring,
+      r1:bitstring, r2:bitstring, w:bitstring, s1:bitstring, s2:bitstring;
+  event(HostAccept(a1,m1,rho1,r1,w,s1)) && event(HostAccept(a2,m2,rho2,r2,w,s2)) ==> a1 = a2.
+
+let host(pkdev:pkey) =
+  in(net, m:bitstring);                      (* request, attacker-chosen *)
+  new att:bitstring;
+  new rho:bitstring;
+  event HostDraw(att, rho);
+  out(net, (m, hdata(rho)));                 (* step 1 *)
+  in(net, r0:bitstring);                     (* step 2: stored *)
+  event HostRecv(att, r0);
+  event HostRelease(att, rho);
+  out(net, (m, rho));                        (* step 3 *)
+  in(net, (r0b:bitstring, sg:bitstring));    (* step 4: R0 field ignored *)
+  let (=m, w:bitstring) = checksign(sg, pkdev) in
+  if w = add(r0, tweak(r0, rho)) then        (* step 5 *)
+  event HostAccept(att, m, rho, r0, w, sg).
+
+process out(net, skB); !host(pk(skB))

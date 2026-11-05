@@ -1,0 +1,77 @@
+(* G-B (bip340): G0 (hidden evaluations use the shared nonce table) against G1 (private table)
+   Nonce text of the specification: k0 = H_nonce(mask(d,hc) || pk || m || hc), mask(d,hc) = d xor H_aux(hc).
+   Abstractions: nin is an injective structured constructor (no byte encoding, no SHA-256);
+   aux and hdata are opaque public functions; scalar is a type of canonical scalars with
+   tobytes injective; pubbytes is injective (assumption A1 in README.md); the base-output
+   validity branch (range failure, k0 = 0), points, signatures and ECDSA equations are omitted. *)
+param qHash, qO1, qO2.
+
+type scalar [large,fixed].
+type bytes32 [large,fixed].
+type pkey [large,fixed].
+type message [fixed].
+type rho [fixed].
+type hc [fixed].
+type nonceinput [large,fixed].
+type nonceout [large,fixed].
+
+fun tobytes(scalar):bytes32 [data].
+fun pubbytes(bytes32):pkey [data].
+fun norm(bytes32):bytes32.
+equation forall s:scalar; norm(tobytes(s)) = tobytes(s).
+fun canonical(bytes32):bool.
+equation forall s:scalar; canonical(tobytes(s)) = true.
+fun xor(bytes32,bytes32):bytes32.
+equation forall x:bytes32, y:bytes32; xor(xor(x,y),y) = x.
+fun aux(hc):bytes32.
+fun hdata(rho):hc.
+fun nin(bytes32,pkey,message,hc):nonceinput [data].
+fun leak(bytes32):nonceout [data].
+
+table nonceRO(nonceinput,nonceout).
+table hiddenRO(nonceinput,nonceout).
+
+letfun lazyH(x:nonceinput) =
+  get nonceRO(=x, y:nonceout) in y
+  else (y <-R nonceout; insert nonceRO(x,y); y).
+
+letfun lazyHid(x:nonceinput) =
+  get hiddenRO(=x, y:nonceout) in y
+  else (y <-R nonceout; insert hiddenRO(x,y); y).
+
+letfun hidden0(sk:scalar, p:pkey, m:message, c:hc) = lazyH(nin(xor(tobytes(sk),aux(c)),p,m,c)).
+letfun hidden1(sk:scalar, p:pkey, m:message, c:hc) = lazyHid(nin(xor(tobytes(sk),aux(c)),p,m,c)).
+
+(* a query that passes the key test returns the extracted key and touches no table;
+   this is the bad1 branch, on which G0 and G1 are allowed to differ *)
+let QueryOracle(p:pkey) =
+  foreach i <= qHash do
+  QNonce(dmask:bytes32, pquery:pkey, m:message, c:hc) :=
+    let guess = xor(dmask,aux(c)) in
+    if canonical(guess) && pubbytes(norm(guess)) = p then
+      return(leak(guess))
+    else
+      let x = nin(dmask,pquery,m,c) in
+      return(lazyH(x)).
+
+let O1Left(sk:scalar, p:pkey) =
+  foreach i <= qO1 do O1(m:message, c:hc) := return(hidden0(sk,p,m,c)).
+let O2Left(sk:scalar, p:pkey) =
+  foreach j <= qO2 do O2(m:message, r:rho) := return(hidden0(sk,p,m,hdata(r))).
+let O1Right(sk:scalar, p:pkey) =
+  foreach i <= qO1 do O1(m:message, c:hc) := return(hidden1(sk,p,m,c)).
+let O2Right(sk:scalar, p:pkey) =
+  foreach j <= qO2 do O2(m:message, r:rho) := return(hidden1(sk,p,m,hdata(r))).
+
+equivalence
+  Ostart() :=
+    sk <-R scalar;
+    let p = pubbytes(tobytes(sk)) in
+    return(p);
+    (run QueryOracle(p) | run O1Left(sk,p) | run O2Left(sk,p))
+
+  Ostart() :=
+    sk <-R scalar;
+    let p = pubbytes(tobytes(sk)) in
+    return(p);
+    (run QueryOracle(p) | run O1Right(sk,p) | run O2Right(sk,p))

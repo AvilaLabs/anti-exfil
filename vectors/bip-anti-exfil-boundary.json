@@ -1,0 +1,411 @@
+{
+  "title": "Anti-exfil signing for BIP340 and ECDSA: boundary test vectors",
+  "specification_revision": "0.16",
+  "license": "MIT",
+  "keys_are_artificial": true,
+  "encoding": "All byte strings are lowercase hex. An empty message is the empty string.",
+  "derivation": "rho = SHA256(seed || \"/rho\"). sk = SHA256(seed || \"/sk\") and a 32-byte m = SHA256(seed || \"/m\") unless the case lists \"sk\" or \"m\" under \"fixed\", where the stated value is used instead. seed is the ASCII string in each case.",
+  "companion_of": "bip-anti-exfil.json, same classes and encoding. The case ecdsa-reject-s-half-plus-one there already covers s = (n - 1) / 2 + 1.",
+  "classes": {
+    "valid": "sk, m, rho -> pk, hc, R0_bytes, sig, as in bip-anti-exfil.json. For ECDSA, z = int(m) mod n is given; k0 hashes m as given.",
+    "device_fail": "The device must fail in every listed operation and produce no output.",
+    "reject": "A host must reject the tuple. 'names' is the check that refuses it, in the numbering of the specification's host steps. 'isolated' is true when every other check passes, so a host that skips only the named check accepts the tuple. Otherwise 'also_fails' lists the other checks the tuple fails, and the case shows only that the host refuses it.",
+    "host_accept": "A host must accept the tuple. It is not a device run."
+  },
+  "not_isolated": "For BIP340 s >= n and for r >= p (and ECDSA r >= n), a tuple whose reduced value would pass the other checks needs a signature with s or r below 2^256 - n or 2^256 - p, or a point of known discrete log with a tiny x. Neither can be built without overriding a hash, so those cases are not isolated. The ECDSA s case is, because the host does not check how R0 was chosen and the message can be picked to make s = 1.",
+  "bip340": {
+    "valid": [
+      {
+        "id": "bip340-boundary-sk-one",
+        "comment": "sk = 1, the smallest key. P = G has even y, so the device keeps d = 1.",
+        "seed": "anti-exfil boundary/bip340/sk-one/0",
+        "fixed": [
+          "sk"
+        ],
+        "sk": "0000000000000000000000000000000000000000000000000000000000000001",
+        "m": "4010f8dd1408bdbd78f03d0ccbcaca318360cffe82895c74c9f0636c4b7c88c6",
+        "rho": "5993327fca5ff9cb2ff124dee7e18a87fbafb7bb936ab8bece1261204560a652",
+        "pk": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+        "hc": "8ab211f01830787d3f78be0a8d980eb3f8c67fbb567b6a6301f229df4ce4d593",
+        "R0_bytes": "030314d145904a227b2ad369862f42f3d0bbda7564450054e2a9a37fe6f9787626",
+        "sig": "69a864a6bec438a4574d72bf7bece4a03997a3ac21fc19481e398d349b36d40082f493ac89c0c354c3a9077c786f6656a044026491312e7b227b0698e114780c",
+        "R0_parity": "odd",
+        "P_parity": "even",
+        "W_parity": "odd",
+        "m_length": 32
+      },
+      {
+        "id": "bip340-boundary-sk-n-minus-one",
+        "comment": "sk = n - 1, the largest key. P = -G has odd y, so the device uses d = n - (n - 1) = 1.",
+        "seed": "anti-exfil boundary/bip340/sk-n-minus-one/0",
+        "fixed": [
+          "sk"
+        ],
+        "sk": "fffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364140",
+        "m": "9ef01cae21642c230d350c53dad5cde507c05ede7348d356a8913ee986f12bab",
+        "rho": "2e1bd1f5b7c1a32f569fb64727bfce87aeb3b144eb343c4c70899475849a3ef0",
+        "pk": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+        "hc": "c8776b6c9fc31392f97055fa89f1a57c908398e43b8e00e7561a96c29998b9e3",
+        "R0_bytes": "0248c5e253119e8dc3fc56092037e95dfcd741286d9a7fa8a245998bb283138ae6",
+        "sig": "1936bf50b959cbee069e92b47338de15f88c0b39cad34fd28b368e7f81406f77cc8b4b3d4942a6b6a8f9f43c8b8ac853db0324d997de67c576b828aed3744f3f",
+        "R0_parity": "even",
+        "P_parity": "odd",
+        "W_parity": "even",
+        "m_length": 32
+      }
+    ],
+    "device_fail": [
+      {
+        "id": "bip340-boundary-sk-zero",
+        "comment": "sk = 0. The device must fail in both device_commit and device_sign.",
+        "seed": "anti-exfil boundary/bip340/sk-zero",
+        "fixed": [
+          "sk"
+        ],
+        "sk": "0000000000000000000000000000000000000000000000000000000000000000",
+        "m": "6bc9126cdbee0ca7918fe2673d2fc1ea4e57014c396ecb0dd9c9ca60c95ec980",
+        "rho": "f5e52703d6b88a68fcee6a90edc126e4ce723886c7f1bc3d219078bb8d57203e",
+        "hc": "b1d83e6c1ae85ff814a9db1c2c912c9b1928dd403c0b093c9c8b4b978bc36298",
+        "operations": [
+          "device_commit",
+          "device_sign"
+        ],
+        "expected": "device_fails"
+      },
+      {
+        "id": "bip340-boundary-sk-n",
+        "comment": "sk = n, not below n. The device must fail; it must not reduce the key to 0.",
+        "seed": "anti-exfil boundary/bip340/sk-n",
+        "fixed": [
+          "sk"
+        ],
+        "sk": "fffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364141",
+        "m": "51687981b1ea453450b4f28affb1775aee686f99adc5b391334c7164970042ca",
+        "rho": "7dad6a7dbcd854510dfc3f1d0e5ce8d23809fc3cd70320c7726a67b1610921cb",
+        "hc": "f29f8ee91308488d0640508b24c7f4be6a678cbaa548e5cbb863c067dbe4cf12",
+        "operations": [
+          "device_commit",
+          "device_sign"
+        ],
+        "expected": "device_fails"
+      },
+      {
+        "id": "bip340-boundary-sk-max",
+        "comment": "sk = 2^256 - 1, not below n. The device must fail; it must not reduce the key to 2^256 - 1 - n.",
+        "seed": "anti-exfil boundary/bip340/sk-max",
+        "fixed": [
+          "sk"
+        ],
+        "sk": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+        "m": "b3190e59920353d03942dbb7e3e1cd2d271141a4038ca123a3678a4ee6bb9df8",
+        "rho": "f1ae9dcac5df253e35a536663eb8c05fc7a509acf465952b6e4b03f90c0b9f15",
+        "hc": "ccd9e6d7473ba1f65ee7d9fd6ada1841ed03a065550446ded5e57871cc98e03a",
+        "operations": [
+          "device_commit",
+          "device_sign"
+        ],
+        "expected": "device_fails"
+      }
+    ],
+    "reject": [
+      {
+        "id": "bip340-boundary-reject-s-n-plus-1",
+        "defect": "sig_s_range",
+        "derived_from": "bip340-boundary-sk-one",
+        "names": "step 5: BIP340 Verify requires s < n (the second half of sig is read as an integer, not reduced)",
+        "isolated": false,
+        "also_fails": [
+          "the verification equation, if s were reduced mod n (the reduced value is not the signature's s)"
+        ],
+        "comment": "The second half of sig (s) is n + 1, not below n. Steps 1 to 4 pass: r is unchanged and equals x(W).",
+        "pk": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+        "m": "4010f8dd1408bdbd78f03d0ccbcaca318360cffe82895c74c9f0636c4b7c88c6",
+        "rho": "5993327fca5ff9cb2ff124dee7e18a87fbafb7bb936ab8bece1261204560a652",
+        "R0_bytes": "030314d145904a227b2ad369862f42f3d0bbda7564450054e2a9a37fe6f9787626",
+        "sig": "69a864a6bec438a4574d72bf7bece4a03997a3ac21fc19481e398d349b36d400fffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364142",
+        "expected": "reject"
+      },
+      {
+        "id": "bip340-boundary-reject-s-max",
+        "defect": "sig_s_range",
+        "derived_from": "bip340-boundary-sk-one",
+        "names": "step 5: BIP340 Verify requires s < n (the second half of sig is read as an integer, not reduced)",
+        "isolated": false,
+        "also_fails": [
+          "the verification equation, if s were reduced mod n (the reduced value is not the signature's s)"
+        ],
+        "comment": "The second half of sig (s) is 2^256 - 1, not below n. Steps 1 to 4 pass: r is unchanged and equals x(W).",
+        "pk": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+        "m": "4010f8dd1408bdbd78f03d0ccbcaca318360cffe82895c74c9f0636c4b7c88c6",
+        "rho": "5993327fca5ff9cb2ff124dee7e18a87fbafb7bb936ab8bece1261204560a652",
+        "R0_bytes": "030314d145904a227b2ad369862f42f3d0bbda7564450054e2a9a37fe6f9787626",
+        "sig": "69a864a6bec438a4574d72bf7bece4a03997a3ac21fc19481e398d349b36d400ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+        "expected": "reject"
+      },
+      {
+        "id": "bip340-boundary-reject-r-p-plus-1",
+        "defect": "sig_r_range",
+        "derived_from": "bip340-boundary-sk-one",
+        "names": "step 4: bytes32(x(W)) must equal the first 32 bytes of sig; r is not below p, so it cannot be x(W)",
+        "isolated": false,
+        "also_fails": [
+          "step 5, BIP340 Verify requires r < p"
+        ],
+        "comment": "The first half of sig (r) is p + 1, not below p. Steps 1 to 3 pass.",
+        "pk": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+        "m": "4010f8dd1408bdbd78f03d0ccbcaca318360cffe82895c74c9f0636c4b7c88c6",
+        "rho": "5993327fca5ff9cb2ff124dee7e18a87fbafb7bb936ab8bece1261204560a652",
+        "R0_bytes": "030314d145904a227b2ad369862f42f3d0bbda7564450054e2a9a37fe6f9787626",
+        "sig": "fffffffffffffffffffffffffffffffffffffffffffffffffffffffefffffc3082f493ac89c0c354c3a9077c786f6656a044026491312e7b227b0698e114780c",
+        "expected": "reject"
+      },
+      {
+        "id": "bip340-boundary-reject-r-max",
+        "defect": "sig_r_range",
+        "derived_from": "bip340-boundary-sk-one",
+        "names": "step 4: bytes32(x(W)) must equal the first 32 bytes of sig; r is not below p, so it cannot be x(W)",
+        "isolated": false,
+        "also_fails": [
+          "step 5, BIP340 Verify requires r < p"
+        ],
+        "comment": "The first half of sig (r) is 2^256 - 1, not below p. Steps 1 to 3 pass.",
+        "pk": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+        "m": "4010f8dd1408bdbd78f03d0ccbcaca318360cffe82895c74c9f0636c4b7c88c6",
+        "rho": "5993327fca5ff9cb2ff124dee7e18a87fbafb7bb936ab8bece1261204560a652",
+        "R0_bytes": "030314d145904a227b2ad369862f42f3d0bbda7564450054e2a9a37fe6f9787626",
+        "sig": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff82f493ac89c0c354c3a9077c786f6656a044026491312e7b227b0698e114780c",
+        "expected": "reject"
+      }
+    ]
+  },
+  "ecdsa": {
+    "valid": [
+      {
+        "id": "ecdsa-boundary-m-equals-n",
+        "comment": "m = n, so z = int(m) mod n = 0. k0 hashes m as given (not reduced).",
+        "seed": "anti-exfil boundary/ecdsa/m-equals-n/0",
+        "fixed": [
+          "m"
+        ],
+        "sk": "0b5f641b5e9ed387df4d7e55ab37d1fb2831b1b397e4a505be8c70b558291304",
+        "m": "fffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364141",
+        "rho": "0f958903f27bf0fa4d4abdc4fd70bd02136e7467ca9f37cc48d1dcd3e4c8c701",
+        "pk": "020d6b1329e083796b058d0d5083a15185f98adfc1f4d443d7e69e353d578bb7c9",
+        "hc": "667c3fe785edcd15ee791e6e4de38ee15c570a97a03db8284e2fcfaf42278d3e",
+        "R0_bytes": "02f63ee5931aafe9dea19c98c93f633807008c981a30582be589144cfcc3f547b4",
+        "sig": "a268755e5f0a9142aec98f52f7f1eae2f6bb03f0dc23075782a3928a3505226566bd647ad0de93a7f1e3c8eb53cfb6a3b86fbe65d2da5ae4674ac45c862885f4",
+        "R0_parity": "even",
+        "P_parity": "even",
+        "W_parity": "even",
+        "s_negated": true,
+        "z": "0000000000000000000000000000000000000000000000000000000000000000",
+        "m_length": 32
+      },
+      {
+        "id": "ecdsa-boundary-m-n-plus-1",
+        "comment": "m = n + 1, so z = 1. k0 hashes m as given.",
+        "seed": "anti-exfil boundary/ecdsa/m-n-plus-1/0",
+        "fixed": [
+          "m"
+        ],
+        "sk": "3b266db4ccb107c0846707cfcabc2f109ec13ffa0b31dc264d2ee2114e3060bc",
+        "m": "fffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364142",
+        "rho": "da9d4f111e8baacf94176391ab34a4f89525c7f782e1bbd95077e2606f1be2f1",
+        "pk": "0377539843935f9746d16bee2d83b61d0717f085e2eea5d2df8291f5924261d2a2",
+        "hc": "2259f1c6f79db9181c724b05f16deb28b6bc792a897ddec4381b2ccd7d4c7e07",
+        "R0_bytes": "03704b1739d2e13b064d51f59dfc994052d397b7bd0f65dae6e8275e9d53a255fb",
+        "sig": "0388814ce520381a102d8584edbdb4226779dc1d9f07a38304b3c6fc18b32bc31a459f284e0122e4e3f20a1377b4ef4657bc848271b9f9388dc83940680cef69",
+        "R0_parity": "odd",
+        "P_parity": "odd",
+        "W_parity": "even",
+        "s_negated": false,
+        "z": "0000000000000000000000000000000000000000000000000000000000000001",
+        "m_length": 32
+      },
+      {
+        "id": "ecdsa-boundary-m-max",
+        "comment": "m = 2^256 - 1, so z = 2^256 - 1 - n. k0 hashes m as given.",
+        "seed": "anti-exfil boundary/ecdsa/m-max/0",
+        "fixed": [
+          "m"
+        ],
+        "sk": "22aff9a70211752cded205773293265a86fdd6b71fef01e82bc29ac120b40402",
+        "m": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+        "rho": "d9be67a82cea0884600829847f3216341a825966b0174f9ba147c3fc8bb65fe8",
+        "pk": "02789715b0548ea0eafd5abdb80f22189f282a0a7f253b0e69d8732c3312fa29ce",
+        "hc": "b21f6c2a7905c4f311a785a76e19768ef82c52449d7ad4a576f1839156fbf0a1",
+        "R0_bytes": "034bf3a8def4f25d1d5cfa68fe792b423972af4b881b54dabd66115043424ef3c8",
+        "sig": "aa72baf1dd1295d72446b1ed27fcc23e12e944f8c22a68f2c10445fa1ad70ee938427ffb5449d30024490f9e9db65e79332a652e5e5ce4b2d720cf1410510b9f",
+        "R0_parity": "odd",
+        "P_parity": "even",
+        "W_parity": "even",
+        "s_negated": false,
+        "z": "000000000000000000000000000000014551231950b75fc4402da1732fc9bebe",
+        "m_length": 32
+      },
+      {
+        "id": "ecdsa-boundary-sk-one",
+        "comment": "sk = 1, the smallest key. pk = ser33(G).",
+        "seed": "anti-exfil boundary/ecdsa/sk-one/0",
+        "fixed": [
+          "sk"
+        ],
+        "sk": "0000000000000000000000000000000000000000000000000000000000000001",
+        "m": "c4758f2dc1b8057b6d518249713f009ef3ec9db1c0e4bf6523883a524cae737a",
+        "rho": "241cdb5aee06780eec7783bb20faa58060c25f78b550227c901af8ee2883c745",
+        "pk": "0279be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+        "hc": "de7f9fc01c2f9c01a2496868f601225e1b4e223e0f3b11816213cfc5dd3a0eec",
+        "R0_bytes": "032d1106d0a40b622a06f99d9c8b007a863add210635e84bd0870b8ef129f04ca2",
+        "sig": "69a73297eea044c71a0288caa9c7b2866c6b162bc194cf7468c4b500f36d0dc62e3c1ceef67c1696815a35dc3d4eeb94fa664b880cd6d663350fb61d19188236",
+        "R0_parity": "odd",
+        "P_parity": "even",
+        "W_parity": "even",
+        "s_negated": true,
+        "z": "c4758f2dc1b8057b6d518249713f009ef3ec9db1c0e4bf6523883a524cae737a",
+        "m_length": 32
+      },
+      {
+        "id": "ecdsa-boundary-sk-n-minus-one",
+        "comment": "sk = n - 1, the largest key. pk = ser33(-G).",
+        "seed": "anti-exfil boundary/ecdsa/sk-n-minus-one/0",
+        "fixed": [
+          "sk"
+        ],
+        "sk": "fffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364140",
+        "m": "95fee5ab5e018743d220680c4026e8fa9c1fb65d1e785c32ee702439a8b430c4",
+        "rho": "7b116f37a680b456103a43149dcae5528cd93573239f5b0fde3b95c70dd6ef8a",
+        "pk": "0379be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+        "hc": "3e02b8b00697570b88e74373686d400b35b6dde070e1b7a857d3bf89a2a85b63",
+        "R0_bytes": "03a2d380235bec85881e360756dce6a404dbe3bfa4ff44704a4e1437ee738cd552",
+        "sig": "6e5207fc13e0ce267f3f18b134a5839d9d13bac912361bffe0bacb7529cf61e5341409d19961f9056eda43af2d5e08f495d20233ff710c06935d924897cdb835",
+        "R0_parity": "odd",
+        "P_parity": "odd",
+        "W_parity": "odd",
+        "s_negated": false,
+        "z": "95fee5ab5e018743d220680c4026e8fa9c1fb65d1e785c32ee702439a8b430c4",
+        "m_length": 32
+      }
+    ],
+    "device_fail": [
+      {
+        "id": "ecdsa-boundary-sk-zero",
+        "comment": "sk = 0. The device must fail in both device_commit and device_sign.",
+        "seed": "anti-exfil boundary/ecdsa/sk-zero",
+        "fixed": [
+          "sk"
+        ],
+        "sk": "0000000000000000000000000000000000000000000000000000000000000000",
+        "m": "f5aff2a5d58ca969b3904c8a0534724bbc54d4c02aae9828b42880d42503ead5",
+        "rho": "17df5bcaed31b40e8f64b36d8b57fdf0b89439f84d13d9426556c9ed81106a9c",
+        "hc": "5a20c97c5f946426d01f1d7c019685cf7babd8f5201bff44522e28fd17789948",
+        "operations": [
+          "device_commit",
+          "device_sign"
+        ],
+        "expected": "device_fails"
+      },
+      {
+        "id": "ecdsa-boundary-sk-n",
+        "comment": "sk = n, not below n. The device must fail; it must not reduce the key to 0.",
+        "seed": "anti-exfil boundary/ecdsa/sk-n",
+        "fixed": [
+          "sk"
+        ],
+        "sk": "fffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364141",
+        "m": "f3a6b85d7e9cecdd07678067356a0e63a1431848cc8ed50ffa9f9803a589d9f4",
+        "rho": "93775b47e89977bef29e3e3807720486f6972a4e0db56219b44897f33f88250b",
+        "hc": "e801ae26aadf3b793f186a87792c17be76793d394c13ba2be906f4e03057b5c9",
+        "operations": [
+          "device_commit",
+          "device_sign"
+        ],
+        "expected": "device_fails"
+      },
+      {
+        "id": "ecdsa-boundary-sk-max",
+        "comment": "sk = 2^256 - 1, not below n. The device must fail; it must not reduce the key.",
+        "seed": "anti-exfil boundary/ecdsa/sk-max",
+        "fixed": [
+          "sk"
+        ],
+        "sk": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+        "m": "f35f733bd61ea917ed09b4e0cf8ce19244857591baa9f1b79cc8c3fd2a06a761",
+        "rho": "994891716f60c126f09173a4ac38e9d46b69f1fd0e64513a91392e7943f9d59b",
+        "hc": "a51174bc137ae1f3281cb8f230476999f2af0c09b866f7727e414ddd8b9aee79",
+        "operations": [
+          "device_commit",
+          "device_sign"
+        ],
+        "expected": "device_fails"
+      }
+    ],
+    "reject": [
+      {
+        "id": "ecdsa-boundary-reject-r-n-plus-1",
+        "defect": "sig_r_range",
+        "derived_from": "ecdsa-boundary-sk-one",
+        "names": "step 4: 0 < r < n",
+        "isolated": false,
+        "also_fails": [
+          "step 4, x(W) mod n equals r (it is r reduced, not r)",
+          "step 5, the verification equation"
+        ],
+        "comment": "r is n + 1, not below n. Steps 1 to 3 pass.",
+        "pk": "0279be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+        "m": "c4758f2dc1b8057b6d518249713f009ef3ec9db1c0e4bf6523883a524cae737a",
+        "rho": "241cdb5aee06780eec7783bb20faa58060c25f78b550227c901af8ee2883c745",
+        "R0_bytes": "032d1106d0a40b622a06f99d9c8b007a863add210635e84bd0870b8ef129f04ca2",
+        "sig": "fffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd03641422e3c1ceef67c1696815a35dc3d4eeb94fa664b880cd6d663350fb61d19188236",
+        "expected": "reject"
+      },
+      {
+        "id": "ecdsa-boundary-reject-s-n-plus-1",
+        "defect": "sig_s_range",
+        "derived_from": "ecdsa-boundary-sk-one",
+        "names": "step 4: 0 < s <= (n - 1) / 2",
+        "isolated": false,
+        "also_fails": [
+          "step 5, the verification equation, because s reduced mod n is 1 and not the signature's s"
+        ],
+        "comment": "s is n + 1, above the low-s limit and not below n. Steps 1 to 3 pass and r is x(W) mod n.",
+        "pk": "0279be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+        "m": "c4758f2dc1b8057b6d518249713f009ef3ec9db1c0e4bf6523883a524cae737a",
+        "rho": "241cdb5aee06780eec7783bb20faa58060c25f78b550227c901af8ee2883c745",
+        "R0_bytes": "032d1106d0a40b622a06f99d9c8b007a863add210635e84bd0870b8ef129f04ca2",
+        "sig": "69a73297eea044c71a0288caa9c7b2866c6b162bc194cf7468c4b500f36d0dc6fffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364142",
+        "expected": "reject"
+      },
+      {
+        "id": "ecdsa-boundary-reject-isolated-s-n-plus-1",
+        "defect": "sig_s_range",
+        "derived_from": "ecdsa-boundary-host-s-one",
+        "names": "step 4: 0 < s <= (n - 1) / 2",
+        "isolated": true,
+        "also_fails": [],
+        "comment": "The tuple of ecdsa-boundary-host-s-one with s replaced by n + 1, which is 1 mod n. Every check passes except the s range, so a host that reduces s mod n accepts it.",
+        "pk": "026ddd24f8c2489760385e6f3ee47b297d99290559fa75df4ae32b8fc1a19fb646",
+        "m": "0b0293c3d5d3e753b0a43286f8074ba584ced56a4472a60cf2f0b580ce373d92",
+        "rho": "05b3b542177cbe82bb0e25fc6309ada3fb22bbfa9e53592f1cf6445f1bca3ac0",
+        "R0_bytes": "03ea42e278d38f3383b26adda5c15445ad79c30b274f136075f8388ad6c7e08544",
+        "sig": "f4d532c529df96ce37ec47a0414ead12faffd22ebe75c3b14258475fa1ed0d94fffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364142",
+        "expected": "reject"
+      }
+    ],
+    "host_accept": [
+      {
+        "id": "ecdsa-boundary-host-s-one",
+        "comment": "Not a device run: R0 is not derived from a hash, so no device produces these bytes. A host must accept the tuple. s = 1, the smallest valid s. It is the base of ecdsa-boundary-reject-isolated-s-n-plus-1.",
+        "seed": "anti-exfil boundary/ecdsa/host-s-one/0",
+        "fixed": [
+          "m"
+        ],
+        "pk": "026ddd24f8c2489760385e6f3ee47b297d99290559fa75df4ae32b8fc1a19fb646",
+        "m": "0b0293c3d5d3e753b0a43286f8074ba584ced56a4472a60cf2f0b580ce373d92",
+        "rho": "05b3b542177cbe82bb0e25fc6309ada3fb22bbfa9e53592f1cf6445f1bca3ac0",
+        "R0_bytes": "03ea42e278d38f3383b26adda5c15445ad79c30b274f136075f8388ad6c7e08544",
+        "sig": "f4d532c529df96ce37ec47a0414ead12faffd22ebe75c3b14258475fa1ed0d940000000000000000000000000000000000000000000000000000000000000001",
+        "expected": "accept"
+      }
+    ]
+  }
+}

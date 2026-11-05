@@ -1,0 +1,165 @@
+From fbf9ed5529375e56971f2580b0bb3f42deedeb82 Mon Sep 17 00:00:00 2001
+From: Connor Avila <Connoravila@gmail.com>
+Date: Wed, 4 Nov 2026 16:29:35 -0500
+Subject: [PATCH 07/10] sign_psbt: warn when the anti-exfil fee is unverified
+
+The fee is verified if every input has a matching non-witness utxo, or a
+taproot key spend is signed, as its signature commits to the input amounts.
+---
+ main/process/process_utils.h |  1 +
+ main/process/sign_psbt.c     |  4 ++--
+ main/process/sign_psbt_ae.c  | 24 ++++++++++++++++++++++++
+ main/process/sign_psbt_ae.h  |  7 ++++++-
+ main/process/sign_tx.c       |  2 +-
+ main/process/sign_utils.c    | 15 +++++++--------
+ main/process/sign_utils.h    |  3 ++-
+ 7 files changed, 43 insertions(+), 13 deletions(-)
+
+diff --git a/main/process/process_utils.h b/main/process/process_utils.h
+index cf8fc916..920e4ddd 100644
+--- a/main/process/process_utils.h
++++ b/main/process/process_utils.h
+@@ -116,6 +116,7 @@ typedef enum {
+ 
+ #define WARN_MSG_HIGH_FEES "Fee amount higher than spend amount!"
+ #define WARN_MSG_MIXED_INPUTS "Your transaction inputs are of varying types."
++#define WARN_MSG_UNVERIFIED_FEE "The fee could not be verified."
+ 
+ // Sanity check extended-data payload fields
+ bool check_extended_data_fields(CborValue* params, const char* expected_origid, const char* expected_orig,
+diff --git a/main/process/sign_psbt.c b/main/process/sign_psbt.c
+index b82a56d1..1ebff074 100644
+--- a/main/process/sign_psbt.c
++++ b/main/process/sign_psbt.c
+@@ -1081,8 +1081,8 @@ int sign_psbt(jade_process_t* process, CborValue* params, const network_t networ
+ 
+         // User to agree fee amount
+         // Check to see whether user accepted or declined
+-        if (!show_btc_fee_confirmation_activity(
+-                network_id, tx, output_info, aggregate_inputs_scripts_flavour, input_amount, output_amount)) {
++        if (!show_btc_fee_confirmation_activity(network_id, tx, output_info, aggregate_inputs_scripts_flavour,
++                input_amount, output_amount, ae_request.pairs && !ae_psbt_fee_is_verified(psbt, tx, &ae_request))) {
+             *errmsg = "User declined to sign psbt";
+             retval = CBOR_RPC_USER_CANCELLED;
+             goto cleanup;
+diff --git a/main/process/sign_psbt_ae.c b/main/process/sign_psbt_ae.c
+index c7d057ee..d487841b 100644
+--- a/main/process/sign_psbt_ae.c
++++ b/main/process/sign_psbt_ae.c
+@@ -536,6 +536,30 @@ bool ae_psbt_validate_request(
+ 
+ static bool ae_pair_is_schnorr(const ae_pair_t* pair) { return pair->key_id_len == EC_XONLY_PUBLIC_KEY_LEN; }
+ 
++bool ae_psbt_fee_is_verified(const struct wally_psbt* psbt, const struct wally_tx* tx, const ae_request_t* request)
++{
++    JADE_ASSERT(psbt);
++    JADE_ASSERT(tx);
++    JADE_ASSERT(request);
++
++    // A taproot signature commits to every input amount, and only sighash all or default are accepted
++    for (size_t i = 0; i < request->num_pairs; ++i) {
++        if (ae_pair_is_schnorr(&request->pairs[i])) {
++            return true;
++        }
++    }
++    // Else a non-witness utxo, matching its txid, is needed for every input
++    for (size_t i = 0; i < psbt->num_inputs; ++i) {
++        const struct wally_tx_output* utxo;
++        bool is_verified;
++        const char* errmsg = NULL;
++        if (!ae_get_utxo(&psbt->inputs[i], &tx->inputs[i], &utxo, &is_verified, &errmsg) || !is_verified) {
++            return false;
++        }
++    }
++    return true;
++}
++
+ bool ae_psbt_commit(struct wally_psbt* psbt, const ae_request_t* request, const char** errmsg)
+ {
+     JADE_ASSERT(psbt);
+diff --git a/main/process/sign_psbt_ae.h b/main/process/sign_psbt_ae.h
+index 717d8a17..18df7cee 100644
+--- a/main/process/sign_psbt_ae.h
++++ b/main/process/sign_psbt_ae.h
+@@ -69,7 +69,12 @@ WARN_UNUSED_RESULT bool ae_psbt_validate_request(
+ // Make the signer commitment of every pair (the first pass: they are added to the psbt), or check that any in the
+ // request, and any host commitment, are those that the host randomness gives (the second pass). Requires a request
+ // that has been validated, and makes no signatures.
+-WARN_UNUSED_RESULT bool ae_psbt_commit(struct wally_psbt* psbt, const ae_request_t* request, const char** errmsg);
++WARN_UNUSED_RESULT // Whether the input amounts are proven by the signatures made, so a wrong amount (and so a wrong
++                   // fee)
++    // can not go unnoticed: every input has a matching non-witness utxo, or a taproot key spend is signed
++    bool
++    ae_psbt_fee_is_verified(const struct wally_psbt* psbt, const struct wally_tx* tx, const ae_request_t* request);
++bool ae_psbt_commit(struct wally_psbt* psbt, const ae_request_t* request, const char** errmsg);
+ 
+ // Sign the pairs of a validated second pass request and remove all of the anti-exfil fields from the psbt.
+ // Every signature is made before the psbt is changed, so on failure nothing is added.
+diff --git a/main/process/sign_tx.c b/main/process/sign_tx.c
+index a41ae172..360492a0 100644
+--- a/main/process/sign_tx.c
++++ b/main/process/sign_tx.c
+@@ -878,7 +878,7 @@ static void sign_tx_impl(jade_process_t* process, const bool for_liquid)
+         // User to agree fee amount
+         // If user cancels we'll send the 'cancelled' error response for the last input message only
+         if (!show_btc_fee_confirmation_activity(
+-                network_id, tx, output_info, aggregate_inputs_scripts_flavour, input_amount, output_amount)) {
++                network_id, tx, output_info, aggregate_inputs_scripts_flavour, input_amount, output_amount, false)) {
+             // If using ae-signatures, we need to load the message to send the error back on
+             if (use_ae_signatures) {
+                 jade_process_load_in_message(process, true);
+diff --git a/main/process/sign_utils.c b/main/process/sign_utils.c
+index 9be2ff42..09a556f6 100644
+--- a/main/process/sign_utils.c
++++ b/main/process/sign_utils.c
+@@ -777,7 +777,7 @@ void params_genesis_hash(network_t network_id, const bool for_liquid, const uint
+ 
+ bool show_btc_fee_confirmation_activity(const network_t network_id, const struct wally_tx* tx,
+     const output_info_t* outinfo, const script_flavour_t aggregate_inputs_scripts_flavour, const uint64_t input_amount,
+-    const uint64_t output_amount)
++    const uint64_t output_amount, const bool fee_unverified)
+ {
+     JADE_ASSERT(tx);
+     // outputinfo is optional
+@@ -801,18 +801,17 @@ bool show_btc_fee_confirmation_activity(const network_t network_id, const struct
+         }
+     }
+ 
+-    char warnbuf[128]; // sufficient
++    char warnbuf[192]; // sufficient
+     const char* warning_msg = NULL;
+     const bool warn_fees = fees && fees >= spend_amount;
+     const bool warn_scripts = aggregate_inputs_scripts_flavour == SCRIPT_FLAVOUR_MIXED;
+-    if (warn_fees && warn_scripts) {
+-        const int retval = snprintf(warnbuf, sizeof(warnbuf), "%s %s", WARN_MSG_HIGH_FEES, WARN_MSG_MIXED_INPUTS);
++    if (warn_fees || warn_scripts || fee_unverified) {
++        // Join whichever warnings apply
++        const int retval = snprintf(warnbuf, sizeof(warnbuf), "%s%s%s%s%s", warn_fees ? WARN_MSG_HIGH_FEES : "",
++            warn_fees && warn_scripts ? " " : "", warn_scripts ? WARN_MSG_MIXED_INPUTS : "",
++            (warn_fees || warn_scripts) && fee_unverified ? " " : "", fee_unverified ? WARN_MSG_UNVERIFIED_FEE : "");
+         JADE_ASSERT(retval > 0 && retval < sizeof(warnbuf));
+         warning_msg = warnbuf;
+-    } else if (warn_scripts) {
+-        warning_msg = WARN_MSG_MIXED_INPUTS;
+-    } else if (warn_fees) {
+-        warning_msg = WARN_MSG_HIGH_FEES;
+     }
+ 
+     // Return whether the user accepts or declines
+diff --git a/main/process/sign_utils.h b/main/process/sign_utils.h
+index c837db74..b8bde76b 100644
+--- a/main/process/sign_utils.h
++++ b/main/process/sign_utils.h
+@@ -66,7 +66,8 @@ void params_genesis_hash(network_t network_id, bool for_liquid, const uint8_t* g
+     uint8_t* genesis_out, size_t genesis_out_len, const char** errmsg);
+ 
+ bool show_btc_fee_confirmation_activity(network_t network_id, const struct wally_tx* tx, const output_info_t* outinfo,
+-    script_flavour_t aggregate_inputs_scripts_flavour, uint64_t input_amount, uint64_t output_amount);
++    script_flavour_t aggregate_inputs_scripts_flavour, uint64_t input_amount, uint64_t output_amount,
++    bool fee_unverified);
+ 
+ bool show_elements_fee_confirmation_activity(network_t network_id, const struct wally_tx* tx,
+     const output_info_t* outinfo, script_flavour_t aggregate_inputs_scripts_flavour, uint64_t fees, TxType_t txtype,
+-- 
+2.53.0
+

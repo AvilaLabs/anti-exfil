@@ -1,0 +1,27 @@
+(* Control M5: the host checks the nonce point against the R0 in the second-pass
+   response, not the stored one. Q2 must be false. *)
+set preciseActions = true.
+free skB: skey.
+
+(* Q2: the accepted nonce point is add(R0, tweak(R0, rho)) for the R0 stored
+   and the rho drawn in the same attempt. *)
+query att:bitstring, m:bitstring, rho:bitstring, r0:bitstring, w:bitstring, sg:bitstring;
+  event(HostAccept(att,m,rho,r0,w,sg)) ==>
+    event(HostDraw(att,rho)) && event(HostRecv(att,r0)) && w = add(r0,tweak(r0,rho)).
+
+let host(pkdev:pkey) =
+  in(net, m:bitstring);                      (* request, attacker-chosen *)
+  new att:bitstring;
+  new rho:bitstring;
+  event HostDraw(att, rho);
+  out(net, (m, hdata(rho)));                 (* step 1 *)
+  in(net, r0:bitstring);                     (* step 2: stored *)
+  event HostRecv(att, r0);
+  event HostRelease(att, rho);
+  out(net, (m, rho));                        (* step 3 *)
+  in(net, (r0b:bitstring, sg:bitstring));    (* step 4: R0 field ignored *)
+  let (=m, w:bitstring) = checksign(sg, pkdev) in
+  if w = add(r0b, tweak(r0b, rho)) then      (* MUTATION: R0 from the response *)
+  event HostAccept(att, m, rho, r0, w, sg).
+
+process out(net, skB); !host(pk(skB))

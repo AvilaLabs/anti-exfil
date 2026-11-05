@@ -1,0 +1,34 @@
+(* Control M4: the device signs without an approval event. Q7 must be false. *)
+set preciseActions = true.
+
+(* Q7: no signature is released without an approval for that exact (m, rho). *)
+query m:bitstring, rho:bitstring;
+  event(DeviceRelease(m,rho)) ==> event(DeviceApproved(m,rho)).
+
+let dev2(sk:skey) =
+  in(net, (m:bitstring, rho:bitstring));
+  let r0 = point(base_nonce(sk, m, hdata(rho))) in
+  event DeviceR0(m, hdata(rho), r0);
+  let w = add(r0, tweak(r0, rho)) in
+  (* MUTATION: no approval *)
+  let sg = sign((m,w), sk) in
+  event DeviceRelease(m, rho);
+  event DeviceOut(m, rho, w, sg);
+  out(net, sg).
+
+let host(pkdev:pkey) =
+  in(net, m:bitstring);
+  new att:bitstring;
+  new rho:bitstring;
+  event HostDraw(att, rho);
+  out(net, (m, hdata(rho)));
+  in(net, r0:bitstring);
+  event HostRecv(att, r0);
+  event HostRelease(att, rho);
+  out(net, (m, rho));
+  in(net, sg:bitstring);
+  let (=m, w:bitstring) = checksign(sg, pkdev) in
+  if w = add(r0, tweak(r0, rho)) then
+  event HostAccept(att, m, rho, r0, w, sg).
+
+process new sk:skey; out(net, pk(sk)); (!dev1(sk) | !dev2(sk) | !host(pk(sk)))

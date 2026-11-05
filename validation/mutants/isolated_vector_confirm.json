@@ -1,0 +1,358 @@
+{
+ "all_confirmed": true,
+ "cases": {
+  "bip340-forced-isolated-W-doubling": {
+   "confirmed": true,
+   "expected": "accept",
+   "isolates": "W = R0 + t*G with R0 = t*G must be computed as a doubling",
+   "mutants": {
+    "MM-math-0140": {
+     "accepts_a_rejection_case": false,
+     "differs_from_reference": true,
+     "outcome": {
+      "host_accepts": false
+     }
+    },
+    "MM-math-0141": {
+     "accepts_a_rejection_case": false,
+     "differs_from_reference": true,
+     "outcome": {
+      "host_accepts": false
+     }
+    }
+   },
+   "reference": {
+    "host_accepts": true
+   },
+   "reference_gives_expected": true
+  },
+  "bip340-forced-isolated-W-infinity-from-negated-R0": {
+   "confirmed": true,
+   "expected": "reject",
+   "isolates": "W = R0 + t*G must not be the point at infinity",
+   "mutants": {
+    "MM-math-0140": {
+     "accepts_a_rejection_case": true,
+     "differs_from_reference": true,
+     "outcome": {
+      "host_accepts": true
+     }
+    }
+   },
+   "reference": {
+    "host_accepts": false
+   },
+   "reference_gives_expected": true
+  },
+  "bip340-forced-isolated-s-equals-n": {
+   "confirmed": true,
+   "expected": "reject",
+   "isolates": "BIP340 Verify: s must be below n",
+   "mutants": {
+    "MM-math-0271": {
+     "accepts_a_rejection_case": true,
+     "differs_from_reference": true,
+     "outcome": {
+      "host_accepts": true
+     }
+    }
+   },
+   "reference": {
+    "host_accepts": false
+   },
+   "reference_gives_expected": true
+  },
+  "bip340-reject-isolated-R0-prefix-04": {
+   "confirmed": true,
+   "expected": "reject",
+   "isolates": "parse33(R0_bytes) must succeed",
+   "mutants": {
+    "MM-math-0357": {
+     "accepts_a_rejection_case": true,
+     "differs_from_reference": true,
+     "outcome": {
+      "host_accepts": true
+     }
+    }
+   },
+   "reference": {
+    "host_accepts": false
+   },
+   "reference_gives_expected": true
+  },
+  "bip340-reject-isolated-R0-x-not-below-p": {
+   "confirmed": true,
+   "expected": "reject",
+   "isolates": "parse33(R0_bytes) must succeed",
+   "mutants": {
+    "MM-math-0357": {
+     "accepts_a_rejection_case": true,
+     "differs_from_reference": true,
+     "outcome": {
+      "host_accepts": true
+     }
+    }
+   },
+   "reference": {
+    "host_accepts": false
+   },
+   "reference_gives_expected": true
+  },
+  "bip340-reject-isolated-R0-x-off-curve": {
+   "confirmed": true,
+   "expected": "reject",
+   "isolates": "parse33(R0_bytes) must succeed",
+   "mutants": {
+    "MM-math-0357": {
+     "accepts_a_rejection_case": true,
+     "differs_from_reference": true,
+     "outcome": {
+      "host_accepts": true
+     }
+    }
+   },
+   "reference": {
+    "host_accepts": false
+   },
+   "reference_gives_expected": true
+  },
+  "bip340-reject-isolated-pk-off-curve": {
+   "confirmed": true,
+   "expected": "reject",
+   "isolates": "BIP340 Verify: pk must be the x coordinate of a curve point",
+   "mutants": {
+    "MM-math-0276": {
+     "accepts_a_rejection_case": true,
+     "differs_from_reference": true,
+     "outcome": {
+      "host_accepts": true
+     }
+    },
+    "MM-math-0277": {
+     "accepts_a_rejection_case": true,
+     "differs_from_reference": true,
+     "outcome": {
+      "host_accepts": true
+     }
+    }
+   },
+   "reference": {
+    "host_accepts": false
+   },
+   "reference_gives_expected": true
+  },
+  "ecdsa-forced-isolated-W-doubling": {
+   "confirmed": true,
+   "expected": "accept",
+   "isolates": "W = R0 + t*G with R0 = t*G must be computed as a doubling",
+   "mutants": {
+    "MM-math-0140": {
+     "accepts_a_rejection_case": false,
+     "differs_from_reference": true,
+     "outcome": {
+      "host_accepts": false
+     }
+    },
+    "MM-math-0141": {
+     "accepts_a_rejection_case": false,
+     "differs_from_reference": true,
+     "outcome": {
+      "host_accepts": false
+     }
+    }
+   },
+   "reference": {
+    "host_accepts": true
+   },
+   "reference_gives_expected": true
+  },
+  "ecdsa-forced-isolated-W-infinity-from-negated-R0": {
+   "confirmed": true,
+   "expected": "reject",
+   "isolates": "W = R0 + t*G must not be the point at infinity",
+   "mutants": {
+    "MM-math-0140": {
+     "accepts_a_rejection_case": true,
+     "differs_from_reference": true,
+     "outcome": {
+      "host_accepts": true
+     }
+    }
+   },
+   "reference": {
+    "host_accepts": false
+   },
+   "reference_gives_expected": true
+  },
+  "ecdsa-forced-isolated-s-low-limit-device": {
+   "confirmed": true,
+   "expected": "device_produces",
+   "isolates": "step 4: s = (n-1)/2 is kept as is, not negated",
+   "mutants": {
+    "MM-math-0484": {
+     "accepts_a_rejection_case": false,
+     "differs_from_reference": true,
+     "outcome": {
+      "raises": "ValueError: internal ECDSA verification failed"
+     }
+    },
+    "MM-math-0488": {
+     "accepts_a_rejection_case": false,
+     "differs_from_reference": true,
+     "outcome": {
+      "raises": "ValueError: internal ECDSA verification failed"
+     }
+    }
+   },
+   "reference": {
+    "R0_bytes": "03774ae7f858a9411e5ef4246b70c65aac5649980be5c17891bbec17895da008cb",
+    "sig": "fe72c435413d33d48ac09c9161ba8b09683215439d62b7940502bda8b202e6ce7fffffffffffffffffffffffffffffff5d576e7357a4501ddfe92f46681b20a0"
+   },
+   "reference_gives_expected": true
+  },
+  "ecdsa-forced-isolated-s-low-limit-host": {
+   "confirmed": true,
+   "expected": "accept",
+   "isolates": "host step 4: 0 < s <= (n-1)/2 includes both ends",
+   "mutants": {
+    "MM-math-0407": {
+     "accepts_a_rejection_case": false,
+     "differs_from_reference": true,
+     "outcome": {
+      "host_accepts": false
+     }
+    },
+    "MM-math-0412": {
+     "accepts_a_rejection_case": false,
+     "differs_from_reference": true,
+     "outcome": {
+      "host_accepts": false
+     }
+    }
+   },
+   "reference": {
+    "host_accepts": true
+   },
+   "reference_gives_expected": true
+  },
+  "ecdsa-forced-isolated-s-one-device": {
+   "confirmed": true,
+   "expected": "device_produces",
+   "isolates": "step 4: s = 1 is a valid s and is not refused",
+   "mutants": {
+    "MM-math-0480": {
+     "accepts_a_rejection_case": false,
+     "differs_from_reference": true,
+     "outcome": {
+      "raises": "ValueError: s is zero"
+     }
+    }
+   },
+   "reference": {
+    "R0_bytes": "03774ae7f858a9411e5ef4246b70c65aac5649980be5c17891bbec17895da008cb",
+    "sig": "fe72c435413d33d48ac09c9161ba8b09683215439d62b7940502bda8b202e6ce0000000000000000000000000000000000000000000000000000000000000001"
+   },
+   "reference_gives_expected": true
+  },
+  "ecdsa-forced-isolated-s-one-host": {
+   "confirmed": true,
+   "expected": "accept",
+   "isolates": "host step 4: 0 < s <= (n-1)/2 includes both ends",
+   "mutants": {
+    "MM-math-0405": {
+     "accepts_a_rejection_case": false,
+     "differs_from_reference": true,
+     "outcome": {
+      "host_accepts": false
+     }
+    }
+   },
+   "reference": {
+    "host_accepts": true
+   },
+   "reference_gives_expected": true
+  },
+  "ecdsa-reject-isolated-R0-prefix-04": {
+   "confirmed": true,
+   "expected": "reject",
+   "isolates": "parse33(R0_bytes) must succeed",
+   "mutants": {
+    "MM-math-0515": {
+     "accepts_a_rejection_case": true,
+     "differs_from_reference": true,
+     "outcome": {
+      "host_accepts": true
+     }
+    }
+   },
+   "reference": {
+    "host_accepts": false
+   },
+   "reference_gives_expected": true
+  },
+  "ecdsa-reject-isolated-R0-x-not-below-p": {
+   "confirmed": true,
+   "expected": "reject",
+   "isolates": "parse33(R0_bytes) must succeed",
+   "mutants": {
+    "MM-math-0515": {
+     "accepts_a_rejection_case": true,
+     "differs_from_reference": true,
+     "outcome": {
+      "host_accepts": true
+     }
+    }
+   },
+   "reference": {
+    "host_accepts": false
+   },
+   "reference_gives_expected": true
+  },
+  "ecdsa-reject-isolated-R0-x-off-curve": {
+   "confirmed": true,
+   "expected": "reject",
+   "isolates": "parse33(R0_bytes) must succeed",
+   "mutants": {
+    "MM-math-0515": {
+     "accepts_a_rejection_case": true,
+     "differs_from_reference": true,
+     "outcome": {
+      "host_accepts": true
+     }
+    }
+   },
+   "reference": {
+    "host_accepts": false
+   },
+   "reference_gives_expected": true
+  },
+  "ecdsa-reject-isolated-pk-off-curve": {
+   "confirmed": true,
+   "expected": "reject",
+   "isolates": "parse33(pk) must succeed",
+   "mutants": {
+    "CUSTOM-ecdsa-pk-parse-both-layers": {
+     "accepts_a_rejection_case": true,
+     "differs_from_reference": true,
+     "outcome": {
+      "host_accepts": true
+     }
+    },
+    "CUSTOM-ecdsa-pk-parse-host-layer-only": {
+     "accepts_a_rejection_case": false,
+     "differs_from_reference": false,
+     "outcome": {
+      "host_accepts": false
+     }
+    }
+   },
+   "reference": {
+    "host_accepts": false
+   },
+   "reference_gives_expected": true
+  }
+ },
+ "problems": [],
+ "reference_sha256": "283af4c44ed6c96a65a46cc374eb0579f052940eeac832e6b2369a0aad062a9f",
+ "vectors_sha256": "f1e4e9acf059d424849f2c7576ea21e439f83cc355643784387d4c7a46da1611"
+}

@@ -1,0 +1,291 @@
+From 0bec3b4fa997298b6bcb17b79447829704878e91 Mon Sep 17 00:00:00 2001
+From: Connor Avila <Connoravila@gmail.com>
+Date: Wed, 4 Nov 2026 16:32:55 -0500
+Subject: [PATCH 08/10] sign_psbt: anti-exfil taproot key path
+
+The key must be the internal key of the output, with the merkle root if there
+is one. The signature hash commits to every input utxo. Wally does not update
+the modifiable flags of a version 2 psbt for a taproot signature, so this does.
+---
+ main/process/sign_psbt.c    |  19 +++++-
+ main/process/sign_psbt_ae.c | 125 ++++++++++++++++++++++++++++++------
+ main/process/sign_psbt_ae.h |   4 +-
+ 3 files changed, 124 insertions(+), 24 deletions(-)
+
+diff --git a/main/process/sign_psbt.c b/main/process/sign_psbt.c
+index 1ebff074..7889ae9e 100644
+--- a/main/process/sign_psbt.c
++++ b/main/process/sign_psbt.c
+@@ -814,6 +814,9 @@ int sign_psbt(jade_process_t* process, CborValue* params, const network_t networ
+     multisig_data_t* multisig_data = NULL;
+     descriptor_data_t* descriptor = NULL;
+ 
++    // The signing cache is used for the signature hashes of any anti-exfil pairs, and when signing
++    JADE_WALLY_VERIFY(wally_psbt_signing_cache_enable(psbt, 0));
++
+     // Anti-exfil: validate the whole request before any prompt or output. The first pass only adds
+     // the nonce commitments and needs no approval, as no signature is made.
+     if (!ae_psbt_parse_request(psbt, &ae_request, errmsg)
+@@ -992,6 +995,20 @@ int sign_psbt(jade_process_t* process, CborValue* params, const network_t networ
+         }
+     } // iterate keys
+ 
++    // Anti-exfil: taproot key spends with a merkle root are not found above, but are signed
++    for (size_t i = 0; ae_request.pairs && i < ae_request.num_pairs; ++i) {
++        const size_t index = ae_request.pairs[i].input_index;
++        const struct wally_tx_output* utxo = NULL;
++        if (!sig_types[index]) {
++            JADE_WALLY_VERIFY(wally_psbt_get_input_best_utxo(psbt, index, &utxo));
++            bool is_p2tr = false;
++            update_aggregate_scripts_flavour(
++                get_script_flavour(utxo->script, utxo->script_len, &is_p2tr), &aggregate_inputs_scripts_flavour);
++            sig_types[index] = WALLY_SIGTYPE_SW_V1;
++            signing_flags |= PSBT_SIGNING_SINGLESIG | PSBT_SIGNING_MULTISIG_CHANGE_ABANDONED;
++        }
++    }
++
+     // Examine outputs for liquid unblinded info and fees, and for change we can automatically validate
+     if (!psbt_update_outputs(
+             network_id, psbt, signing_flags, wallet_name, multisig_data, descriptor, output_info, errmsg)) {
+@@ -1098,8 +1115,6 @@ int sign_psbt(jade_process_t* process, CborValue* params, const network_t networ
+     display_processing_message_activity();
+ 
+     // Sign our inputs
+-    JADE_WALLY_VERIFY(wally_psbt_signing_cache_enable(psbt, 0));
+-
+     if (ae_request.pairs) {
+         // Only the pairs are signed, and with their own signing function
+         if (!ae_psbt_sign(psbt, &ae_request, errmsg)) {
+diff --git a/main/process/sign_psbt_ae.c b/main/process/sign_psbt_ae.c
+index d487841b..b8f10d80 100644
+--- a/main/process/sign_psbt_ae.c
++++ b/main/process/sign_psbt_ae.c
+@@ -22,6 +22,9 @@
+ #define PSBT_IN_REDEEM_SCRIPT 0x04
+ #define PSBT_IN_WITNESS_SCRIPT 0x05
+ #define PSBT_IN_FINAL_SCRIPTSIG 0x07
++#define PSBT_IN_TAP_KEY_SIG 0x13
++#define PSBT_IN_TAP_INTERNAL_KEY 0x17
++#define PSBT_IN_TAP_MERKLE_ROOT 0x18
+ #define PSBT_IN_MUSIG2_PARTICIPANT_PUBKEYS 0x1a
+ 
+ #define OP_CHECKSIG 0xac
+@@ -403,6 +406,8 @@ static bool ae_path_matches_scheme(const ae_pair_t* pair)
+     return purpose != 44 && purpose != 49 && purpose != 84;
+ }
+ 
++static bool ae_pair_is_schnorr(const ae_pair_t* pair) { return pair->key_id_len == EC_XONLY_PUBLIC_KEY_LEN; }
++
+ // Validate an ecdsa pair and find its signature hash
+ static bool ae_resolve_ecdsa_pair(const struct wally_psbt_input* input, const struct wally_tx* tx, ae_pair_t* pair,
+     const struct wally_tx_output* utxo, const char** errmsg)
+@@ -445,8 +450,54 @@ static bool ae_resolve_ecdsa_pair(const struct wally_psbt_input* input, const st
+     return true;
+ }
+ 
++// Validate a taproot key path pair. Its signature hash is found once every input utxo is known.
++static bool ae_resolve_taproot_pair(
++    const struct wally_psbt_input* input, ae_pair_t* pair, const struct wally_tx_output* utxo, const char** errmsg)
++{
++    if (wally_map_get_integer(&input->psbt_fields, PSBT_IN_TAP_KEY_SIG)) {
++        *errmsg = "Input is already signed by the key";
++        return false;
++    }
++    if (input->sighash
++        && !sighash_is_supported(TXTYPE_SEND_PAYMENT, WALLY_SIGTYPE_SW_V1, input->sighash, false, false)) {
++        *errmsg = "Unsupported sighash value";
++        return false;
++    }
++    pair->sighash = input->sighash; // Default if not given
++
++    const struct wally_map_item* internal_key = wally_map_get_integer(&input->psbt_fields, PSBT_IN_TAP_INTERNAL_KEY);
++    if (internal_key
++        && (internal_key->value_len != pair->key_id_len
++            || memcmp(internal_key->value, pair->key_id, pair->key_id_len))) {
++        *errmsg = "Taproot internal key does not match the key";
++        return false;
++    }
++    const struct wally_map_item* root = wally_map_get_integer(&input->psbt_fields, PSBT_IN_TAP_MERKLE_ROOT);
++    if (root) {
++        if (root->value_len != sizeof(pair->root)) {
++            *errmsg = "Invalid taproot merkle root";
++            return false;
++        }
++        pair->has_root = true;
++        memcpy(pair->root, root->value, sizeof(pair->root));
++    }
++
++    // The key must be the internal key of the output
++    uint8_t internal[EC_PUBLIC_KEY_LEN] = { 0x02 }, output_key[EC_PUBLIC_KEY_LEN];
++    memcpy(internal + 1, pair->key_id, pair->key_id_len);
++    if (utxo->script_len != WALLY_SCRIPTPUBKEY_P2TR_LEN || utxo->script[0] != OP_1 || utxo->script[1] != 0x20
++        || wally_ec_public_key_bip341_tweak(internal, sizeof(internal), pair->has_root ? pair->root : NULL,
++               pair->has_root ? sizeof(pair->root) : 0, 0, output_key, sizeof(output_key))
++            != WALLY_OK
++        || memcmp(output_key + 1, utxo->script + 2, EC_XONLY_PUBLIC_KEY_LEN)) {
++        *errmsg = "Taproot key does not match the output";
++        return false;
++    }
++    return true;
++}
++
+ bool ae_psbt_validate_request(
+-    const struct wally_psbt* psbt, const struct wally_tx* tx, ae_request_t* request, const char** errmsg)
++    struct wally_psbt* psbt, const struct wally_tx* tx, ae_request_t* request, const char** errmsg)
+ {
+     JADE_ASSERT(psbt);
+     JADE_ASSERT(tx && tx->num_inputs == psbt->num_inputs);
+@@ -457,10 +508,6 @@ bool ae_psbt_validate_request(
+         ae_pair_t* pair = &request->pairs[i];
+         const struct wally_psbt_input* input = &psbt->inputs[pair->input_index];
+ 
+-        if (pair->key_id_len != EC_PUBLIC_KEY_LEN) {
+-            *errmsg = "Unsupported anti-exfil key identifier";
+-            return false;
+-        }
+         if (input->final_witness || wally_map_get_integer(&input->psbt_fields, PSBT_IN_FINAL_SCRIPTSIG)) {
+             *errmsg = "Input is already finalized";
+             return false;
+@@ -496,13 +543,14 @@ bool ae_psbt_validate_request(
+         size_t keypath_idx = 0;
+         struct ext_key hdkey;
+         size_t found_idx = 0;
+-        if (wally_map_find(&input->keypaths, pair->key_id, pair->key_id_len, &keypath_idx) != WALLY_OK || !keypath_idx
++        const struct wally_map* paths = ae_pair_is_schnorr(pair) ? &input->taproot_leaf_paths : &input->keypaths;
++        if (wally_map_find(paths, pair->key_id, pair->key_id_len, &keypath_idx) != WALLY_OK || !keypath_idx
+             || wally_map_keypath_get_bip32_public_key_from(
+-                   &input->keypaths, keypath_idx - 1, &keychain_get()->xpriv, &hdkey, &found_idx)
++                   paths, keypath_idx - 1, &keychain_get()->xpriv, &hdkey, &found_idx)
+                 != WALLY_OK
+             || found_idx != keypath_idx
+-            || wally_map_keypath_get_item_path(&input->keypaths, keypath_idx - 1, pair->path,
+-                   sizeof(pair->path) / sizeof(pair->path[0]), &pair->path_len)
++            || wally_map_keypath_get_item_path(
++                   paths, keypath_idx - 1, pair->path, sizeof(pair->path) / sizeof(pair->path[0]), &pair->path_len)
+                 != WALLY_OK
+             || !pair->path_len || pair->path_len > sizeof(pair->path) / sizeof(pair->path[0])) {
+             *errmsg = "Key does not belong to this wallet";
+@@ -512,7 +560,8 @@ bool ae_psbt_validate_request(
+             *errmsg = "Key used for another script type";
+             return false;
+         }
+-        if (!ae_resolve_ecdsa_pair(input, tx, pair, utxo, errmsg)) {
++        if (!(ae_pair_is_schnorr(pair) ? ae_resolve_taproot_pair(input, pair, utxo, errmsg)
++                                       : ae_resolve_ecdsa_pair(input, tx, pair, utxo, errmsg))) {
+             return false;
+         }
+     }
+@@ -531,11 +580,21 @@ bool ae_psbt_validate_request(
+         *errmsg = "Total input amounts less than total output amounts";
+         return false;
+     }
++
++    // Taproot signature hashes commit to every input utxo, so are found now (with the signing cache enabled)
++    for (size_t i = 0; i < request->num_pairs; ++i) {
++        ae_pair_t* pair = &request->pairs[i];
++        if (ae_pair_is_schnorr(pair)
++            && wally_psbt_get_input_signature_hash(
++                   psbt, pair->input_index, tx, NULL, 0, 0, pair->message, sizeof(pair->message))
++                != WALLY_OK) {
++            *errmsg = "Failed to generate tx input hash";
++            return false;
++        }
++    }
+     return true;
+ }
+ 
+-static bool ae_pair_is_schnorr(const ae_pair_t* pair) { return pair->key_id_len == EC_XONLY_PUBLIC_KEY_LEN; }
+-
+ bool ae_psbt_fee_is_verified(const struct wally_psbt* psbt, const struct wally_tx* tx, const ae_request_t* request)
+ {
+     JADE_ASSERT(psbt);
+@@ -583,8 +642,8 @@ bool ae_psbt_commit(struct wally_psbt* psbt, const ae_request_t* request, const
+         } else {
+             memcpy(hc, pair->hc, sizeof(hc));
+         }
+-        if (!wallet_ae_signer_commit(is_schnorr, pair->path, pair->path_len, NULL, pair->message, sizeof(pair->message),
+-                hc, sizeof(hc), r0, sizeof(r0))) {
++        if (!wallet_ae_signer_commit(is_schnorr, pair->path, pair->path_len, pair->has_root ? pair->root : NULL,
++                pair->message, sizeof(pair->message), hc, sizeof(hc), r0, sizeof(r0))) {
+             *errmsg = "Failed to make anti-exfil nonce commitment";
+             return false;
+         }
+@@ -651,22 +710,46 @@ bool ae_psbt_sign(struct wally_psbt* psbt, const ae_request_t* request, const ch
+     for (size_t i = 0; i < request->num_pairs; ++i) {
+         const ae_pair_t* pair = &request->pairs[i];
+         ae_sig_t* sig = &sigs[i];
++        const bool is_schnorr = ae_pair_is_schnorr(pair);
+         uint8_t compact[EC_SIGNATURE_LEN];
+-        if (!wallet_ae_sign(false, pair->path, pair->path_len, NULL, pair->message, sizeof(pair->message), pair->rho,
+-                sizeof(pair->rho), compact, sizeof(compact))
+-            || wally_ec_sig_to_der(compact, sizeof(compact), sig->data, EC_SIGNATURE_DER_MAX_LEN, &sig->len)
+-                != WALLY_OK) {
++        if (!wallet_ae_sign(is_schnorr, pair->path, pair->path_len, pair->has_root ? pair->root : NULL, pair->message,
++                sizeof(pair->message), pair->rho, sizeof(pair->rho), compact, sizeof(compact))) {
+             *errmsg = "Failed to generate anti-exfil signature";
+             goto cleanup;
+         }
+-        sig->data[sig->len++] = pair->sighash;
++        if (is_schnorr) {
++            // The sighash byte is omitted for the default
++            memcpy(sig->data, compact, sizeof(compact));
++            sig->len = sizeof(compact);
++            if (pair->sighash != WALLY_SIGHASH_DEFAULT) {
++                sig->data[sig->len++] = pair->sighash;
++            }
++        } else {
++            if (wally_ec_sig_to_der(compact, sizeof(compact), sig->data, EC_SIGNATURE_DER_MAX_LEN, &sig->len)
++                != WALLY_OK) {
++                *errmsg = "Failed to generate anti-exfil signature";
++                goto cleanup;
++            }
++            sig->data[sig->len++] = pair->sighash;
++        }
+     }
+ 
+     // All made, now add them. Adding a signature updates the tx modifiable flags of version 2 psbts
+     for (size_t i = 0; i < request->num_pairs; ++i) {
+         const ae_pair_t* pair = &request->pairs[i];
+-        if (wally_psbt_add_input_signature(
+-                psbt, pair->input_index, pair->key_id, pair->key_id_len, sigs[i].data, sigs[i].len)
++        if (ae_pair_is_schnorr(pair)) {
++            // Unlike for ecdsa, wally does not update the flags for a taproot signature
++            if (wally_psbt_input_set_taproot_signature(&psbt->inputs[pair->input_index], sigs[i].data, sigs[i].len)
++                    != WALLY_OK
++                || (psbt->version == WALLY_PSBT_VERSION_2
++                    && wally_psbt_set_tx_modifiable_flags(
++                           psbt, psbt->tx_modifiable_flags & ~(WALLY_PSBT_TXMOD_INPUTS | WALLY_PSBT_TXMOD_OUTPUTS))
++                        != WALLY_OK)) {
++                *errmsg = "Failed to add anti-exfil signature";
++                goto cleanup;
++            }
++        } else if (wally_psbt_add_input_signature(
++                       psbt, pair->input_index, pair->key_id, pair->key_id_len, sigs[i].data, sigs[i].len)
+             != WALLY_OK) {
+             *errmsg = "Failed to add anti-exfil signature";
+             goto cleanup;
+diff --git a/main/process/sign_psbt_ae.h b/main/process/sign_psbt_ae.h
+index 18df7cee..45337e36 100644
+--- a/main/process/sign_psbt_ae.h
++++ b/main/process/sign_psbt_ae.h
+@@ -36,6 +36,8 @@ typedef struct {
+ 
+     // Found when the pair is validated
+     uint8_t sighash; // Sighash flag, WALLY_SIGHASH_DEFAULT only for taproot
++    bool has_root; // Taproot: whether the output key is tweaked with a merkle root
++    uint8_t root[SHA256_LEN];
+     uint8_t message[SHA256_LEN]; // The signature hash
+     uint32_t path[MAX_PATH_LEN]; // Path of the key from the wallet root
+     size_t path_len;
+@@ -64,7 +66,7 @@ WARN_UNUSED_RESULT bool ae_psbt_parse_request(
+ // Nothing is signed or changed. Fails (with errmsg set) on anything that the signature hash or the signer
+ // would need and does not hold, or that the protocol does not allow.
+ WARN_UNUSED_RESULT bool ae_psbt_validate_request(
+-    const struct wally_psbt* psbt, const struct wally_tx* tx, ae_request_t* request, const char** errmsg);
++    struct wally_psbt* psbt, const struct wally_tx* tx, ae_request_t* request, const char** errmsg);
+ 
+ // Make the signer commitment of every pair (the first pass: they are added to the psbt), or check that any in the
+ // request, and any host commitment, are those that the host randomness gives (the second pass). Requires a request
+-- 
+2.53.0
+

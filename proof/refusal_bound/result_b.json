@@ -1,0 +1,43 @@
+{
+ "run": "run2",
+ "violations": [],
+ "H1_cases": 700,
+ "H1_worst_fraction_of_bound": 0.6306294665980704,
+ "C_H1_L0_one_bit": {
+  "pass": true,
+  "mi": 1.0
+ },
+ "H2_cases": 1200,
+ "H2_worst_fraction_of_log2_EJ": 0.5511355112769707,
+ "H3_mi_per_expected_failure": {
+  "2": 1.0,
+  "4": 1.2451124978365313,
+  "16": 1.3966410658722261,
+  "64": 1.4313648195053177,
+  "256": 1.4398736009935853
+ },
+ "C_H3_near_limit": {
+  "pass": true,
+  "value": 1.4398736009935853,
+  "limit": 1.4426950408889634
+ },
+ "H4": {
+  "joint_mi": 1.0,
+  "marginal_1": 0.0,
+  "marginal_2": 0.0,
+  "expected_failed_requests": 1.0
+ },
+ "C_H4_needs_request_level": {
+  "pass": true
+ },
+ "H5": {
+  "transactions": 1048576,
+  "bits_through_fee_bump": 20.0,
+  "failures": 1,
+  "bound_if_it_applied": 1.4426950408889634
+ },
+ "C_H5_condition_needed": {
+  "pass": true
+ },
+ "verdict": "PASS"
+}

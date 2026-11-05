@@ -1,0 +1,935 @@
+From 6f92e89bbf32f738fd818feaa2ee7dc0ba3c283a Mon Sep 17 00:00:00 2001
+From: Connor Avila <Connoravila@gmail.com>
+Date: Wed, 4 Nov 2026 16:11:08 -0500
+Subject: [PATCH 01/10] libwally-core: vendor the anti-exfil secp256k1 module
+
+The module needs secp256k1 internals, so it is compiled in the same
+translation unit as wally's amalgamation through a small wrapper, in both
+the amalgamated and component builds. The relative includes of the module
+are satisfied by forwarding headers. Nothing calls it yet.
+---
+ components/libwally-core/CMakeLists.txt       |   4 +-
+ .../anti_exfil/include/secp256k1.h            |   1 +
+ .../anti_exfil/include/secp256k1_anti_exfil.h | 187 ++++++
+ .../anti_exfil/include/secp256k1_extrakeys.h  |   1 +
+ .../anti_exfil/include/secp256k1_schnorrsig.h |   1 +
+ .../src/modules/anti_exfil/main_impl.h        | 599 ++++++++++++++++++
+ components/libwally-core/combined_ae.c        |   8 +
+ libjade/CMakeLists.txt                        |   1 +
+ main/CMakeLists.txt                           |   6 +-
+ main/amalgamated.c                            |   2 +-
+ 10 files changed, 805 insertions(+), 5 deletions(-)
+ create mode 100644 components/libwally-core/anti_exfil/include/secp256k1.h
+ create mode 100644 components/libwally-core/anti_exfil/include/secp256k1_anti_exfil.h
+ create mode 100644 components/libwally-core/anti_exfil/include/secp256k1_extrakeys.h
+ create mode 100644 components/libwally-core/anti_exfil/include/secp256k1_schnorrsig.h
+ create mode 100644 components/libwally-core/anti_exfil/src/modules/anti_exfil/main_impl.h
+ create mode 100644 components/libwally-core/combined_ae.c
+
+diff --git a/components/libwally-core/CMakeLists.txt b/components/libwally-core/CMakeLists.txt
+index c6f1d247..b3a78281 100644
+--- a/components/libwally-core/CMakeLists.txt
++++ b/components/libwally-core/CMakeLists.txt
+@@ -1,5 +1,5 @@
+ idf_component_register(SRCS
+-                       "upstream/src/amalgamation/combined.c"
++                       "combined_ae.c"
+                        INCLUDE_DIRS
+                        "upstream/include"
+                        PRIV_INCLUDE_DIRS
+@@ -24,7 +24,7 @@ idf_component_register(SRCS
+                        PRIV_REQUIRES mbedtls)
+ 
+ set_source_files_properties(
+-    upstream/src/amalgamation/combined.c
++    combined_ae.c
+     PROPERTIES COMPILE_FLAGS
+     "-Wno-nonnull-compare -Wno-unused-function -Wno-error=maybe-uninitialized -Wno-type-limits -Wno-error=array-parameter"
+     )
+diff --git a/components/libwally-core/anti_exfil/include/secp256k1.h b/components/libwally-core/anti_exfil/include/secp256k1.h
+new file mode 100644
+index 00000000..38d4d9c7
+--- /dev/null
++++ b/components/libwally-core/anti_exfil/include/secp256k1.h
+@@ -0,0 +1 @@
++#include "../../upstream/src/secp256k1/include/secp256k1.h"
+diff --git a/components/libwally-core/anti_exfil/include/secp256k1_anti_exfil.h b/components/libwally-core/anti_exfil/include/secp256k1_anti_exfil.h
+new file mode 100644
+index 00000000..0b1b4317
+--- /dev/null
++++ b/components/libwally-core/anti_exfil/include/secp256k1_anti_exfil.h
+@@ -0,0 +1,187 @@
++#ifndef SECP256K1_ANTI_EXFIL_H
++#define SECP256K1_ANTI_EXFIL_H
++
++#include "secp256k1.h"
++#include "secp256k1_extrakeys.h"
++
++#ifdef __cplusplus
++extern "C" {
++#endif
++
++/** This module implements the two-round anti-exfil signing protocol of
++ *  spec/bip-anti-exfil.md, revision 0.16, for BIP340 and ECDSA.
++ *
++ *  A device commits to a base nonce point R0 after the host has committed to
++ *  its randomness rho. The device later signs with a nonce that is R0 plus a
++ *  tweak derived from R0 and rho, and the host checks that it did.
++ *
++ *  Rules of the module:
++ *  - No nonce, tweak or opening crosses this API. Nothing takes a nonce
++ *    callback, auxiliary randomness or an opening.
++ *  - The sign functions take rho only. They recompute hc and the base nonce
++ *    from it and keep no state, so there is no stored value to get wrong, and
++ *    no way to hand them a stale R0.
++ *  - A failure in signing ends the call. There is no retry and no counter.
++ *  - r0_33 is the exact 33 bytes of the specification (prefix 0x02 or 0x03
++ *    followed by the x coordinate), parsed with the specification's parse33
++ *    rule.
++ *  - rho is secret. The sign and host_verify functions need a context that
++ *    has the signing precomputation, so that every point multiplication on a
++ *    value derived from rho uses the constant-time generator path. Any
++ *    context from secp256k1_context_create has it. The static context has
++ *    not, and these functions reject it with an illegal-argument callback.
++ *
++ *  On failure an output is zeroed. A caller must not use it.
++ *
++ *  The caller keeps the protocol state: approval, attempt counting, failure
++ *  records and erasing rho belong to the caller (see the specification).
++ */
++
++/** Host step 1 for BIP340: hc = tagged_hash("s2c/schnorr/data", rho).
++ *
++ *  Returns: 1 always, for valid arguments.
++ *  Args:    ctx: a secp256k1 context object.
++ *  Out:    hc32: pointer to a 32-byte array to store the commitment.
++ *  In:    rho32: pointer to the 32 random bytes of the host.
++ */
++SECP256K1_API SECP256K1_WARN_UNUSED_RESULT int secp256k1_anti_exfil_schnorr_host_commit(
++    const secp256k1_context *ctx,
++    unsigned char *hc32,
++    const unsigned char *rho32
++) SECP256K1_ARG_NONNULL(1) SECP256K1_ARG_NONNULL(2) SECP256K1_ARG_NONNULL(3);
++
++/** Host step 1 for ECDSA: hc = tagged_hash("s2c/ecdsa/data", rho).
++ *  Same arguments as the BIP340 function.
++ */
++SECP256K1_API SECP256K1_WARN_UNUSED_RESULT int secp256k1_anti_exfil_ecdsa_host_commit(
++    const secp256k1_context *ctx,
++    unsigned char *hc32,
++    const unsigned char *rho32
++) SECP256K1_ARG_NONNULL(1) SECP256K1_ARG_NONNULL(2) SECP256K1_ARG_NONNULL(3);
++
++/** Device step 2 for BIP340: computes R0_bytes = ser33(k0 * G).
++ *
++ *  Returns: 1: success.
++ *           0: the keypair gives a zero k0 (then no commitment is made).
++ *  Args:    ctx: a secp256k1 context object with signing precomputation.
++ *  Out:   r0_33: pointer to a 33-byte array. Zeroed on failure.
++ *  In:      msg: the message, of any length (can be NULL if msglen is 0).
++ *        msglen: length of msg.
++ *       keypair: the signing keypair.
++ *          hc32: the host commitment.
++ */
++SECP256K1_API SECP256K1_WARN_UNUSED_RESULT int secp256k1_anti_exfil_schnorr_signer_commit(
++    const secp256k1_context *ctx,
++    unsigned char *r0_33,
++    const unsigned char *msg,
++    size_t msglen,
++    const secp256k1_keypair *keypair,
++    const unsigned char *hc32
++) SECP256K1_ARG_NONNULL(1) SECP256K1_ARG_NONNULL(2) SECP256K1_ARG_NONNULL(5) SECP256K1_ARG_NONNULL(6);
++
++/** Device step 4 for BIP340. Recomputes hc, d, pk, k0 and R0 from rho, then
++ *  signs with k' = k0 + t. Checks the result with the host checks before
++ *  returning it, which guards against faults.
++ *
++ *  Returns: 1: success.
++ *           0: failure (k0 = 0, t >= n, k' = 0, or the self-check failed).
++ *  Args:    ctx: a secp256k1 context object with signing precomputation.
++ *  Out:   sig64: pointer to a 64-byte array. Zeroed on failure.
++ *  In:      msg: the message, of any length (can be NULL if msglen is 0).
++ *        msglen: length of msg.
++ *       keypair: the signing keypair.
++ *         rho32: the 32 bytes of the host.
++ */
++SECP256K1_API SECP256K1_WARN_UNUSED_RESULT int secp256k1_anti_exfil_schnorr_sign(
++    const secp256k1_context *ctx,
++    unsigned char *sig64,
++    const unsigned char *msg,
++    size_t msglen,
++    const secp256k1_keypair *keypair,
++    const unsigned char *rho32
++) SECP256K1_ARG_NONNULL(1) SECP256K1_ARG_NONNULL(2) SECP256K1_ARG_NONNULL(5) SECP256K1_ARG_NONNULL(6);
++
++/** Host step 5 for BIP340, all five checks: R0 parses, t < n, W = R0 + t*G is
++ *  not infinity, x(W) equals the first 32 bytes of sig64, and the signature
++ *  verifies for the key and message.
++ *
++ *  Returns: 1: every check passed.
++ *           0: otherwise.
++ *  Args:    ctx: a secp256k1 context object with signing precomputation.
++ *  In:    sig64: the signature.
++ *           msg: the message (can be NULL if msglen is 0).
++ *        msglen: length of msg.
++ *     xonly_pk: the host's own x-only public key.
++ *         rho32: the host's 32 bytes.
++ *        r0_33: the R0_bytes the host stored in step 2.
++ */
++SECP256K1_API SECP256K1_WARN_UNUSED_RESULT int secp256k1_anti_exfil_schnorr_host_verify(
++    const secp256k1_context *ctx,
++    const unsigned char *sig64,
++    const unsigned char *msg,
++    size_t msglen,
++    const secp256k1_xonly_pubkey *xonly_pk,
++    const unsigned char *rho32,
++    const unsigned char *r0_33
++) SECP256K1_ARG_NONNULL(1) SECP256K1_ARG_NONNULL(2) SECP256K1_ARG_NONNULL(5) SECP256K1_ARG_NONNULL(6) SECP256K1_ARG_NONNULL(7);
++
++/** Device step 2 for ECDSA. msg32 is the 32-byte message, not reduced.
++ *
++ *  Returns: 1: success.
++ *           0: invalid seckey, or k0 = 0 or k0 >= n (no retry).
++ *  Out:   r0_33: pointer to a 33-byte array. Zeroed on failure.
++ *  In:     msg32: the 32-byte message.
++ *        seckey: the 32-byte secret key.
++ *          hc32: the host commitment.
++ */
++SECP256K1_API SECP256K1_WARN_UNUSED_RESULT int secp256k1_anti_exfil_ecdsa_signer_commit(
++    const secp256k1_context *ctx,
++    unsigned char *r0_33,
++    const unsigned char *msg32,
++    const unsigned char *seckey,
++    const unsigned char *hc32
++) SECP256K1_ARG_NONNULL(1) SECP256K1_ARG_NONNULL(2) SECP256K1_ARG_NONNULL(3) SECP256K1_ARG_NONNULL(4) SECP256K1_ARG_NONNULL(5);
++
++/** Device step 4 for ECDSA. Recomputes hc, k0 and R0 from rho, signs with
++ *  k' = k0 + t, normalizes to low s, and checks the result with the host
++ *  checks before returning it.
++ *
++ *  Returns: 1: success.
++ *           0: failure (invalid seckey, k0 invalid, t >= n, k' = 0, r = 0,
++ *              s = 0, or the self-check failed).
++ *  Out:     sig: pointer to a signature object. Zeroed on failure.
++ */
++SECP256K1_API SECP256K1_WARN_UNUSED_RESULT int secp256k1_anti_exfil_ecdsa_sign(
++    const secp256k1_context *ctx,
++    secp256k1_ecdsa_signature *sig,
++    const unsigned char *msg32,
++    const unsigned char *seckey,
++    const unsigned char *rho32
++) SECP256K1_ARG_NONNULL(1) SECP256K1_ARG_NONNULL(2) SECP256K1_ARG_NONNULL(3) SECP256K1_ARG_NONNULL(4) SECP256K1_ARG_NONNULL(5);
++
++/** Host step 5 for ECDSA, all five checks: R0 parses, t < n, W is not
++ *  infinity, 0 < r, 0 < s <= (n-1)/2 and x(W) mod n = r, and V = u1*G + u2*P
++ *  is not infinity, x(V) mod n = r and V = W or V = -W.
++ *
++ *  Returns: 1: every check passed.
++ *           0: otherwise.
++ *  In:       sig: the signature (as parsed by the caller).
++ *          msg32: the 32-byte message.
++ *         pubkey: the host's own public key.
++ *          rho32: the host's 32 bytes.
++ *          r0_33: the R0_bytes the host stored in step 2.
++ */
++SECP256K1_API SECP256K1_WARN_UNUSED_RESULT int secp256k1_anti_exfil_ecdsa_host_verify(
++    const secp256k1_context *ctx,
++    const secp256k1_ecdsa_signature *sig,
++    const unsigned char *msg32,
++    const secp256k1_pubkey *pubkey,
++    const unsigned char *rho32,
++    const unsigned char *r0_33
++) SECP256K1_ARG_NONNULL(1) SECP256K1_ARG_NONNULL(2) SECP256K1_ARG_NONNULL(3) SECP256K1_ARG_NONNULL(4) SECP256K1_ARG_NONNULL(5) SECP256K1_ARG_NONNULL(6);
++
++#ifdef __cplusplus
++}
++#endif
++
++#endif /* SECP256K1_ANTI_EXFIL_H */
+diff --git a/components/libwally-core/anti_exfil/include/secp256k1_extrakeys.h b/components/libwally-core/anti_exfil/include/secp256k1_extrakeys.h
+new file mode 100644
+index 00000000..957b5b96
+--- /dev/null
++++ b/components/libwally-core/anti_exfil/include/secp256k1_extrakeys.h
+@@ -0,0 +1 @@
++#include "../../upstream/src/secp256k1/include/secp256k1_extrakeys.h"
+diff --git a/components/libwally-core/anti_exfil/include/secp256k1_schnorrsig.h b/components/libwally-core/anti_exfil/include/secp256k1_schnorrsig.h
+new file mode 100644
+index 00000000..fcc20507
+--- /dev/null
++++ b/components/libwally-core/anti_exfil/include/secp256k1_schnorrsig.h
+@@ -0,0 +1 @@
++#include "../../upstream/src/secp256k1/include/secp256k1_schnorrsig.h"
+diff --git a/components/libwally-core/anti_exfil/src/modules/anti_exfil/main_impl.h b/components/libwally-core/anti_exfil/src/modules/anti_exfil/main_impl.h
+new file mode 100644
+index 00000000..a000f14f
+--- /dev/null
++++ b/components/libwally-core/anti_exfil/src/modules/anti_exfil/main_impl.h
+@@ -0,0 +1,599 @@
++/***********************************************************************
++ * Anti-exfil signing module, specification revision 0.16.             *
++ * Distributed under the MIT software license, see the accompanying    *
++ * file COPYING or https://www.opensource.org/licenses/mit-license.php.*
++ ***********************************************************************/
++
++#ifndef SECP256K1_MODULE_ANTI_EXFIL_MAIN_H
++#define SECP256K1_MODULE_ANTI_EXFIL_MAIN_H
++
++#include <string.h>
++
++#include "../../../include/secp256k1.h"
++#include "../../../include/secp256k1_extrakeys.h"
++#include "../../../include/secp256k1_schnorrsig.h"
++#include "../../../include/secp256k1_anti_exfil.h"
++
++#if !defined(ENABLE_MODULE_EXTRAKEYS) || !defined(ENABLE_MODULE_SCHNORRSIG)
++# error The anti_exfil module needs the extrakeys and schnorrsig modules.
++#endif
++
++/* The two supported libraries differ in the name of the internal function that
++ * multiplies the generator by a scalar in constant time. Every other internal
++ * used here has the same name and signature in both. The build glue defines
++ * SECP256K1_ANTI_EXFIL_ECMULT_GEN_PLAIN for the library that names it
++ * secp256k1_ecmult_gen (the Jade secp256k1-zkp pin). */
++#ifdef SECP256K1_ANTI_EXFIL_ECMULT_GEN_PLAIN
++# define secp256k1_anti_exfil_mulgen(ecmult_gen_ctx, rj, k) secp256k1_ecmult_gen((ecmult_gen_ctx), (rj), (k))
++#else
++# define secp256k1_anti_exfil_mulgen(ecmult_gen_ctx, rj, k) secp256k1_ecmult_gen_gej((ecmult_gen_ctx), (rj), (k))
++#endif
++
++/* The tagged hashes of the specification. They are implemented here and share
++ * nothing with the sign-to-contract code of either library. */
++enum {
++    SECP256K1_ANTI_EXFIL_TAG_BIP340_AUX,
++    SECP256K1_ANTI_EXFIL_TAG_BIP340_CHALLENGE,
++    SECP256K1_ANTI_EXFIL_TAG_SCHNORR_DATA,
++    SECP256K1_ANTI_EXFIL_TAG_SCHNORR_NONCE,
++    SECP256K1_ANTI_EXFIL_TAG_SCHNORR_POINT,
++    SECP256K1_ANTI_EXFIL_TAG_ECDSA_DATA,
++    SECP256K1_ANTI_EXFIL_TAG_ECDSA_AUX,
++    SECP256K1_ANTI_EXFIL_TAG_ECDSA_NONCE,
++    SECP256K1_ANTI_EXFIL_TAG_ECDSA_POINT,
++    SECP256K1_ANTI_EXFIL_TAG_COUNT
++};
++
++static const char * const secp256k1_anti_exfil_tags[SECP256K1_ANTI_EXFIL_TAG_COUNT] = {
++    "BIP0340/aux",
++    "BIP0340/challenge",
++    "s2c/schnorr/data",
++    "s2c/schnorr/nonce",
++    "s2c/schnorr/point",
++    "s2c/ecdsa/data",
++    "s2c/ecdsa/aux",
++    "s2c/ecdsa/nonce",
++    "s2c/ecdsa/point"
++};
++
++#ifdef SECP256K1_ANTI_EXFIL_TEST_SEAM
++/* Test seam, compiled only when SECP256K1_ANTI_EXFIL_TEST_SEAM is defined. It
++ * replaces the output of up to three tagged hashes, so that the cases that
++ * real hashes cannot reach (k0 = 0, t >= n, W at infinity, ...) can be run.
++ * A normal build has none of it. */
++typedef struct {
++    int tag;                /* -1: unused */
++    int skip;               /* matching calls to leave alone first */
++    int calls;              /* calls to replace after that, -1 for all */
++    unsigned char out[32];
++} secp256k1_anti_exfil_force_t;
++static secp256k1_anti_exfil_force_t secp256k1_anti_exfil_force[3] = {{-1, 0, -1, {0}}, {-1, 0, -1, {0}}, {-1, 0, -1, {0}}};
++#endif
++
++static void secp256k1_anti_exfil_hash_init(const secp256k1_hash_ctx *hash_ctx, secp256k1_sha256 *sha, int tag) {
++    const char *name = secp256k1_anti_exfil_tags[tag];
++    secp256k1_sha256_initialize_tagged(hash_ctx, sha, (const unsigned char *)name, strlen(name));
++}
++
++/* Finalizes and clears the hash state, which may have absorbed secrets. */
++static void secp256k1_anti_exfil_hash_final(const secp256k1_hash_ctx *hash_ctx, secp256k1_sha256 *sha, unsigned char *out32, int tag) {
++    secp256k1_sha256_finalize(hash_ctx, sha, out32);
++    secp256k1_sha256_clear(sha);
++#ifdef SECP256K1_ANTI_EXFIL_TEST_SEAM
++    {
++        int i;
++        for (i = 0; i < 3; i++) {
++            secp256k1_anti_exfil_force_t *f = &secp256k1_anti_exfil_force[i];
++            if (f->tag != tag) continue;
++            if (f->skip > 0) {
++                f->skip--;
++            } else if (f->calls != 0) {
++                memcpy(out32, f->out, 32);
++                if (f->calls > 0) f->calls--;
++            }
++        }
++    }
++#else
++    (void)tag;
++#endif
++}
++
++/* hc = tagged_hash(tag, rho). */
++static void secp256k1_anti_exfil_host_commit_internal(const secp256k1_hash_ctx *hash_ctx, unsigned char *hc32, const unsigned char *rho32, int tag) {
++    secp256k1_sha256 sha;
++    secp256k1_anti_exfil_hash_init(hash_ctx, &sha, tag);
++    secp256k1_sha256_write(hash_ctx, &sha, rho32, 32);
++    secp256k1_anti_exfil_hash_final(hash_ctx, &sha, hc32, tag);
++}
++
++/* t = int(tagged_hash(tag, R0_bytes || rho)), without reduction. Returns 0
++ * if t >= n; t then holds the reduced value, which callers must not use. */
++static int secp256k1_anti_exfil_tweak(const secp256k1_hash_ctx *hash_ctx, secp256k1_scalar *t, const unsigned char *r0_33, const unsigned char *rho32, int tag) {
++    secp256k1_sha256 sha;
++    unsigned char buf[32];
++    int overflow = 0;
++    secp256k1_anti_exfil_hash_init(hash_ctx, &sha, tag);
++    secp256k1_sha256_write(hash_ctx, &sha, r0_33, 33);
++    secp256k1_sha256_write(hash_ctx, &sha, rho32, 32);
++    secp256k1_anti_exfil_hash_final(hash_ctx, &sha, buf, tag);
++    secp256k1_scalar_set_b32(t, buf, &overflow);
++    secp256k1_memclear_explicit(buf, sizeof(buf));
++    return !overflow;
++}
++
++/* parse33 of the specification: 33 bytes, prefix 0x02 or 0x03, x below p and
++ * the x coordinate of a curve point. The input is public. */
++static int secp256k1_anti_exfil_parse33(secp256k1_ge *r, const unsigned char *in33) {
++    secp256k1_fe x;
++    if (in33[0] != 0x02 && in33[0] != 0x03) {
++        return 0;
++    }
++    if (!secp256k1_fe_set_b32_limit(&x, &in33[1])) {
++        return 0;
++    }
++    return secp256k1_ge_set_xo_var(r, &x, in33[0] == 0x03);
++}
++
++/* ser33 of the specification. The point must not be infinity. */
++static void secp256k1_anti_exfil_ser33(unsigned char *out33, secp256k1_ge *ge) {
++    secp256k1_fe_normalize(&ge->x);
++    secp256k1_fe_normalize(&ge->y);
++    out33[0] = (unsigned char)(0x02 | secp256k1_fe_is_odd(&ge->y));
++    secp256k1_fe_get_b32(&out33[1], &ge->x);
++}
++
++/* out33 = ser33(k * G), for a scalar k that is not zero. */
++static void secp256k1_anti_exfil_ser33_mulgen(const secp256k1_context *ctx, unsigned char *out33, const secp256k1_scalar *k) {
++    secp256k1_gej rj;
++    secp256k1_ge r;
++    secp256k1_anti_exfil_mulgen(&ctx->ecmult_gen_ctx, &rj, k);
++    secp256k1_ge_set_gej(&r, &rj);
++    secp256k1_anti_exfil_ser33(out33, &r);
++    secp256k1_gej_clear(&rj);
++    secp256k1_ge_clear(&r);
++}
++
++/* BIP340 step 2 (also the first half of step 4). Loads the keypair and
++ * derives d, pk, k0 and R0_bytes. The outputs d and k0 are secret, pk32 and
++ * r0_33 are public. Returns 0 if the keypair is unusable or k0 = 0. On a
++ * zero return the outputs are placeholders and the caller must not use them. */
++static int secp256k1_anti_exfil_schnorr_base(const secp256k1_context *ctx, secp256k1_scalar *d, unsigned char *pk32, secp256k1_scalar *k0, unsigned char *r0_33, const unsigned char *msg, size_t msglen, const secp256k1_keypair *keypair, const unsigned char *hc32) {
++    secp256k1_ge pk;
++    secp256k1_sha256 sha;
++    unsigned char t0[32];
++    unsigned char mask[32];
++    unsigned char buf[32];
++    int i;
++    int ret = 1;
++
++    ret &= secp256k1_keypair_load(ctx, d, &pk, keypair);
++    /* x-only key: d is negated if the point of the key has odd y. pk is
++     * public, and the negation is not a branch. */
++    secp256k1_scalar_cond_negate(d, secp256k1_fe_is_odd(&pk.y));
++    secp256k1_fe_get_b32(pk32, &pk.x);
++
++    /* t0 = bytes32(d) xor tagged_hash("BIP0340/aux", hc) */
++    secp256k1_anti_exfil_hash_init(&ctx->hash_ctx, &sha, SECP256K1_ANTI_EXFIL_TAG_BIP340_AUX);
++    secp256k1_sha256_write(&ctx->hash_ctx, &sha, hc32, 32);
++    secp256k1_anti_exfil_hash_final(&ctx->hash_ctx, &sha, mask, SECP256K1_ANTI_EXFIL_TAG_BIP340_AUX);
++    secp256k1_scalar_get_b32(t0, d);
++    for (i = 0; i < 32; i++) {
++        t0[i] ^= mask[i];
++    }
++
++    /* k0 = int(tagged_hash("s2c/schnorr/nonce", t0 || pk || m || hc)) mod n */
++    secp256k1_anti_exfil_hash_init(&ctx->hash_ctx, &sha, SECP256K1_ANTI_EXFIL_TAG_SCHNORR_NONCE);
++    secp256k1_sha256_write(&ctx->hash_ctx, &sha, t0, 32);
++    secp256k1_sha256_write(&ctx->hash_ctx, &sha, pk32, 32);
++    secp256k1_sha256_write(&ctx->hash_ctx, &sha, msg, msglen);
++    secp256k1_sha256_write(&ctx->hash_ctx, &sha, hc32, 32);
++    secp256k1_anti_exfil_hash_final(&ctx->hash_ctx, &sha, buf, SECP256K1_ANTI_EXFIL_TAG_SCHNORR_NONCE);
++    secp256k1_scalar_set_b32(k0, buf, NULL);
++    ret &= !secp256k1_scalar_is_zero(k0);
++    /* Avoid the point at infinity if k0 is unusable. */
++    secp256k1_scalar_cmov(k0, &secp256k1_scalar_one, !ret);
++
++    /* R0_bytes records the actual parity of k0 * G. */
++    secp256k1_anti_exfil_ser33_mulgen(ctx, r0_33, k0);
++
++    secp256k1_ge_clear(&pk);
++    secp256k1_memclear_explicit(t0, sizeof(t0));
++    secp256k1_memclear_explicit(mask, sizeof(mask));
++    secp256k1_memclear_explicit(buf, sizeof(buf));
++    return ret;
++}
++
++/* BIP340 step 5. Every input is public except rho, which is used only for
++ * hashing and for the constant-time generator multiplication. */
++static int secp256k1_anti_exfil_schnorr_host_verify_internal(const secp256k1_context *ctx, const unsigned char *sig64, const unsigned char *msg, size_t msglen, const secp256k1_xonly_pubkey *xonly_pk, const unsigned char *rho32, const unsigned char *r0_33) {
++    secp256k1_ge r0;
++    secp256k1_ge w;
++    secp256k1_gej tj;
++    secp256k1_gej wj;
++    secp256k1_scalar t;
++    secp256k1_fe rx;
++    int ret;
++
++    /* 1. R0 = parse33(R0_bytes). */
++    if (!secp256k1_anti_exfil_parse33(&r0, r0_33)) {
++        return 0;
++    }
++    /* 2. t < n. */
++    ret = secp256k1_anti_exfil_tweak(&ctx->hash_ctx, &t, r0_33, rho32, SECP256K1_ANTI_EXFIL_TAG_SCHNORR_POINT);
++    /* 3. W = R0 + t * G is not infinity. The multiplication of t is constant
++     * time, and the addition has no case split on t, including t = 0. */
++    secp256k1_anti_exfil_mulgen(&ctx->ecmult_gen_ctx, &tj, &t);
++    secp256k1_gej_add_ge(&wj, &tj, &r0);
++    ret &= !secp256k1_gej_is_infinity(&wj);
++    secp256k1_ge_set_gej(&w, &wj);
++    /* 4. x(W) equals the first 32 bytes of sig, by the constant-time field
++     * comparison. sig64 is public, but W is derived from rho. */
++    if (secp256k1_fe_set_b32_limit(&rx, sig64)) {
++        ret &= secp256k1_fe_equal(&rx, &w.x);
++    } else {
++        ret = 0;
++    }
++    /* 5. BIP340 verification. All inputs are public. */
++    ret &= secp256k1_schnorrsig_verify(ctx, sig64, msg, msglen, xonly_pk);
++
++    secp256k1_scalar_clear(&t);
++    secp256k1_gej_clear(&tj);
++    secp256k1_gej_clear(&wj);
++    secp256k1_ge_clear(&w);
++    secp256k1_ge_clear(&r0);
++    secp256k1_fe_clear(&rx);
++    return ret;
++}
++
++/* ECDSA step 2 (also the first half of step 4). Derives d, pk, k0 and
++ * R0_bytes. d and k0 are secret; the point p, pk33 and r0_33 are public. Returns
++ * 0 on an invalid key, k0 = 0 or k0 >= n. */
++static int secp256k1_anti_exfil_ecdsa_base(const secp256k1_context *ctx, secp256k1_scalar *d, secp256k1_ge *p, unsigned char *pk33, secp256k1_scalar *k0, unsigned char *r0_33, const unsigned char *msg32, const unsigned char *seckey, const unsigned char *hc32) {
++    secp256k1_gej pj;
++    secp256k1_sha256 sha;
++    unsigned char dmask[32];
++    unsigned char mask[32];
++    unsigned char buf[32];
++    int overflow = 0;
++    int i;
++    int ret;
++
++    ret = secp256k1_scalar_set_b32_seckey(d, seckey);
++    secp256k1_scalar_cmov(d, &secp256k1_scalar_one, !ret);
++
++    secp256k1_anti_exfil_mulgen(&ctx->ecmult_gen_ctx, &pj, d);
++    secp256k1_ge_set_gej(p, &pj);
++    secp256k1_anti_exfil_ser33(pk33, p);
++    /* The public key is public. */
++    secp256k1_declassify(ctx, p, sizeof(*p));
++    secp256k1_declassify(ctx, pk33, 33);
++
++    /* d_mask = bytes32(d) xor tagged_hash("s2c/ecdsa/aux", hc) */
++    secp256k1_anti_exfil_hash_init(&ctx->hash_ctx, &sha, SECP256K1_ANTI_EXFIL_TAG_ECDSA_AUX);
++    secp256k1_sha256_write(&ctx->hash_ctx, &sha, hc32, 32);
++    secp256k1_anti_exfil_hash_final(&ctx->hash_ctx, &sha, mask, SECP256K1_ANTI_EXFIL_TAG_ECDSA_AUX);
++    secp256k1_scalar_get_b32(dmask, d);
++    for (i = 0; i < 32; i++) {
++        dmask[i] ^= mask[i];
++    }
++
++    /* k0 = int(tagged_hash("s2c/ecdsa/nonce", d_mask || pk || m || hc)), 129
++     * bytes, not reduced. k0 = 0 and k0 >= n fail, and nothing retries. */
++    secp256k1_anti_exfil_hash_init(&ctx->hash_ctx, &sha, SECP256K1_ANTI_EXFIL_TAG_ECDSA_NONCE);
++    secp256k1_sha256_write(&ctx->hash_ctx, &sha, dmask, 32);
++    secp256k1_sha256_write(&ctx->hash_ctx, &sha, pk33, 33);
++    secp256k1_sha256_write(&ctx->hash_ctx, &sha, msg32, 32);
++    secp256k1_sha256_write(&ctx->hash_ctx, &sha, hc32, 32);
++    secp256k1_anti_exfil_hash_final(&ctx->hash_ctx, &sha, buf, SECP256K1_ANTI_EXFIL_TAG_ECDSA_NONCE);
++    secp256k1_scalar_set_b32(k0, buf, &overflow);
++    ret &= !overflow;
++    ret &= !secp256k1_scalar_is_zero(k0);
++    secp256k1_scalar_cmov(k0, &secp256k1_scalar_one, !ret);
++
++    secp256k1_anti_exfil_ser33_mulgen(ctx, r0_33, k0);
++
++    secp256k1_gej_clear(&pj);
++    secp256k1_memclear_explicit(dmask, sizeof(dmask));
++    secp256k1_memclear_explicit(mask, sizeof(mask));
++    secp256k1_memclear_explicit(buf, sizeof(buf));
++    return ret;
++}
++
++/* ECDSA step 5. The signature scalars, message and public key are public. */
++static int secp256k1_anti_exfil_ecdsa_host_verify_internal(const secp256k1_context *ctx, const secp256k1_scalar *r, const secp256k1_scalar *s, const unsigned char *msg32, const secp256k1_ge *p, const unsigned char *rho32, const unsigned char *r0_33) {
++    secp256k1_ge r0;
++    secp256k1_ge w;
++    secp256k1_ge v;
++    secp256k1_gej tj;
++    secp256k1_gej wj;
++    secp256k1_gej pj;
++    secp256k1_gej vj;
++    secp256k1_scalar t;
++    secp256k1_scalar z;
++    secp256k1_scalar sinv;
++    secp256k1_scalar u1;
++    secp256k1_scalar u2;
++    secp256k1_scalar xw;
++    secp256k1_scalar xv;
++    unsigned char xbuf[32];
++    int ret;
++
++    /* 1. R0 = parse33(R0_bytes). */
++    if (!secp256k1_anti_exfil_parse33(&r0, r0_33)) {
++        return 0;
++    }
++    /* 2. t < n. */
++    ret = secp256k1_anti_exfil_tweak(&ctx->hash_ctx, &t, r0_33, rho32, SECP256K1_ANTI_EXFIL_TAG_ECDSA_POINT);
++    /* 3. W = R0 + t * G is not infinity. */
++    secp256k1_anti_exfil_mulgen(&ctx->ecmult_gen_ctx, &tj, &t);
++    secp256k1_gej_add_ge(&wj, &tj, &r0);
++    ret &= !secp256k1_gej_is_infinity(&wj);
++    secp256k1_ge_set_gej(&w, &wj);
++    /* 4. 0 < r < n, 0 < s <= (n - 1) / 2 and x(W) mod n = r. */
++    ret &= !secp256k1_scalar_is_zero(r);
++    ret &= !secp256k1_scalar_is_zero(s);
++    ret &= !secp256k1_scalar_is_high(s);
++    secp256k1_fe_normalize(&w.x);
++    secp256k1_fe_get_b32(xbuf, &w.x);
++    secp256k1_scalar_set_b32(&xw, xbuf, NULL);
++    ret &= secp256k1_scalar_eq(&xw, r);
++    /* 5. V = u1 * G + u2 * P is not infinity, x(V) mod n = r, and V = W or
++     * V = -W, that is x(V) = x(W) as field elements. */
++    secp256k1_scalar_set_b32(&z, msg32, NULL);
++    secp256k1_scalar_inverse(&sinv, s);
++    secp256k1_scalar_mul(&u1, &z, &sinv);
++    secp256k1_scalar_mul(&u2, r, &sinv);
++    secp256k1_gej_set_ge(&pj, p);
++    secp256k1_ecmult(&vj, &pj, &u2, &u1);
++    ret &= !secp256k1_gej_is_infinity(&vj);
++    secp256k1_ge_set_gej(&v, &vj);
++    secp256k1_fe_normalize(&v.x);
++    secp256k1_fe_get_b32(xbuf, &v.x);
++    secp256k1_scalar_set_b32(&xv, xbuf, NULL);
++    ret &= secp256k1_scalar_eq(&xv, r);
++    ret &= secp256k1_fe_equal(&v.x, &w.x);
++
++    secp256k1_scalar_clear(&t);
++    secp256k1_gej_clear(&tj);
++    secp256k1_gej_clear(&wj);
++    secp256k1_ge_clear(&w);
++    secp256k1_ge_clear(&r0);
++    secp256k1_scalar_clear(&xw);
++    secp256k1_memclear_explicit(xbuf, sizeof(xbuf));
++    return ret;
++}
++
++int secp256k1_anti_exfil_schnorr_host_commit(const secp256k1_context *ctx, unsigned char *hc32, const unsigned char *rho32) {
++    VERIFY_CHECK(ctx != NULL);
++    ARG_CHECK(hc32 != NULL);
++    ARG_CHECK(rho32 != NULL);
++    secp256k1_anti_exfil_host_commit_internal(&ctx->hash_ctx, hc32, rho32, SECP256K1_ANTI_EXFIL_TAG_SCHNORR_DATA);
++    return 1;
++}
++
++int secp256k1_anti_exfil_ecdsa_host_commit(const secp256k1_context *ctx, unsigned char *hc32, const unsigned char *rho32) {
++    VERIFY_CHECK(ctx != NULL);
++    ARG_CHECK(hc32 != NULL);
++    ARG_CHECK(rho32 != NULL);
++    secp256k1_anti_exfil_host_commit_internal(&ctx->hash_ctx, hc32, rho32, SECP256K1_ANTI_EXFIL_TAG_ECDSA_DATA);
++    return 1;
++}
++
++int secp256k1_anti_exfil_schnorr_signer_commit(const secp256k1_context *ctx, unsigned char *r0_33, const unsigned char *msg, size_t msglen, const secp256k1_keypair *keypair, const unsigned char *hc32) {
++    secp256k1_scalar d;
++    secp256k1_scalar k0;
++    unsigned char pk32[32];
++    int ret;
++
++    VERIFY_CHECK(ctx != NULL);
++    ARG_CHECK(secp256k1_ecmult_gen_context_is_built(&ctx->ecmult_gen_ctx));
++    ARG_CHECK(r0_33 != NULL);
++    ARG_CHECK(msg != NULL || msglen == 0);
++    ARG_CHECK(keypair != NULL);
++    ARG_CHECK(hc32 != NULL);
++
++    ret = secp256k1_anti_exfil_schnorr_base(ctx, &d, pk32, &k0, r0_33, msg, msglen, keypair, hc32);
++    secp256k1_memczero(r0_33, 33, !ret);
++
++    secp256k1_scalar_clear(&d);
++    secp256k1_scalar_clear(&k0);
++    secp256k1_memclear_explicit(pk32, sizeof(pk32));
++    return ret;
++}
++
++int secp256k1_anti_exfil_schnorr_sign(const secp256k1_context *ctx, unsigned char *sig64, const unsigned char *msg, size_t msglen, const secp256k1_keypair *keypair, const unsigned char *rho32) {
++    secp256k1_scalar d;
++    secp256k1_scalar k0;
++    secp256k1_scalar t;
++    secp256k1_scalar k;
++    secp256k1_scalar e;
++    secp256k1_gej wj;
++    secp256k1_ge w;
++    secp256k1_xonly_pubkey xonly_pk;
++    secp256k1_sha256 sha;
++    unsigned char hc[32];
++    unsigned char pk32[32];
++    unsigned char r0[33];
++    unsigned char buf[32];
++    int ret;
++
++    VERIFY_CHECK(ctx != NULL);
++    ARG_CHECK(secp256k1_ecmult_gen_context_is_built(&ctx->ecmult_gen_ctx));
++    ARG_CHECK(sig64 != NULL);
++    ARG_CHECK(msg != NULL || msglen == 0);
++    ARG_CHECK(keypair != NULL);
++    ARG_CHECK(rho32 != NULL);
++
++    /* Recompute hc, d, pk, k0 and R0_bytes from rho. Nothing is stored or
++     * accepted from the caller. */
++    secp256k1_anti_exfil_host_commit_internal(&ctx->hash_ctx, hc, rho32, SECP256K1_ANTI_EXFIL_TAG_SCHNORR_DATA);
++    ret = secp256k1_anti_exfil_schnorr_base(ctx, &d, pk32, &k0, r0, msg, msglen, keypair, hc);
++    /* R0 is a public output of step 2. */
++    secp256k1_declassify(ctx, r0, sizeof(r0));
++
++    /* t = int(tagged_hash("s2c/schnorr/point", R0_bytes || rho)), fail if t >= n */
++    ret &= secp256k1_anti_exfil_tweak(&ctx->hash_ctx, &t, r0, rho32, SECP256K1_ANTI_EXFIL_TAG_SCHNORR_POINT);
++    /* k' = (k0 + t) mod n, fail if k' = 0 */
++    secp256k1_scalar_add(&k, &k0, &t);
++    ret &= !secp256k1_scalar_is_zero(&k);
++    secp256k1_scalar_cmov(&k, &secp256k1_scalar_one, !ret);
++
++    /* W = k' * G; k = k' if y(W) is even, otherwise n - k' */
++    secp256k1_anti_exfil_mulgen(&ctx->ecmult_gen_ctx, &wj, &k);
++    secp256k1_ge_set_gej(&w, &wj);
++    secp256k1_fe_normalize(&w.x);
++    secp256k1_fe_normalize(&w.y);
++    secp256k1_scalar_cond_negate(&k, secp256k1_fe_is_odd(&w.y));
++    secp256k1_fe_get_b32(&sig64[0], &w.x);
++
++    /* e = int(tagged_hash("BIP0340/challenge", r || pk || m)) mod n */
++    secp256k1_anti_exfil_hash_init(&ctx->hash_ctx, &sha, SECP256K1_ANTI_EXFIL_TAG_BIP340_CHALLENGE);
++    secp256k1_sha256_write(&ctx->hash_ctx, &sha, &sig64[0], 32);
++    secp256k1_sha256_write(&ctx->hash_ctx, &sha, pk32, 32);
++    secp256k1_sha256_write(&ctx->hash_ctx, &sha, msg, msglen);
++    secp256k1_anti_exfil_hash_final(&ctx->hash_ctx, &sha, buf, SECP256K1_ANTI_EXFIL_TAG_BIP340_CHALLENGE);
++    secp256k1_scalar_set_b32(&e, buf, NULL);
++    /* sig = r || bytes32((k + e * d) mod n) */
++    secp256k1_scalar_mul(&e, &e, &d);
++    secp256k1_scalar_add(&e, &e, &k);
++    secp256k1_scalar_get_b32(&sig64[32], &e);
++
++    /* The signature is a public output; the host checks below may branch on it. */
++    secp256k1_declassify(ctx, sig64, 64);
++    /* The host checks, to catch faults. */
++    ret &= secp256k1_keypair_xonly_pub(ctx, &xonly_pk, NULL, keypair);
++    ret &= secp256k1_anti_exfil_schnorr_host_verify_internal(ctx, sig64, msg, msglen, &xonly_pk, rho32, r0);
++
++    secp256k1_memczero(sig64, 64, !ret);
++    secp256k1_scalar_clear(&d);
++    secp256k1_scalar_clear(&k0);
++    secp256k1_scalar_clear(&t);
++    secp256k1_scalar_clear(&k);
++    secp256k1_scalar_clear(&e);
++    secp256k1_gej_clear(&wj);
++    secp256k1_ge_clear(&w);
++    secp256k1_memclear_explicit(hc, sizeof(hc));
++    secp256k1_memclear_explicit(pk32, sizeof(pk32));
++    secp256k1_memclear_explicit(r0, sizeof(r0));
++    secp256k1_memclear_explicit(buf, sizeof(buf));
++    return ret;
++}
++
++int secp256k1_anti_exfil_schnorr_host_verify(const secp256k1_context *ctx, const unsigned char *sig64, const unsigned char *msg, size_t msglen, const secp256k1_xonly_pubkey *xonly_pk, const unsigned char *rho32, const unsigned char *r0_33) {
++    VERIFY_CHECK(ctx != NULL);
++    ARG_CHECK(secp256k1_ecmult_gen_context_is_built(&ctx->ecmult_gen_ctx));
++    ARG_CHECK(sig64 != NULL);
++    ARG_CHECK(msg != NULL || msglen == 0);
++    ARG_CHECK(xonly_pk != NULL);
++    ARG_CHECK(rho32 != NULL);
++    ARG_CHECK(r0_33 != NULL);
++    return secp256k1_anti_exfil_schnorr_host_verify_internal(ctx, sig64, msg, msglen, xonly_pk, rho32, r0_33);
++}
++
++int secp256k1_anti_exfil_ecdsa_signer_commit(const secp256k1_context *ctx, unsigned char *r0_33, const unsigned char *msg32, const unsigned char *seckey, const unsigned char *hc32) {
++    secp256k1_scalar d;
++    secp256k1_scalar k0;
++    secp256k1_ge p;
++    unsigned char pk33[33];
++    int ret;
++
++    VERIFY_CHECK(ctx != NULL);
++    ARG_CHECK(secp256k1_ecmult_gen_context_is_built(&ctx->ecmult_gen_ctx));
++    ARG_CHECK(r0_33 != NULL);
++    ARG_CHECK(msg32 != NULL);
++    ARG_CHECK(seckey != NULL);
++    ARG_CHECK(hc32 != NULL);
++
++    ret = secp256k1_anti_exfil_ecdsa_base(ctx, &d, &p, pk33, &k0, r0_33, msg32, seckey, hc32);
++    secp256k1_memczero(r0_33, 33, !ret);
++
++    secp256k1_scalar_clear(&d);
++    secp256k1_scalar_clear(&k0);
++    secp256k1_ge_clear(&p);
++    secp256k1_memclear_explicit(pk33, sizeof(pk33));
++    return ret;
++}
++
++int secp256k1_anti_exfil_ecdsa_sign(const secp256k1_context *ctx, secp256k1_ecdsa_signature *sig, const unsigned char *msg32, const unsigned char *seckey, const unsigned char *rho32) {
++    secp256k1_scalar d;
++    secp256k1_scalar k0;
++    secp256k1_scalar t;
++    secp256k1_scalar k;
++    secp256k1_scalar z;
++    secp256k1_scalar r;
++    secp256k1_scalar s;
++    secp256k1_ge p;
++    unsigned char hc[32];
++    unsigned char pk33[33];
++    unsigned char r0[33];
++    int ret;
++
++    VERIFY_CHECK(ctx != NULL);
++    ARG_CHECK(secp256k1_ecmult_gen_context_is_built(&ctx->ecmult_gen_ctx));
++    ARG_CHECK(sig != NULL);
++    ARG_CHECK(msg32 != NULL);
++    ARG_CHECK(seckey != NULL);
++    ARG_CHECK(rho32 != NULL);
++
++    secp256k1_anti_exfil_host_commit_internal(&ctx->hash_ctx, hc, rho32, SECP256K1_ANTI_EXFIL_TAG_ECDSA_DATA);
++    ret = secp256k1_anti_exfil_ecdsa_base(ctx, &d, &p, pk33, &k0, r0, msg32, seckey, hc);
++    /* R0 is a public output of step 2. */
++    secp256k1_declassify(ctx, r0, sizeof(r0));
++
++    /* t = int(tagged_hash("s2c/ecdsa/point", R0_bytes || rho)), fail if t >= n */
++    ret &= secp256k1_anti_exfil_tweak(&ctx->hash_ctx, &t, r0, rho32, SECP256K1_ANTI_EXFIL_TAG_ECDSA_POINT);
++    /* k' = (k0 + t) mod n, fail if k' = 0 */
++    secp256k1_scalar_add(&k, &k0, &t);
++    ret &= !secp256k1_scalar_is_zero(&k);
++    secp256k1_scalar_cmov(&k, &secp256k1_scalar_one, !ret);
++
++    /* r = x(W) mod n, s = k'^-1 * (z + r * d) mod n, fail if r = 0 or s = 0,
++     * and s is replaced by n - s if it is above (n - 1) / 2. */
++    secp256k1_scalar_set_b32(&z, msg32, NULL);
++    ret &= secp256k1_ecdsa_sig_sign(&ctx->ecmult_gen_ctx, &r, &s, &d, &z, &k, NULL);
++
++    /* The signature is a public output; the host checks below may branch on it. */
++    secp256k1_declassify(ctx, &r, sizeof(r));
++    secp256k1_declassify(ctx, &s, sizeof(s));
++    /* The host checks, to catch faults. */
++    ret &= secp256k1_anti_exfil_ecdsa_host_verify_internal(ctx, &r, &s, msg32, &p, rho32, r0);
++
++    secp256k1_scalar_cmov(&r, &secp256k1_scalar_zero, !ret);
++    secp256k1_scalar_cmov(&s, &secp256k1_scalar_zero, !ret);
++    secp256k1_ecdsa_signature_save(sig, &r, &s);
++
++    secp256k1_scalar_clear(&d);
++    secp256k1_scalar_clear(&k0);
++    secp256k1_scalar_clear(&t);
++    secp256k1_scalar_clear(&k);
++    secp256k1_scalar_clear(&z);
++    secp256k1_scalar_clear(&r);
++    secp256k1_scalar_clear(&s);
++    secp256k1_ge_clear(&p);
++    secp256k1_memclear_explicit(hc, sizeof(hc));
++    secp256k1_memclear_explicit(pk33, sizeof(pk33));
++    secp256k1_memclear_explicit(r0, sizeof(r0));
++    return ret;
++}
++
++int secp256k1_anti_exfil_ecdsa_host_verify(const secp256k1_context *ctx, const secp256k1_ecdsa_signature *sig, const unsigned char *msg32, const secp256k1_pubkey *pubkey, const unsigned char *rho32, const unsigned char *r0_33) {
++    secp256k1_scalar r;
++    secp256k1_scalar s;
++    secp256k1_ge p;
++
++    VERIFY_CHECK(ctx != NULL);
++    ARG_CHECK(secp256k1_ecmult_gen_context_is_built(&ctx->ecmult_gen_ctx));
++    ARG_CHECK(sig != NULL);
++    ARG_CHECK(msg32 != NULL);
++    ARG_CHECK(pubkey != NULL);
++    ARG_CHECK(rho32 != NULL);
++    ARG_CHECK(r0_33 != NULL);
++
++    secp256k1_ecdsa_signature_load(ctx, &r, &s, sig);
++    if (!secp256k1_pubkey_load(ctx, &p, pubkey)) {
++        return 0;
++    }
++    return secp256k1_anti_exfil_ecdsa_host_verify_internal(ctx, &r, &s, msg32, &p, rho32, r0_33);
++}
++
++#endif /* SECP256K1_MODULE_ANTI_EXFIL_MAIN_H */
+diff --git a/components/libwally-core/combined_ae.c b/components/libwally-core/combined_ae.c
+new file mode 100644
+index 00000000..1ce2ed16
+--- /dev/null
++++ b/components/libwally-core/combined_ae.c
+@@ -0,0 +1,8 @@
++/* wally's amalgamation followed by the anti-exfil secp256k1 module, which needs
++ * the library internals and so must share its translation unit. */
++#include "upstream/src/amalgamation/combined.c"
++
++#ifndef WALLY_NO_AMALGAMATION
++#define SECP256K1_ANTI_EXFIL_ECMULT_GEN_PLAIN 1
++#include "anti_exfil/src/modules/anti_exfil/main_impl.h"
++#endif
+diff --git a/libjade/CMakeLists.txt b/libjade/CMakeLists.txt
+index 7ff96af3..b342c63f 100644
+--- a/libjade/CMakeLists.txt
++++ b/libjade/CMakeLists.txt
+@@ -113,6 +113,7 @@ set(COMMON_INCLUDES
+   ${CMAKE_CURRENT_SOURCE_DIR}/../components/libwally-core/upstream/src
+   ${CMAKE_CURRENT_SOURCE_DIR}/../components/libwally-core/upstream/src/ccan
+   ${CMAKE_CURRENT_SOURCE_DIR}/../components/libwally-core
++  ${CMAKE_CURRENT_SOURCE_DIR}/../components/libwally-core/anti_exfil/include
+   ${CMAKE_CURRENT_SOURCE_DIR}/../components/libwally-core/upstream/src/secp256k1/include
+   ${IDF_PATH}/components/http_parser
+ )
+diff --git a/main/CMakeLists.txt b/main/CMakeLists.txt
+index 84db8935..44f41f7e 100755
+--- a/main/CMakeLists.txt
++++ b/main/CMakeLists.txt
+@@ -26,10 +26,11 @@ if (CONFIG_IDF_TARGET_ESP32S3)
+     set(usbdir "usbhmsc")
+ endif()
+ 
++set(wallydir "${PROJECT_DIR}/components/libwally-core")
++set(secpdir "${wallydir}/upstream/src/secp256k1/include")
++set(aedir "${wallydir}/anti_exfil/include")
+ if(CONFIG_AMALGAMATED_BUILD)
+-    set(wallydir "${PROJECT_DIR}/components/libwally-core")
+     list(APPEND wallydirs "${wallydir}" "${wallydir}/upstream" "${wallydir}/upstream/src" "${wallydir}/upstream/src/ccan")
+-    set(secpdir "${wallydir}/upstream/src/secp256k1/include")
+ endif()
+ 
+ if(CONFIG_LOG_WIFI)
+@@ -52,6 +53,7 @@ idf_component_register(SRC_DIRS "."
+                           "${usbdir}"
+                           "${wallydirs}"
+                           "${secpdir}"
++                          "${aedir}"
+         PRIV_REQUIRES assets libwally-core libsodium esp32-rotary-encoder esp32-quirc bootloader_support app_update nvs_flash bt autogenlang cbor esp_netif esp32_bsdiff esp32_deflate esp32_bc-ur driver mbedtls http_parser esp_hw_support efuse esp_eth esp_http_server esp_lcd usb vfs app_trace spi_flash google-otpauth-migrate ${extra_priv_requires}
+         EMBED_FILES ${PROJECT_DIR}/pinserver_public_key.pub ${logo_files} ${qemu_display_file})
+ 
+diff --git a/main/amalgamated.c b/main/amalgamated.c
+index ab5641b5..3c6a9f55 100644
+--- a/main/amalgamated.c
++++ b/main/amalgamated.c
+@@ -22,7 +22,7 @@ void __wrap_abort(void);
+ #define ENABLE_MODULE_SURJECTIONPROOF 1
+ #define ENABLE_MODULE_WHITELIST 1
+ #define HAVE_BUILTIN_POPCOUNT 1
+-#include "../components/libwally-core/upstream/src/amalgamation/combined.c"
++#include "../components/libwally-core/combined_ae.c"
+ 
+ #include "./aes.c"
+ #include "./assets.c"
+-- 
+2.53.0
+

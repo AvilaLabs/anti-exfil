@@ -1,0 +1,377 @@
+From c16bf05db6d2a9f47a414f15dc2dc2177901b2fa Mon Sep 17 00:00:00 2001
+From: Connor Avila <Connoravila@gmail.com>
+Date: Wed, 4 Nov 2026 16:21:21 -0500
+Subject: [PATCH 05/10] sign_psbt: validate anti-exfil ecdsa pairs
+
+For each pair check that the input is not final or already signed, that the
+utxo is the one spent, that the spent script is a required form holding the
+key, that the sighash is supported and that the key derives from our wallet.
+The signature hash is computed from the script code, as wally selects the
+legacy hash for a segwit input that only has its non-witness utxo.
+---
+ main/process/sign_psbt_ae.c | 293 ++++++++++++++++++++++++++++++++++++
+ main/process/sign_psbt_ae.h |  14 ++
+ 2 files changed, 307 insertions(+)
+
+diff --git a/main/process/sign_psbt_ae.c b/main/process/sign_psbt_ae.c
+index 10a13b3e..96eeb02a 100644
+--- a/main/process/sign_psbt_ae.c
++++ b/main/process/sign_psbt_ae.c
+@@ -1,13 +1,28 @@
+ #ifndef AMALGAMATED_BUILD
+ #include "sign_psbt_ae.h"
++#include "../keychain.h"
+ #include "../sensitive.h"
+ #include "../utils/malloc_ext.h"
++#include "sign_utils.h"
+ 
+ #include <string.h>
+ 
++#include <wally_bip32.h>
+ #include <wally_core.h>
++#include <wally_crypto.h>
+ #include <wally_map.h>
+ #include <wally_psbt.h>
++#include <wally_script.h>
++#include <wally_transaction.h>
++
++// Psbt input field types (BIP 174 and 371, 373) that are not otherwise exposed
++#define PSBT_IN_REDEEM_SCRIPT 0x04
++#define PSBT_IN_WITNESS_SCRIPT 0x05
++#define PSBT_IN_FINAL_SCRIPTSIG 0x07
++#define PSBT_IN_MUSIG2_PARTICIPANT_PUBKEYS 0x1a
++
++#define OP_CHECKSIG 0xac
++#define OP_CHECKMULTISIG 0xae
+ 
+ #define AE_KEY_ID_ECDSA_LEN EC_PUBLIC_KEY_LEN
+ #define AE_KEY_ID_KEY_PATH_LEN EC_XONLY_PUBLIC_KEY_LEN
+@@ -203,6 +218,284 @@ fail:
+     return false;
+ }
+ 
++// Find the utxo spent by an input: the witness and non-witness utxos must agree where both are present,
++// and a non-witness one must be the previous transaction. 'is_verified' is set if it was checked this way.
++static bool ae_get_utxo(const struct wally_psbt_input* input, const struct wally_tx_input* txin,
++    const struct wally_tx_output** utxo, bool* is_verified, const char** errmsg)
++{
++    *utxo = NULL;
++    *is_verified = false;
++    if (input->utxo) {
++        uint8_t txid[WALLY_TXHASH_LEN];
++        if (wally_tx_get_txid(input->utxo, txid, sizeof(txid)) != WALLY_OK
++            || memcmp(txid, txin->txhash, sizeof(txid))) {
++            *errmsg = "Non-witness utxo does not match the previous transaction";
++            return false;
++        }
++        if (txin->index >= input->utxo->num_outputs) {
++            *errmsg = "Non-witness utxo has no such output";
++            return false;
++        }
++        *utxo = &input->utxo->outputs[txin->index];
++        *is_verified = true;
++    }
++    const struct wally_tx_output* witness_utxo = input->witness_utxo;
++    if (witness_utxo) {
++        if (*utxo
++            && ((*utxo)->satoshi != witness_utxo->satoshi || (*utxo)->script_len != witness_utxo->script_len
++                || memcmp((*utxo)->script, witness_utxo->script, witness_utxo->script_len))) {
++            *errmsg = "Witness and non-witness utxos differ";
++            return false;
++        }
++        *utxo = witness_utxo;
++    }
++    if (!*utxo || !(*utxo)->script) {
++        *errmsg = "Input utxo missing";
++        return false;
++    }
++    return true;
++}
++
++// Whether a witness script is one of the required forms, and holds the key exactly once
++static bool ae_script_has_key_once(const uint8_t* script, const size_t script_len, const uint8_t* key)
++{
++    // <key> OP_CHECKSIG
++    if (script_len == 1 + EC_PUBLIC_KEY_LEN + 1 && script[0] == EC_PUBLIC_KEY_LEN
++        && script[script_len - 1] == OP_CHECKSIG) {
++        return !memcmp(script + 1, key, EC_PUBLIC_KEY_LEN);
++    }
++    // OP_m <key> ... <key> OP_n OP_CHECKMULTISIG, with 1 <= m <= n <= 16, OP_1 to OP_16 being 0x51 to 0x60
++    if (script_len < 3 || script[script_len - 1] != OP_CHECKMULTISIG) {
++        return false;
++    }
++    const size_t m = script[0] - 0x50, n = script[script_len - 2] - 0x50;
++    if (m < 1 || m > n || n > 16 || script_len != 3 + n * (1 + EC_PUBLIC_KEY_LEN)) {
++        return false;
++    }
++    size_t num_matches = 0;
++    for (size_t i = 0; i < n; ++i) {
++        const uint8_t* push = script + 1 + i * (1 + EC_PUBLIC_KEY_LEN);
++        if (push[0] != EC_PUBLIC_KEY_LEN || wally_ec_public_key_verify(push + 1, EC_PUBLIC_KEY_LEN) != WALLY_OK) {
++            return false;
++        }
++        num_matches += !memcmp(push + 1, key, EC_PUBLIC_KEY_LEN);
++    }
++    return num_matches == 1;
++}
++
++static bool ae_hash160_matches(const uint8_t* data, const size_t data_len, const uint8_t* hash)
++{
++    uint8_t hash160[HASH160_LEN];
++    return wally_hash160(data, data_len, hash160, sizeof(hash160)) == WALLY_OK
++        && !memcmp(hash160, hash, sizeof(hash160));
++}
++
++static bool ae_sha256_matches(const uint8_t* data, const size_t data_len, const uint8_t* hash)
++{
++    uint8_t sha256[SHA256_LEN];
++    return wally_sha256(data, data_len, sha256, sizeof(sha256)) == WALLY_OK && !memcmp(sha256, hash, sizeof(sha256));
++}
++
++// Find the script code of an ecdsa pair and whether it spends a segwit v0 output. The spent script must be one of
++// the required forms and hold the key of the pair. 'code' must be of size WALLY_SCRIPTPUBKEY_P2PKH_LEN or more
++// and is filled for p2pkh keys, otherwise it points to the script in the psbt.
++static bool ae_ecdsa_script_code(const struct wally_psbt_input* input, const struct wally_tx_output* utxo,
++    const uint8_t* key, uint8_t* code, const uint8_t** script_code, size_t* script_code_len, bool* is_segwit,
++    const char** errmsg)
++{
++    const uint8_t* spk = utxo->script;
++    size_t spk_type = WALLY_SCRIPT_TYPE_UNKNOWN;
++    const struct wally_map_item* redeem = NULL;
++    *is_segwit = true;
++    if (wally_scriptpubkey_get_type(spk, utxo->script_len, &spk_type) != WALLY_OK) {
++        spk_type = WALLY_SCRIPT_TYPE_UNKNOWN;
++    }
++    if (spk_type == WALLY_SCRIPT_TYPE_P2SH) {
++        // Wrapped segwit: the redeem script is the witness program, and must match the output
++        redeem = wally_map_get_integer(&input->psbt_fields, PSBT_IN_REDEEM_SCRIPT);
++        if (!redeem || !ae_hash160_matches(redeem->value, redeem->value_len, spk + 2)) {
++            *errmsg = "Missing or mismatched redeem script";
++            return false;
++        }
++        spk = redeem->value;
++        if (wally_scriptpubkey_get_type(spk, redeem->value_len, &spk_type) != WALLY_OK
++            || (spk_type != WALLY_SCRIPT_TYPE_P2WPKH && spk_type != WALLY_SCRIPT_TYPE_P2WSH)) {
++            *errmsg = "Unsupported script for anti-exfil signing";
++            return false;
++        }
++    }
++
++    switch (spk_type) {
++    case WALLY_SCRIPT_TYPE_P2PKH:
++        *is_segwit = false;
++        // fall through
++    case WALLY_SCRIPT_TYPE_P2WPKH: {
++        // The hash is in the same place (after the pushes) in both, and the code is that of a p2pkh output
++        const uint8_t* hash = spk_type == WALLY_SCRIPT_TYPE_P2PKH ? spk + 3 : spk + 2;
++        if (!ae_hash160_matches(key, EC_PUBLIC_KEY_LEN, hash)) {
++            *errmsg = "Key does not match the spent script";
++            return false;
++        }
++        size_t written = 0;
++        if (wally_scriptpubkey_p2pkh_from_bytes(
++                key, EC_PUBLIC_KEY_LEN, WALLY_SCRIPT_HASH160, code, WALLY_SCRIPTPUBKEY_P2PKH_LEN, &written)
++            != WALLY_OK) {
++            return false;
++        }
++        *script_code = code;
++        *script_code_len = written;
++        return true;
++    }
++    case WALLY_SCRIPT_TYPE_P2WSH: {
++        const struct wally_map_item* witness_script
++            = wally_map_get_integer(&input->psbt_fields, PSBT_IN_WITNESS_SCRIPT);
++        if (!witness_script || !ae_sha256_matches(witness_script->value, witness_script->value_len, spk + 2)) {
++            *errmsg = "Missing or mismatched witness script";
++            return false;
++        }
++        if (!ae_script_has_key_once(witness_script->value, witness_script->value_len, key)) {
++            *errmsg = "Witness script is not a supported form holding the key";
++            return false;
++        }
++        *script_code = witness_script->value;
++        *script_code_len = witness_script->value_len;
++        return true;
++    }
++    default:
++        *errmsg = "Unsupported script for anti-exfil signing";
++        return false;
++    }
++}
++
++// A key used for ecdsa must not be one used for taproot, where its path tells us
++static bool ae_path_matches_scheme(const ae_pair_t* pair)
++{
++    if (!pair->path_len || !(pair->path[0] & BIP32_INITIAL_HARDENED_CHILD)) {
++        return true; // No purpose
++    }
++    const uint32_t purpose = pair->path[0] & ~BIP32_INITIAL_HARDENED_CHILD;
++    if (pair->key_id_len == EC_PUBLIC_KEY_LEN) {
++        return purpose != 86;
++    }
++    return purpose != 44 && purpose != 49 && purpose != 84;
++}
++
++// Validate an ecdsa pair and find its signature hash
++static bool ae_resolve_ecdsa_pair(const struct wally_psbt_input* input, const struct wally_tx* tx, ae_pair_t* pair,
++    const struct wally_tx_output* utxo, const char** errmsg)
++{
++    const bool has_non_witness_utxo = input->utxo != NULL;
++    if (input->sighash
++        && !sighash_is_supported(TXTYPE_SEND_PAYMENT, WALLY_SIGTYPE_SW_V0, input->sighash, false, false)) {
++        *errmsg = "Unsupported sighash value";
++        return false;
++    }
++    pair->sighash = WALLY_SIGHASH_ALL;
++
++    size_t signature_idx = 0;
++    if (wally_map_find(&input->signatures, pair->key_id, pair->key_id_len, &signature_idx) != WALLY_OK
++        || signature_idx) {
++        *errmsg = "Input is already signed by the key";
++        return false;
++    }
++
++    uint8_t p2pkh[WALLY_SCRIPTPUBKEY_P2PKH_LEN];
++    const uint8_t* script_code = NULL;
++    size_t script_code_len = 0;
++    bool is_segwit = false;
++    if (!ae_ecdsa_script_code(input, utxo, pair->key_id, p2pkh, &script_code, &script_code_len, &is_segwit, errmsg)) {
++        return false;
++    }
++    if (!is_segwit && !has_non_witness_utxo) {
++        *errmsg = "Legacy inputs need the non-witness utxo";
++        return false;
++    }
++
++    // Compute with the script code ourselves: wally decides the type of signature hash from which utxo is
++    // present, and so would use the legacy hash for a segwit input given only its non-witness utxo.
++    if (wally_tx_get_btc_signature_hash(tx, pair->input_index, script_code, script_code_len, utxo->satoshi,
++            pair->sighash, is_segwit ? WALLY_TX_FLAG_USE_WITNESS : 0, pair->message, sizeof(pair->message))
++        != WALLY_OK) {
++        *errmsg = "Failed to generate tx input hash";
++        return false;
++    }
++    return true;
++}
++
++bool ae_psbt_validate_request(
++    const struct wally_psbt* psbt, const struct wally_tx* tx, ae_request_t* request, const char** errmsg)
++{
++    JADE_ASSERT(psbt);
++    JADE_ASSERT(tx && tx->num_inputs == psbt->num_inputs);
++    JADE_ASSERT(request);
++    JADE_INIT_OUT_PPTR(errmsg);
++
++    for (size_t i = 0; i < request->num_pairs; ++i) {
++        ae_pair_t* pair = &request->pairs[i];
++        const struct wally_psbt_input* input = &psbt->inputs[pair->input_index];
++
++        if (pair->key_id_len != EC_PUBLIC_KEY_LEN) {
++            *errmsg = "Unsupported anti-exfil key identifier";
++            return false;
++        }
++        if (input->final_witness || wally_map_get_integer(&input->psbt_fields, PSBT_IN_FINAL_SCRIPTSIG)) {
++            *errmsg = "Input is already finalized";
++            return false;
++        }
++
++        // We hold a seed and not a list of keys, so can not tell whether a key we find in an uncompressed
++        // derivation or MuSig2 field is ours: fail on any
++        for (size_t j = 0; j < input->keypaths.num_items; ++j) {
++            if (input->keypaths.items[j].key_len == EC_PUBLIC_KEY_UNCOMPRESSED_LEN) {
++                *errmsg = "Uncompressed derivation records are not supported for anti-exfil signing";
++                return false;
++            }
++        }
++        for (size_t j = 0; j < input->unknowns.num_items; ++j) {
++            const struct wally_map_item* item = &input->unknowns.items[j];
++            uint64_t type;
++            bool is_canonical;
++            size_t type_len;
++            if (ae_read_key_type(item->key, item->key_len, &type, &is_canonical, &type_len)
++                && type == PSBT_IN_MUSIG2_PARTICIPANT_PUBKEYS) {
++                *errmsg = "MuSig2 fields are not supported for anti-exfil signing";
++                return false;
++            }
++        }
++
++        const struct wally_tx_output* utxo;
++        bool is_verified;
++        if (!ae_get_utxo(input, &tx->inputs[pair->input_index], &utxo, &is_verified, errmsg)) {
++            return false;
++        }
++
++        // Find the key by its identifier, and check that we derive it from the path given
++        size_t keypath_idx = 0;
++        struct ext_key hdkey;
++        size_t found_idx = 0;
++        if (wally_map_find(&input->keypaths, pair->key_id, pair->key_id_len, &keypath_idx) != WALLY_OK || !keypath_idx
++            || wally_map_keypath_get_bip32_public_key_from(
++                   &input->keypaths, keypath_idx - 1, &keychain_get()->xpriv, &hdkey, &found_idx)
++                != WALLY_OK
++            || found_idx != keypath_idx
++            || wally_map_keypath_get_item_path(&input->keypaths, keypath_idx - 1, pair->path,
++                   sizeof(pair->path) / sizeof(pair->path[0]), &pair->path_len)
++                != WALLY_OK
++            || !pair->path_len || pair->path_len > sizeof(pair->path) / sizeof(pair->path[0])) {
++            *errmsg = "Key does not belong to this wallet";
++            return false;
++        }
++        if (!ae_path_matches_scheme(pair)) {
++            *errmsg = "Key used for another script type";
++            return false;
++        }
++        if (!ae_resolve_ecdsa_pair(input, tx, pair, utxo, errmsg)) {
++            return false;
++        }
++    }
++    return true;
++}
++
+ void ae_request_free(ae_request_t* request)
+ {
+     JADE_ASSERT(request);
+diff --git a/main/process/sign_psbt_ae.h b/main/process/sign_psbt_ae.h
+index 3171c5b8..8b2b5cbb 100644
+--- a/main/process/sign_psbt_ae.h
++++ b/main/process/sign_psbt_ae.h
+@@ -9,8 +9,10 @@
+ #include <wally_crypto.h>
+ 
+ #include "../jade_assert.h"
++#include "../utils/cbor_rpc.h"
+ 
+ struct wally_psbt;
++struct wally_tx;
+ 
+ // Fields of the anti-exfil signing protocol, defined for psbt input maps only
+ #define PSBT_IN_AE_HOST_COMMITMENT 0x21
+@@ -30,6 +32,12 @@ typedef struct {
+     uint8_t hc[WALLY_HOST_COMMITMENT_LEN];
+     uint8_t r0[EC_PUBLIC_KEY_LEN];
+     uint8_t rho[WALLY_S2C_DATA_LEN];
++
++    // Found when the pair is validated
++    uint8_t sighash; // Sighash flag, WALLY_SIGHASH_DEFAULT only for taproot
++    uint8_t message[SHA256_LEN]; // The signature hash
++    uint32_t path[MAX_PATH_LEN]; // Path of the key from the wallet root
++    size_t path_len;
+ } ae_pair_t;
+ 
+ typedef struct {
+@@ -48,6 +56,12 @@ WARN_UNUSED_RESULT bool ae_psbt_has_fields(const struct wally_psbt* psbt, bool*
+ WARN_UNUSED_RESULT bool ae_psbt_parse_request(
+     const struct wally_psbt* psbt, ae_request_t* request, const char** errmsg);
+ 
++// Check every pair against the transaction and the keys of the wallet, and find the message to sign for it.
++// Nothing is signed or changed. Fails (with errmsg set) on anything that the signature hash or the signer
++// would need and does not hold, or that the protocol does not allow.
++WARN_UNUSED_RESULT bool ae_psbt_validate_request(
++    const struct wally_psbt* psbt, const struct wally_tx* tx, ae_request_t* request, const char** errmsg);
++
+ // Pop, clear and free the pairs of a request
+ void ae_request_free(ae_request_t* request);
+ 
+-- 
+2.53.0
+

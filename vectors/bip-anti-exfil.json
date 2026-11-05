@@ -1,0 +1,1973 @@
+{
+  "title": "Anti-exfil signing for BIP340 and ECDSA: test vectors",
+  "specification_revision": "0.16",
+  "license": "MIT",
+  "keys_are_artificial": true,
+  "encoding": "All byte strings are lowercase hex. An empty message is the empty string.",
+  "derivation": "sk = SHA256(seed || \"/sk\"), rho = SHA256(seed || \"/rho\"), a 32-byte m = SHA256(seed || \"/m\"), and the long message is SHA256(seed || \"/m/j\") for j = 0..31 concatenated. seed is the ASCII string in each valid case.",
+  "classes": {
+    "valid": "sk, m, rho -> pk, hc, R0_bytes, sig. A device must produce these bytes; a host must accept the tuple.",
+    "reject": "A host must reject the (pk, m, rho, R0_bytes, sig) tuple. No secret key is given.",
+    "forced_hash": "Needs a hash override. forced_hash.tag output is replaced by the stated 32 bytes; every other hash is computed normally."
+  },
+  "bip340": {
+    "valid": [
+      {
+        "id": "bip340-valid-r0-even-p-even-w-even",
+        "comment": "R0 has even y, the public key point P has even y and W = R0 + t*G has even y. The device negates its secret key when P is odd and negates k' when W is odd.",
+        "seed": "anti-exfil vector/bip340/r0-even-p-even-w-even/19",
+        "sk": "d2ac250587a5901574b1909526be4895830aeca93d88e3dcada51ebdec65153b",
+        "m": "8e75c9606e0d4648330371f1082b2b68a7ddd6d812aa4df69df4b5b3c992c61f",
+        "rho": "188191e52e2179db0c1e2ea563a0f117325b061169af47973a8fcac8374b2729",
+        "pk": "07ba2fffd0252a8897827675a229b535eed29964e875e0058f5a584290ed7d4d",
+        "hc": "4cbdc23a1a93c8d004223d092d44689b1acc05ca2d70990a2120cc6c5528026b",
+        "R0_bytes": "02f84f9a03580aa92a25588dd01b4ed375c17040652b879494c67fd7e018c393c9",
+        "sig": "bfdf2d6fb14b0c0af4a94bdb26e404d834193b03a71156beb4c146fd65aa33bd1607008e7b821bde19ea940691e46c36a11a16e9f1d706364330e2c11f91e72c",
+        "R0_parity": "even",
+        "P_parity": "even",
+        "W_parity": "even",
+        "m_length": 32
+      },
+      {
+        "id": "bip340-valid-r0-even-p-even-w-odd",
+        "comment": "R0 has even y, the public key point P has even y and W = R0 + t*G has odd y. The device negates its secret key when P is odd and negates k' when W is odd.",
+        "seed": "anti-exfil vector/bip340/r0-even-p-even-w-odd/5",
+        "sk": "561825102c002a43009c18a6cff0cbebfecd1e554a367e2ac406bcb2440b0d7e",
+        "m": "93c58f3b9c74c8cfe8de559369384530969cbc5f7270fd02208667f1676a507c",
+        "rho": "b6249b8df9c5323383b1cfe4f770180bbf3b25cce04f779eac8e68c59743992b",
+        "pk": "1e58ca634ab7668b3cb4d7d400b568710f711a3367ca9db314e5da0ff48cef4b",
+        "hc": "8a891bb713039e14ae18116a4fb6b1251ffcb93e55037db565ef3fc62a2d0436",
+        "R0_bytes": "02b865d6f945e290adf19d82a086488cc2af0b743cddb199509e58601d4ff29e71",
+        "sig": "c47986317773fc0290f7faa503c729b56f51a590d2045f00fc5d3f531eb8fff6941b15e68ffb48b22bd746ce1ba55ab2db19c9a2e4aff8cf438e46146e7960d4",
+        "R0_parity": "even",
+        "P_parity": "even",
+        "W_parity": "odd",
+        "m_length": 32
+      },
+      {
+        "id": "bip340-valid-r0-even-p-odd-w-even",
+        "comment": "R0 has even y, the public key point P has odd y and W = R0 + t*G has even y. The device negates its secret key when P is odd and negates k' when W is odd.",
+        "seed": "anti-exfil vector/bip340/r0-even-p-odd-w-even/3",
+        "sk": "acfc0037391ea02b8ca3cff47966d6150a26cf0de79b8e8a053f9706dbaa58f9",
+        "m": "84b0af3071918557bc5ffe78c2cc624d95af95be7b90aca848903ed559687928",
+        "rho": "b6eef0c5df511a0981dd47db444b31677843b0c2be15c4e3474925f8478dfdb9",
+        "pk": "aede7d09e1ab805558813c6b429838479b50b74b9df8ec421034260977e1620e",
+        "hc": "f540f4846865c49ad071e84fadef833459111b4f9479cee89bab277f7a39655a",
+        "R0_bytes": "0243dbf6e4e3f93c86610c8eba9119831f87e5aa7b892f4500a5e8489cc3f11da5",
+        "sig": "2ed4fd91889814ea119cf656e5fdb89c2456ffd8f2d1e1becc3db4ff471d06a6971d412f1e1db427ce8fafbe22043eddc9374482acc920e4770359bbe2f2a90d",
+        "R0_parity": "even",
+        "P_parity": "odd",
+        "W_parity": "even",
+        "m_length": 32
+      },
+      {
+        "id": "bip340-valid-r0-even-p-odd-w-odd",
+        "comment": "R0 has even y, the public key point P has odd y and W = R0 + t*G has odd y. The device negates its secret key when P is odd and negates k' when W is odd.",
+        "seed": "anti-exfil vector/bip340/r0-even-p-odd-w-odd/16",
+        "sk": "0a5c4eab18543fef01e9cb8a5df1435801db0aa80cdcb7797fb353f5addcb786",
+        "m": "c429b3ae09a4346a742adbec7f4ff87c00be03082e1d7362b20151730745c83a",
+        "rho": "be8168a1d3cdf4d3ab5a0af832a669a99cb521b5a76319a8d1c42803cd41242c",
+        "pk": "f1d5446592610cc00cecec8aaddbcc9208a5278541e632eb65752a939ac7a13f",
+        "hc": "96db684b57ce61ec2953ac4e729eaa2abce19f9d29c05e8dd1faa2240714e5d3",
+        "R0_bytes": "0296caf8aefd2d49d068790a4649b4a705b56ce07af86038e6fc474100c9fafa1d",
+        "sig": "ef72d7c15e0529ce910848482d12380649a96a0c8da84d0a3b7ec772934fb7894af939108de1dcd342e4c11ef3f871d16b52ad81228931242affb294195e5a6b",
+        "R0_parity": "even",
+        "P_parity": "odd",
+        "W_parity": "odd",
+        "m_length": 32
+      },
+      {
+        "id": "bip340-valid-r0-odd-p-even-w-even",
+        "comment": "R0 has odd y, the public key point P has even y and W = R0 + t*G has even y. The device negates its secret key when P is odd and negates k' when W is odd.",
+        "seed": "anti-exfil vector/bip340/r0-odd-p-even-w-even/17",
+        "sk": "e7653d98573690f85ab6a86f4d91753c478d0c4d9c09bb06d633653776a85821",
+        "m": "aa14f429344b3d792b92d3eb019e1b2145ced363e0af74e6b9fb00c48a9a680a",
+        "rho": "b2788005f2607658428428139ebcc519109209932c56ede47069b12008a57c67",
+        "pk": "661896f74ae21c2d02d7c7506425c926d25f305c0564fd9d858cf09ddcff4fa2",
+        "hc": "2046498a2231f428f754cd5cb8447b782c48a57b829007e91ee298aedf2353f7",
+        "R0_bytes": "0330058bd4cf909d27037d939e82af119b0b8f6c8cbafa0d9087ea9d6ac8492524",
+        "sig": "a089fe5e99aababe85a5953feca583af538177334dce5195e1a8ccf474fc88e37e1b5d38d842661cf7ddb01e8009e800ae7dc5b5db323b1ad5c4fe20fec76901",
+        "R0_parity": "odd",
+        "P_parity": "even",
+        "W_parity": "even",
+        "m_length": 32
+      },
+      {
+        "id": "bip340-valid-r0-odd-p-even-w-odd",
+        "comment": "R0 has odd y, the public key point P has even y and W = R0 + t*G has odd y. The device negates its secret key when P is odd and negates k' when W is odd.",
+        "seed": "anti-exfil vector/bip340/r0-odd-p-even-w-odd/1",
+        "sk": "8c7ed6278469bd28884370957da07081c42c603c64b3a8865f855b8fcb08558a",
+        "m": "66c706be8914b1ca47a9d354ce4a3f6d62f94d820fe5a22fe4da54d0fd7dc96d",
+        "rho": "385353e3c1f41ab0a2ac0d61b87da63ec06522c1dee75c7b97f5b575ca95b906",
+        "pk": "df084b6602047e6f965881d3d2cc5dddd3a608941ff07c7bb98002a5d4e033f8",
+        "hc": "1c4a1f36c85f156e37724d8256733b996a825dd69c6b3bed91d64c5b6fefeb4d",
+        "R0_bytes": "031c52b4a440066b906775e06aa0463c180d0c5da1696e48cb3d445a12d906d02a",
+        "sig": "6c68edba3104ea480695dbf98dbe3c497c32b33225e05259333bb5f30b1ddab74dee1a421ccbc7ee3d8b459826f141965abf8b2ae4b40649b950ac13a6cfd4f2",
+        "R0_parity": "odd",
+        "P_parity": "even",
+        "W_parity": "odd",
+        "m_length": 32
+      },
+      {
+        "id": "bip340-valid-r0-odd-p-odd-w-even",
+        "comment": "R0 has odd y, the public key point P has odd y and W = R0 + t*G has even y. The device negates its secret key when P is odd and negates k' when W is odd.",
+        "seed": "anti-exfil vector/bip340/r0-odd-p-odd-w-even/1",
+        "sk": "3247b6b17140d1f43995b2630bce155259a9061cdec9ebe76bee688695780bb3",
+        "m": "caa169f692ed0d0c4c1be5d75e311511f506ea7adce8566d16a0a29990e38f2f",
+        "rho": "91ad0805480e14520b9e66f9db27970655222fec273467d9e51a4ac9a588372d",
+        "pk": "57a171f664110daa28f79029b098c4a9164dbf86d91059107534f64af099834e",
+        "hc": "e1d4d8844b614f721aaec91b82d46e7a76767db9fb4c00128f1a55de96414cb1",
+        "R0_bytes": "03d917b2ca23963244615d64168637cc6e3aa3007494374789b5846c10f1680842",
+        "sig": "05001f3e54b3e2d51199d2d4a65f34a86b3806eec53c40e6a53556899265f27f29f0ad40eb13d05e7789990819be02825aece5bdb30cfa0dbcf20e6b0b86f77b",
+        "R0_parity": "odd",
+        "P_parity": "odd",
+        "W_parity": "even",
+        "m_length": 32
+      },
+      {
+        "id": "bip340-valid-r0-odd-p-odd-w-odd",
+        "comment": "R0 has odd y, the public key point P has odd y and W = R0 + t*G has odd y. The device negates its secret key when P is odd and negates k' when W is odd.",
+        "seed": "anti-exfil vector/bip340/r0-odd-p-odd-w-odd/17",
+        "sk": "47cce1ea314d5354874700adce61cfe40c7965effba432e54b6e7181fa771714",
+        "m": "1e70fd832b3d8cbfefef79204ea188f7b402406206ad8df2e527f15db6c1f335",
+        "rho": "9cdebff5e6f8c1609f1419694491d9700ef56f733f1e11594c60cfe743b9378a",
+        "pk": "13090884aab2c52b650b746481d0524edafe4bee7cc225ecc87865fb7e47e353",
+        "hc": "8438c495a7dd7357582832932576e63ae82e54af9b5d4d9fcd5f3fb446b0b1a2",
+        "R0_bytes": "0304a9dc5fa397598e9e3e85ed13564f8d5ee4371d0b9179600ee00008aa25db8a",
+        "sig": "abd5076920d0419c996a39e1b2b7ab316345615e8313132611336f1e452ab64ff55f1cfcbf7e877a506d0f0af102622991494466fe68226d0d3854239fcd8c89",
+        "R0_parity": "odd",
+        "P_parity": "odd",
+        "W_parity": "odd",
+        "m_length": 32
+      },
+      {
+        "id": "bip340-valid-msg-empty",
+        "comment": "Empty message (zero bytes). m is the empty string in the JSON.",
+        "seed": "anti-exfil vector/bip340/msg-empty/0",
+        "sk": "f7ed16c1bfe815deae1436f035aaf0635c5fa19b946f8acff5749699cc3c46c6",
+        "m": "",
+        "rho": "5ab8c89dc26780144cbdbafd1b2cb0ae47f864f87cb92e1704313e7cc638de18",
+        "pk": "84a3d33c24b6255e97e8ca2f2491bcac7341e0ff6bcc2cca074df15eb08745ea",
+        "hc": "8fbb88f94794988b6d60f3464b1b2abe3c403c138612952d3f6650701e799cfe",
+        "R0_bytes": "03255184ba2d90a1454f36254957823ba1ca57d4e0fee27ed2348835447bad6adf",
+        "sig": "1f6c92560ac8e5af280831d7e5682281b2fb401c2f4d247832a1695e3839df1cc6af3f063e502ad8a1436d1a561f5b17bd5337437c55087420f7981696ad0a16",
+        "R0_parity": "odd",
+        "P_parity": "odd",
+        "W_parity": "even",
+        "m_length": 0
+      },
+      {
+        "id": "bip340-valid-msg-32",
+        "comment": "32-byte message.",
+        "seed": "anti-exfil vector/bip340/msg-32/0",
+        "sk": "982276bead53b1b4297706baf6aa182f4f77d4c4ed5dacb8d36439ba47f0266e",
+        "m": "c61978f8be155b5ba50e5382392894f492abea52a22ed653e845d0586e5c74f2",
+        "rho": "fbb129e3c926af1b09dc8e9c0ea608a3c204893974fc4b5b4b6f8fc465793db5",
+        "pk": "1b1dcf2a7b200e7a760538b3652675e616d48b7481bd7246ec8c06807d0f6f6e",
+        "hc": "b0433f022a7de67e437155416bdc83b3c2ea943263c505ac9937f9c225518fac",
+        "R0_bytes": "03daadbbbf32be338658eaf231cebe40e9451c00e08f7d55f957c984060ab66db6",
+        "sig": "9556ddb08d24a5afcfc3ef0353ad86e727f2a4e76a62488e6dab64db5827f99d3190e19c2c8504edd7f28846e5df18d4d20627fedec230c7aed51f0eca1b9c1e",
+        "R0_parity": "odd",
+        "P_parity": "odd",
+        "W_parity": "odd",
+        "m_length": 32
+      },
+      {
+        "id": "bip340-valid-msg-long",
+        "comment": "Long message of 1024 bytes.",
+        "seed": "anti-exfil vector/bip340/msg-long/0",
+        "sk": "44419a275481b79fe1ca87ab52ede8f2b2d2abdd6483f4e206fe3d0fe33eae5a",
+        "m": "339e027810bdd6377f32ee87af8f9ab97465281bdaf88e0e43139b564774c6f20b9d5a1a31cddc4676d8540809993bb33638381922817e383dae2c003aa2c3fc28e524783ad7437e8cc6b622806bf8b4594db35f5dc05aef0d16a8a1cb6a34c676ebc004c475056339a54506a10f9c326cdaaba2513a7199794020b5660bcb85735010fc7dcc583be00542d011bb30aa0e2ffc6bc831c6f939cca53252f0d1d111d7bbbc842054cbe01caa46c55a1d87aedecb3e503d5104df8e31301becde6639535691a27386065d215ea5a93c44e960728ab6af6cbe5a5748c599156400290bb725b6fd8aa6571209132bfba4b0f1f06efde5b2d6fa7e353b2b31169dc64911235209776356e41f729d8ac10ddea8bd4f6aa55bef094fec61dac937a800b5df1c729f1666679498f6fa6f7031bd4bf0f23040ab3351bb13cb83e34015ae8ad214e43820df5b408d25ce46521676f5a4d09e638aedbf7ec7244beb5c24c7921d17596e92fe37a707905f5e8c157b84014268cb1eba8abb7df2fc072b81897a1a3d117d38b30b3111f49367e858da408afaf986825d300a2760e1ebec589455c0c45e118885f982ad3a4ed128c0f9d4fa5f1cf5f6e2856096ceb8118ad8e57ad6bff7a121792c87479c17a8f5d60b58f4d418e3050145a7a2532203db89c8279977ce2642b0da092a3370f8740de6c3ee968ab32d294c1afda7ee78f0faa79dfb1266616a8861517c0711916d989efb1ccdd6e37983d458d92b2db8180d1edca0df898c66d8c17d69bcb53208c7827592fa7ddd1df02543d68e7086701f092be32a73e70f99da837eb413beb3bb519f31d2ac43a9fad6b7d5ba8955b87aadbc8322e572098863e6119edc62307f99bd6813723e88c6c35122066cd65b7979b3c319f539aaf219758d9c41506df6617c301b81e90b931b71afce2401e61963076ab357ac35bed283874a22dd45af2349046f1e74d21ecd3194af8fbe1713ad0cb5738ac58dc5c5192db440dcfc2d93ae68291a6d0f1d7838208984263dc29fd28f55ed94f4d41e0d3308eab612a910e528d8ea214861f70787e7ac463b3b47c4db1391e9ab54915cc25b8e0776b6a9efe78e7a81709df7417aae2325fad5a2d5c137c3b0dc84f0bf144feab964652181b91514d3a97d6fabdcb362e82c2a3cfcb14c08e01c4ea2d84a590edf08484497093f2f06d48401cc0b392e41ba4a098e5e2e045f145b2c00265d37d8c02dbbe08839a137963d6079ddcda111f59ef6e6887fed156fb858501f7592b6fcc391cbfe0fc4ceaf77782742deb2bb18a981d905914e2caca531f703685f9262a8542bec3568023cb306d2943fc95333b365056f104fb4f84e1c9309a97673d27277d6d4b98451e309e76cf77209f58cc855e67aaf9c049d65e9e57a706a6f896c99f0a3efb822e3a3547a92612ca2b17c93d5",
+        "rho": "8d08757f01ea63082ac65a4cf3ba56afbafba2259e50af893ae0e313f7b3abe2",
+        "pk": "5b3d500f4e2c07c9015f6664ba1af6d2d4c7d287bcccca0b205b067de60f5dd5",
+        "hc": "b9559402e4f09876f2998261ab83f7e061e47265c702ae694418af123e815ec2",
+        "R0_bytes": "025fdc8ddaf958506e9ad785804d23fac484fe27abf2fff7ceaad10f3544ea24c1",
+        "sig": "e50fdb369f0ba5f9cf0d8f5c661a52aa0f4238ef6e9ba94218157d482f979eeeeb5aa1e1926bc04f6de5effe089e5c309f3407f44ada7f0f215e45196c686486",
+        "R0_parity": "even",
+        "P_parity": "odd",
+        "W_parity": "odd",
+        "m_length": 1024
+      }
+    ],
+    "reject": [
+      {
+        "id": "bip340-reject-wrong-rho-a",
+        "defect": "wrong_rho",
+        "derived_from": "bip340-valid-r0-even-p-even-w-even",
+        "comment": "rho differs from the one the device was given. t changes, so W no longer matches r.",
+        "pk": "07ba2fffd0252a8897827675a229b535eed29964e875e0058f5a584290ed7d4d",
+        "m": "8e75c9606e0d4648330371f1082b2b68a7ddd6d812aa4df69df4b5b3c992c61f",
+        "rho": "b7f11db0df5b2c95888d3ac8e10153b6d3471650b20a6a061c8adb84a25611dd",
+        "R0_bytes": "02f84f9a03580aa92a25588dd01b4ed375c17040652b879494c67fd7e018c393c9",
+        "sig": "bfdf2d6fb14b0c0af4a94bdb26e404d834193b03a71156beb4c146fd65aa33bd1607008e7b821bde19ea940691e46c36a11a16e9f1d706364330e2c11f91e72c",
+        "expected": "reject"
+      },
+      {
+        "id": "bip340-reject-wrong-R0-a",
+        "defect": "wrong_R0",
+        "derived_from": "bip340-valid-r0-even-p-even-w-even",
+        "comment": "R0_bytes is a valid point from another vector, not the device's commitment for this signature.",
+        "pk": "07ba2fffd0252a8897827675a229b535eed29964e875e0058f5a584290ed7d4d",
+        "m": "8e75c9606e0d4648330371f1082b2b68a7ddd6d812aa4df69df4b5b3c992c61f",
+        "rho": "188191e52e2179db0c1e2ea563a0f117325b061169af47973a8fcac8374b2729",
+        "R0_bytes": "02b865d6f945e290adf19d82a086488cc2af0b743cddb199509e58601d4ff29e71",
+        "sig": "bfdf2d6fb14b0c0af4a94bdb26e404d834193b03a71156beb4c146fd65aa33bd1607008e7b821bde19ea940691e46c36a11a16e9f1d706364330e2c11f91e72c",
+        "expected": "reject"
+      },
+      {
+        "id": "bip340-reject-wrong-m-a",
+        "defect": "wrong_m",
+        "derived_from": "bip340-valid-r0-even-p-even-w-even",
+        "comment": "The message differs from the one that was signed (first bit flipped).",
+        "pk": "07ba2fffd0252a8897827675a229b535eed29964e875e0058f5a584290ed7d4d",
+        "m": "8f75c9606e0d4648330371f1082b2b68a7ddd6d812aa4df69df4b5b3c992c61f",
+        "rho": "188191e52e2179db0c1e2ea563a0f117325b061169af47973a8fcac8374b2729",
+        "R0_bytes": "02f84f9a03580aa92a25588dd01b4ed375c17040652b879494c67fd7e018c393c9",
+        "sig": "bfdf2d6fb14b0c0af4a94bdb26e404d834193b03a71156beb4c146fd65aa33bd1607008e7b821bde19ea940691e46c36a11a16e9f1d706364330e2c11f91e72c",
+        "expected": "reject"
+      },
+      {
+        "id": "bip340-reject-wrong-pk-a",
+        "defect": "wrong_pk",
+        "derived_from": "bip340-valid-r0-even-p-even-w-even",
+        "comment": "pk is a valid public key of a different key.",
+        "pk": "1e58ca634ab7668b3cb4d7d400b568710f711a3367ca9db314e5da0ff48cef4b",
+        "m": "8e75c9606e0d4648330371f1082b2b68a7ddd6d812aa4df69df4b5b3c992c61f",
+        "rho": "188191e52e2179db0c1e2ea563a0f117325b061169af47973a8fcac8374b2729",
+        "R0_bytes": "02f84f9a03580aa92a25588dd01b4ed375c17040652b879494c67fd7e018c393c9",
+        "sig": "bfdf2d6fb14b0c0af4a94bdb26e404d834193b03a71156beb4c146fd65aa33bd1607008e7b821bde19ea940691e46c36a11a16e9f1d706364330e2c11f91e72c",
+        "expected": "reject"
+      },
+      {
+        "id": "bip340-reject-r-changed-a",
+        "defect": "r_changed",
+        "derived_from": "bip340-valid-r0-even-p-even-w-even",
+        "comment": "The first half of sig (r) is replaced by the r of another signature; s is unchanged.",
+        "pk": "07ba2fffd0252a8897827675a229b535eed29964e875e0058f5a584290ed7d4d",
+        "m": "8e75c9606e0d4648330371f1082b2b68a7ddd6d812aa4df69df4b5b3c992c61f",
+        "rho": "188191e52e2179db0c1e2ea563a0f117325b061169af47973a8fcac8374b2729",
+        "R0_bytes": "02f84f9a03580aa92a25588dd01b4ed375c17040652b879494c67fd7e018c393c9",
+        "sig": "c47986317773fc0290f7faa503c729b56f51a590d2045f00fc5d3f531eb8fff61607008e7b821bde19ea940691e46c36a11a16e9f1d706364330e2c11f91e72c",
+        "expected": "reject"
+      },
+      {
+        "id": "bip340-reject-s-changed-a",
+        "defect": "s_changed",
+        "derived_from": "bip340-valid-r0-even-p-even-w-even",
+        "comment": "The second half of sig (s) is changed by one, staying in range.",
+        "pk": "07ba2fffd0252a8897827675a229b535eed29964e875e0058f5a584290ed7d4d",
+        "m": "8e75c9606e0d4648330371f1082b2b68a7ddd6d812aa4df69df4b5b3c992c61f",
+        "rho": "188191e52e2179db0c1e2ea563a0f117325b061169af47973a8fcac8374b2729",
+        "R0_bytes": "02f84f9a03580aa92a25588dd01b4ed375c17040652b879494c67fd7e018c393c9",
+        "sig": "bfdf2d6fb14b0c0af4a94bdb26e404d834193b03a71156beb4c146fd65aa33bd1607008e7b821bde19ea940691e46c36a11a16e9f1d706364330e2c11f91e72d",
+        "expected": "reject"
+      },
+      {
+        "id": "bip340-reject-wrong-rho-b",
+        "defect": "wrong_rho",
+        "derived_from": "bip340-valid-r0-odd-p-odd-w-odd",
+        "comment": "rho differs from the one the device was given. t changes, so W no longer matches r.",
+        "pk": "13090884aab2c52b650b746481d0524edafe4bee7cc225ecc87865fb7e47e353",
+        "m": "1e70fd832b3d8cbfefef79204ea188f7b402406206ad8df2e527f15db6c1f335",
+        "rho": "39c2824afc0fb3d33f53a59243745ec04c4e4cf65705127ceb460a352d14ab87",
+        "R0_bytes": "0304a9dc5fa397598e9e3e85ed13564f8d5ee4371d0b9179600ee00008aa25db8a",
+        "sig": "abd5076920d0419c996a39e1b2b7ab316345615e8313132611336f1e452ab64ff55f1cfcbf7e877a506d0f0af102622991494466fe68226d0d3854239fcd8c89",
+        "expected": "reject"
+      },
+      {
+        "id": "bip340-reject-wrong-R0-b",
+        "defect": "wrong_R0",
+        "derived_from": "bip340-valid-r0-odd-p-odd-w-odd",
+        "comment": "R0_bytes is a valid point from another vector, not the device's commitment for this signature.",
+        "pk": "13090884aab2c52b650b746481d0524edafe4bee7cc225ecc87865fb7e47e353",
+        "m": "1e70fd832b3d8cbfefef79204ea188f7b402406206ad8df2e527f15db6c1f335",
+        "rho": "9cdebff5e6f8c1609f1419694491d9700ef56f733f1e11594c60cfe743b9378a",
+        "R0_bytes": "02b865d6f945e290adf19d82a086488cc2af0b743cddb199509e58601d4ff29e71",
+        "sig": "abd5076920d0419c996a39e1b2b7ab316345615e8313132611336f1e452ab64ff55f1cfcbf7e877a506d0f0af102622991494466fe68226d0d3854239fcd8c89",
+        "expected": "reject"
+      },
+      {
+        "id": "bip340-reject-wrong-m-b",
+        "defect": "wrong_m",
+        "derived_from": "bip340-valid-r0-odd-p-odd-w-odd",
+        "comment": "The message differs from the one that was signed (first bit flipped).",
+        "pk": "13090884aab2c52b650b746481d0524edafe4bee7cc225ecc87865fb7e47e353",
+        "m": "1f70fd832b3d8cbfefef79204ea188f7b402406206ad8df2e527f15db6c1f335",
+        "rho": "9cdebff5e6f8c1609f1419694491d9700ef56f733f1e11594c60cfe743b9378a",
+        "R0_bytes": "0304a9dc5fa397598e9e3e85ed13564f8d5ee4371d0b9179600ee00008aa25db8a",
+        "sig": "abd5076920d0419c996a39e1b2b7ab316345615e8313132611336f1e452ab64ff55f1cfcbf7e877a506d0f0af102622991494466fe68226d0d3854239fcd8c89",
+        "expected": "reject"
+      },
+      {
+        "id": "bip340-reject-wrong-pk-b",
+        "defect": "wrong_pk",
+        "derived_from": "bip340-valid-r0-odd-p-odd-w-odd",
+        "comment": "pk is a valid public key of a different key.",
+        "pk": "1e58ca634ab7668b3cb4d7d400b568710f711a3367ca9db314e5da0ff48cef4b",
+        "m": "1e70fd832b3d8cbfefef79204ea188f7b402406206ad8df2e527f15db6c1f335",
+        "rho": "9cdebff5e6f8c1609f1419694491d9700ef56f733f1e11594c60cfe743b9378a",
+        "R0_bytes": "0304a9dc5fa397598e9e3e85ed13564f8d5ee4371d0b9179600ee00008aa25db8a",
+        "sig": "abd5076920d0419c996a39e1b2b7ab316345615e8313132611336f1e452ab64ff55f1cfcbf7e877a506d0f0af102622991494466fe68226d0d3854239fcd8c89",
+        "expected": "reject"
+      },
+      {
+        "id": "bip340-reject-r-changed-b",
+        "defect": "r_changed",
+        "derived_from": "bip340-valid-r0-odd-p-odd-w-odd",
+        "comment": "The first half of sig (r) is replaced by the r of another signature; s is unchanged.",
+        "pk": "13090884aab2c52b650b746481d0524edafe4bee7cc225ecc87865fb7e47e353",
+        "m": "1e70fd832b3d8cbfefef79204ea188f7b402406206ad8df2e527f15db6c1f335",
+        "rho": "9cdebff5e6f8c1609f1419694491d9700ef56f733f1e11594c60cfe743b9378a",
+        "R0_bytes": "0304a9dc5fa397598e9e3e85ed13564f8d5ee4371d0b9179600ee00008aa25db8a",
+        "sig": "c47986317773fc0290f7faa503c729b56f51a590d2045f00fc5d3f531eb8fff6f55f1cfcbf7e877a506d0f0af102622991494466fe68226d0d3854239fcd8c89",
+        "expected": "reject"
+      },
+      {
+        "id": "bip340-reject-s-changed-b",
+        "defect": "s_changed",
+        "derived_from": "bip340-valid-r0-odd-p-odd-w-odd",
+        "comment": "The second half of sig (s) is changed by one, staying in range.",
+        "pk": "13090884aab2c52b650b746481d0524edafe4bee7cc225ecc87865fb7e47e353",
+        "m": "1e70fd832b3d8cbfefef79204ea188f7b402406206ad8df2e527f15db6c1f335",
+        "rho": "9cdebff5e6f8c1609f1419694491d9700ef56f733f1e11594c60cfe743b9378a",
+        "R0_bytes": "0304a9dc5fa397598e9e3e85ed13564f8d5ee4371d0b9179600ee00008aa25db8a",
+        "sig": "abd5076920d0419c996a39e1b2b7ab316345615e8313132611336f1e452ab64ff55f1cfcbf7e877a506d0f0af102622991494466fe68226d0d3854239fcd8c8a",
+        "expected": "reject"
+      },
+      {
+        "id": "bip340-reject-R0-prefix-06",
+        "defect": "R0_prefix",
+        "derived_from": "bip340-valid-r0-even-p-even-w-even",
+        "comment": "R0_bytes begins with 0x06. Only 0x02 and 0x03 are accepted by parse33 (0x06 and 0x07 are hybrid prefixes in SEC1).",
+        "pk": "07ba2fffd0252a8897827675a229b535eed29964e875e0058f5a584290ed7d4d",
+        "m": "8e75c9606e0d4648330371f1082b2b68a7ddd6d812aa4df69df4b5b3c992c61f",
+        "rho": "188191e52e2179db0c1e2ea563a0f117325b061169af47973a8fcac8374b2729",
+        "R0_bytes": "06f84f9a03580aa92a25588dd01b4ed375c17040652b879494c67fd7e018c393c9",
+        "sig": "bfdf2d6fb14b0c0af4a94bdb26e404d834193b03a71156beb4c146fd65aa33bd1607008e7b821bde19ea940691e46c36a11a16e9f1d706364330e2c11f91e72c",
+        "expected": "reject"
+      },
+      {
+        "id": "bip340-reject-R0-prefix-07",
+        "defect": "R0_prefix",
+        "derived_from": "bip340-valid-r0-even-p-even-w-even",
+        "comment": "R0_bytes begins with 0x07. Only 0x02 and 0x03 are accepted by parse33 (0x06 and 0x07 are hybrid prefixes in SEC1).",
+        "pk": "07ba2fffd0252a8897827675a229b535eed29964e875e0058f5a584290ed7d4d",
+        "m": "8e75c9606e0d4648330371f1082b2b68a7ddd6d812aa4df69df4b5b3c992c61f",
+        "rho": "188191e52e2179db0c1e2ea563a0f117325b061169af47973a8fcac8374b2729",
+        "R0_bytes": "07f84f9a03580aa92a25588dd01b4ed375c17040652b879494c67fd7e018c393c9",
+        "sig": "bfdf2d6fb14b0c0af4a94bdb26e404d834193b03a71156beb4c146fd65aa33bd1607008e7b821bde19ea940691e46c36a11a16e9f1d706364330e2c11f91e72c",
+        "expected": "reject"
+      },
+      {
+        "id": "bip340-reject-R0-prefix-00",
+        "defect": "R0_prefix",
+        "derived_from": "bip340-valid-r0-even-p-even-w-even",
+        "comment": "R0_bytes begins with 0x00. Only 0x02 and 0x03 are accepted by parse33.",
+        "pk": "07ba2fffd0252a8897827675a229b535eed29964e875e0058f5a584290ed7d4d",
+        "m": "8e75c9606e0d4648330371f1082b2b68a7ddd6d812aa4df69df4b5b3c992c61f",
+        "rho": "188191e52e2179db0c1e2ea563a0f117325b061169af47973a8fcac8374b2729",
+        "R0_bytes": "00f84f9a03580aa92a25588dd01b4ed375c17040652b879494c67fd7e018c393c9",
+        "sig": "bfdf2d6fb14b0c0af4a94bdb26e404d834193b03a71156beb4c146fd65aa33bd1607008e7b821bde19ea940691e46c36a11a16e9f1d706364330e2c11f91e72c",
+        "expected": "reject"
+      },
+      {
+        "id": "bip340-reject-R0-prefix-04",
+        "defect": "R0_prefix",
+        "derived_from": "bip340-valid-r0-even-p-even-w-even",
+        "comment": "R0_bytes begins with 0x04. Only 0x02 and 0x03 are accepted by parse33.",
+        "pk": "07ba2fffd0252a8897827675a229b535eed29964e875e0058f5a584290ed7d4d",
+        "m": "8e75c9606e0d4648330371f1082b2b68a7ddd6d812aa4df69df4b5b3c992c61f",
+        "rho": "188191e52e2179db0c1e2ea563a0f117325b061169af47973a8fcac8374b2729",
+        "R0_bytes": "04f84f9a03580aa92a25588dd01b4ed375c17040652b879494c67fd7e018c393c9",
+        "sig": "bfdf2d6fb14b0c0af4a94bdb26e404d834193b03a71156beb4c146fd65aa33bd1607008e7b821bde19ea940691e46c36a11a16e9f1d706364330e2c11f91e72c",
+        "expected": "reject"
+      },
+      {
+        "id": "bip340-reject-R0-x-p",
+        "defect": "R0_x_range",
+        "derived_from": "bip340-valid-r0-even-p-even-w-even",
+        "comment": "R0_bytes is 0x02 followed by p, an x coordinate that is not below p.",
+        "pk": "07ba2fffd0252a8897827675a229b535eed29964e875e0058f5a584290ed7d4d",
+        "m": "8e75c9606e0d4648330371f1082b2b68a7ddd6d812aa4df69df4b5b3c992c61f",
+        "rho": "188191e52e2179db0c1e2ea563a0f117325b061169af47973a8fcac8374b2729",
+        "R0_bytes": "02fffffffffffffffffffffffffffffffffffffffffffffffffffffffefffffc2f",
+        "sig": "bfdf2d6fb14b0c0af4a94bdb26e404d834193b03a71156beb4c146fd65aa33bd1607008e7b821bde19ea940691e46c36a11a16e9f1d706364330e2c11f91e72c",
+        "expected": "reject"
+      },
+      {
+        "id": "bip340-reject-pk-x-p",
+        "defect": "pk_x_range",
+        "derived_from": "bip340-valid-r0-even-p-even-w-even",
+        "comment": "pk is p, an x coordinate that is not below p.",
+        "pk": "fffffffffffffffffffffffffffffffffffffffffffffffffffffffefffffc2f",
+        "m": "8e75c9606e0d4648330371f1082b2b68a7ddd6d812aa4df69df4b5b3c992c61f",
+        "rho": "188191e52e2179db0c1e2ea563a0f117325b061169af47973a8fcac8374b2729",
+        "R0_bytes": "02f84f9a03580aa92a25588dd01b4ed375c17040652b879494c67fd7e018c393c9",
+        "sig": "bfdf2d6fb14b0c0af4a94bdb26e404d834193b03a71156beb4c146fd65aa33bd1607008e7b821bde19ea940691e46c36a11a16e9f1d706364330e2c11f91e72c",
+        "expected": "reject"
+      },
+      {
+        "id": "bip340-reject-R0-x-max",
+        "defect": "R0_x_range",
+        "derived_from": "bip340-valid-r0-even-p-even-w-even",
+        "comment": "R0_bytes is 0x02 followed by 2^256-1, an x coordinate that is not below p.",
+        "pk": "07ba2fffd0252a8897827675a229b535eed29964e875e0058f5a584290ed7d4d",
+        "m": "8e75c9606e0d4648330371f1082b2b68a7ddd6d812aa4df69df4b5b3c992c61f",
+        "rho": "188191e52e2179db0c1e2ea563a0f117325b061169af47973a8fcac8374b2729",
+        "R0_bytes": "02ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+        "sig": "bfdf2d6fb14b0c0af4a94bdb26e404d834193b03a71156beb4c146fd65aa33bd1607008e7b821bde19ea940691e46c36a11a16e9f1d706364330e2c11f91e72c",
+        "expected": "reject"
+      },
+      {
+        "id": "bip340-reject-pk-x-max",
+        "defect": "pk_x_range",
+        "derived_from": "bip340-valid-r0-even-p-even-w-even",
+        "comment": "pk is 2^256-1, an x coordinate that is not below p.",
+        "pk": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+        "m": "8e75c9606e0d4648330371f1082b2b68a7ddd6d812aa4df69df4b5b3c992c61f",
+        "rho": "188191e52e2179db0c1e2ea563a0f117325b061169af47973a8fcac8374b2729",
+        "R0_bytes": "02f84f9a03580aa92a25588dd01b4ed375c17040652b879494c67fd7e018c393c9",
+        "sig": "bfdf2d6fb14b0c0af4a94bdb26e404d834193b03a71156beb4c146fd65aa33bd1607008e7b821bde19ea940691e46c36a11a16e9f1d706364330e2c11f91e72c",
+        "expected": "reject"
+      },
+      {
+        "id": "bip340-reject-sig-r-p",
+        "defect": "sig_r_range",
+        "derived_from": "bip340-valid-r0-even-p-even-w-even",
+        "comment": "The r half of sig is p, which is not below p.",
+        "pk": "07ba2fffd0252a8897827675a229b535eed29964e875e0058f5a584290ed7d4d",
+        "m": "8e75c9606e0d4648330371f1082b2b68a7ddd6d812aa4df69df4b5b3c992c61f",
+        "rho": "188191e52e2179db0c1e2ea563a0f117325b061169af47973a8fcac8374b2729",
+        "R0_bytes": "02f84f9a03580aa92a25588dd01b4ed375c17040652b879494c67fd7e018c393c9",
+        "sig": "fffffffffffffffffffffffffffffffffffffffffffffffffffffffefffffc2f1607008e7b821bde19ea940691e46c36a11a16e9f1d706364330e2c11f91e72c",
+        "expected": "reject"
+      },
+      {
+        "id": "bip340-reject-sig-s-n",
+        "defect": "sig_s_range",
+        "derived_from": "bip340-valid-r0-even-p-even-w-even",
+        "comment": "The s half of sig is n, which is not below n.",
+        "pk": "07ba2fffd0252a8897827675a229b535eed29964e875e0058f5a584290ed7d4d",
+        "m": "8e75c9606e0d4648330371f1082b2b68a7ddd6d812aa4df69df4b5b3c992c61f",
+        "rho": "188191e52e2179db0c1e2ea563a0f117325b061169af47973a8fcac8374b2729",
+        "R0_bytes": "02f84f9a03580aa92a25588dd01b4ed375c17040652b879494c67fd7e018c393c9",
+        "sig": "bfdf2d6fb14b0c0af4a94bdb26e404d834193b03a71156beb4c146fd65aa33bdfffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364141",
+        "expected": "reject"
+      },
+      {
+        "id": "bip340-reject-R0-off-curve",
+        "defect": "R0_off_curve",
+        "derived_from": "bip340-valid-r0-even-p-even-w-even",
+        "comment": "R0_bytes is 0x02 followed by an x for which x^3 + 7 has no square root, so there is no point.",
+        "pk": "07ba2fffd0252a8897827675a229b535eed29964e875e0058f5a584290ed7d4d",
+        "m": "8e75c9606e0d4648330371f1082b2b68a7ddd6d812aa4df69df4b5b3c992c61f",
+        "rho": "188191e52e2179db0c1e2ea563a0f117325b061169af47973a8fcac8374b2729",
+        "R0_bytes": "029f29e99890e3cc11aa37785b01dc3632008c729e15c5a6824c30265621e7e0ac",
+        "sig": "bfdf2d6fb14b0c0af4a94bdb26e404d834193b03a71156beb4c146fd65aa33bd1607008e7b821bde19ea940691e46c36a11a16e9f1d706364330e2c11f91e72c",
+        "expected": "reject"
+      },
+      {
+        "id": "bip340-reject-pk-off-curve",
+        "defect": "pk_off_curve",
+        "derived_from": "bip340-valid-r0-even-p-even-w-even",
+        "comment": "pk is an x for which x^3 + 7 has no square root, so there is no point.",
+        "pk": "be67538cb77d779cb2b6b554b32cd3c95178049f699d87a4af62126fca5491d7",
+        "m": "8e75c9606e0d4648330371f1082b2b68a7ddd6d812aa4df69df4b5b3c992c61f",
+        "rho": "188191e52e2179db0c1e2ea563a0f117325b061169af47973a8fcac8374b2729",
+        "R0_bytes": "02f84f9a03580aa92a25588dd01b4ed375c17040652b879494c67fd7e018c393c9",
+        "sig": "bfdf2d6fb14b0c0af4a94bdb26e404d834193b03a71156beb4c146fd65aa33bd1607008e7b821bde19ea940691e46c36a11a16e9f1d706364330e2c11f91e72c",
+        "expected": "reject"
+      },
+      {
+        "id": "bip340-reject-pk-length-short",
+        "defect": "length",
+        "derived_from": "bip340-valid-r0-even-p-even-w-even",
+        "comment": "pk is one byte too short.",
+        "pk": "07ba2fffd0252a8897827675a229b535eed29964e875e0058f5a584290ed7d",
+        "m": "8e75c9606e0d4648330371f1082b2b68a7ddd6d812aa4df69df4b5b3c992c61f",
+        "rho": "188191e52e2179db0c1e2ea563a0f117325b061169af47973a8fcac8374b2729",
+        "R0_bytes": "02f84f9a03580aa92a25588dd01b4ed375c17040652b879494c67fd7e018c393c9",
+        "sig": "bfdf2d6fb14b0c0af4a94bdb26e404d834193b03a71156beb4c146fd65aa33bd1607008e7b821bde19ea940691e46c36a11a16e9f1d706364330e2c11f91e72c",
+        "expected": "reject"
+      },
+      {
+        "id": "bip340-reject-pk-length-long",
+        "defect": "length",
+        "derived_from": "bip340-valid-r0-even-p-even-w-even",
+        "comment": "pk is one byte too long (a zero byte appended).",
+        "pk": "07ba2fffd0252a8897827675a229b535eed29964e875e0058f5a584290ed7d4d00",
+        "m": "8e75c9606e0d4648330371f1082b2b68a7ddd6d812aa4df69df4b5b3c992c61f",
+        "rho": "188191e52e2179db0c1e2ea563a0f117325b061169af47973a8fcac8374b2729",
+        "R0_bytes": "02f84f9a03580aa92a25588dd01b4ed375c17040652b879494c67fd7e018c393c9",
+        "sig": "bfdf2d6fb14b0c0af4a94bdb26e404d834193b03a71156beb4c146fd65aa33bd1607008e7b821bde19ea940691e46c36a11a16e9f1d706364330e2c11f91e72c",
+        "expected": "reject"
+      },
+      {
+        "id": "bip340-reject-rho-length-short",
+        "defect": "length",
+        "derived_from": "bip340-valid-r0-even-p-even-w-even",
+        "comment": "rho is one byte too short.",
+        "pk": "07ba2fffd0252a8897827675a229b535eed29964e875e0058f5a584290ed7d4d",
+        "m": "8e75c9606e0d4648330371f1082b2b68a7ddd6d812aa4df69df4b5b3c992c61f",
+        "rho": "188191e52e2179db0c1e2ea563a0f117325b061169af47973a8fcac8374b27",
+        "R0_bytes": "02f84f9a03580aa92a25588dd01b4ed375c17040652b879494c67fd7e018c393c9",
+        "sig": "bfdf2d6fb14b0c0af4a94bdb26e404d834193b03a71156beb4c146fd65aa33bd1607008e7b821bde19ea940691e46c36a11a16e9f1d706364330e2c11f91e72c",
+        "expected": "reject"
+      },
+      {
+        "id": "bip340-reject-rho-length-long",
+        "defect": "length",
+        "derived_from": "bip340-valid-r0-even-p-even-w-even",
+        "comment": "rho is one byte too long (a zero byte appended).",
+        "pk": "07ba2fffd0252a8897827675a229b535eed29964e875e0058f5a584290ed7d4d",
+        "m": "8e75c9606e0d4648330371f1082b2b68a7ddd6d812aa4df69df4b5b3c992c61f",
+        "rho": "188191e52e2179db0c1e2ea563a0f117325b061169af47973a8fcac8374b272900",
+        "R0_bytes": "02f84f9a03580aa92a25588dd01b4ed375c17040652b879494c67fd7e018c393c9",
+        "sig": "bfdf2d6fb14b0c0af4a94bdb26e404d834193b03a71156beb4c146fd65aa33bd1607008e7b821bde19ea940691e46c36a11a16e9f1d706364330e2c11f91e72c",
+        "expected": "reject"
+      },
+      {
+        "id": "bip340-reject-R0_bytes-length-short",
+        "defect": "length",
+        "derived_from": "bip340-valid-r0-even-p-even-w-even",
+        "comment": "R0_bytes is one byte too short.",
+        "pk": "07ba2fffd0252a8897827675a229b535eed29964e875e0058f5a584290ed7d4d",
+        "m": "8e75c9606e0d4648330371f1082b2b68a7ddd6d812aa4df69df4b5b3c992c61f",
+        "rho": "188191e52e2179db0c1e2ea563a0f117325b061169af47973a8fcac8374b2729",
+        "R0_bytes": "02f84f9a03580aa92a25588dd01b4ed375c17040652b879494c67fd7e018c393",
+        "sig": "bfdf2d6fb14b0c0af4a94bdb26e404d834193b03a71156beb4c146fd65aa33bd1607008e7b821bde19ea940691e46c36a11a16e9f1d706364330e2c11f91e72c",
+        "expected": "reject"
+      },
+      {
+        "id": "bip340-reject-R0_bytes-length-long",
+        "defect": "length",
+        "derived_from": "bip340-valid-r0-even-p-even-w-even",
+        "comment": "R0_bytes is one byte too long (a zero byte appended).",
+        "pk": "07ba2fffd0252a8897827675a229b535eed29964e875e0058f5a584290ed7d4d",
+        "m": "8e75c9606e0d4648330371f1082b2b68a7ddd6d812aa4df69df4b5b3c992c61f",
+        "rho": "188191e52e2179db0c1e2ea563a0f117325b061169af47973a8fcac8374b2729",
+        "R0_bytes": "02f84f9a03580aa92a25588dd01b4ed375c17040652b879494c67fd7e018c393c900",
+        "sig": "bfdf2d6fb14b0c0af4a94bdb26e404d834193b03a71156beb4c146fd65aa33bd1607008e7b821bde19ea940691e46c36a11a16e9f1d706364330e2c11f91e72c",
+        "expected": "reject"
+      },
+      {
+        "id": "bip340-reject-sig-length-short",
+        "defect": "length",
+        "derived_from": "bip340-valid-r0-even-p-even-w-even",
+        "comment": "sig is one byte too short.",
+        "pk": "07ba2fffd0252a8897827675a229b535eed29964e875e0058f5a584290ed7d4d",
+        "m": "8e75c9606e0d4648330371f1082b2b68a7ddd6d812aa4df69df4b5b3c992c61f",
+        "rho": "188191e52e2179db0c1e2ea563a0f117325b061169af47973a8fcac8374b2729",
+        "R0_bytes": "02f84f9a03580aa92a25588dd01b4ed375c17040652b879494c67fd7e018c393c9",
+        "sig": "bfdf2d6fb14b0c0af4a94bdb26e404d834193b03a71156beb4c146fd65aa33bd1607008e7b821bde19ea940691e46c36a11a16e9f1d706364330e2c11f91e7",
+        "expected": "reject"
+      },
+      {
+        "id": "bip340-reject-sig-length-long",
+        "defect": "length",
+        "derived_from": "bip340-valid-r0-even-p-even-w-even",
+        "comment": "sig is one byte too long (a zero byte appended).",
+        "pk": "07ba2fffd0252a8897827675a229b535eed29964e875e0058f5a584290ed7d4d",
+        "m": "8e75c9606e0d4648330371f1082b2b68a7ddd6d812aa4df69df4b5b3c992c61f",
+        "rho": "188191e52e2179db0c1e2ea563a0f117325b061169af47973a8fcac8374b2729",
+        "R0_bytes": "02f84f9a03580aa92a25588dd01b4ed375c17040652b879494c67fd7e018c393c9",
+        "sig": "bfdf2d6fb14b0c0af4a94bdb26e404d834193b03a71156beb4c146fd65aa33bd1607008e7b821bde19ea940691e46c36a11a16e9f1d706364330e2c11f91e72c00",
+        "expected": "reject"
+      },
+      {
+        "id": "bip340-reject-other-nonce",
+        "defect": "nonce_not_W",
+        "derived_from": "bip340-valid-r0-even-p-even-w-even",
+        "comment": "A valid signature from the right key made with a nonce k of the signer's choice instead of W's k'. It verifies as a plain signature but its r is not x(W).",
+        "pk": "07ba2fffd0252a8897827675a229b535eed29964e875e0058f5a584290ed7d4d",
+        "m": "8e75c9606e0d4648330371f1082b2b68a7ddd6d812aa4df69df4b5b3c992c61f",
+        "rho": "188191e52e2179db0c1e2ea563a0f117325b061169af47973a8fcac8374b2729",
+        "R0_bytes": "02f84f9a03580aa92a25588dd01b4ed375c17040652b879494c67fd7e018c393c9",
+        "sig": "a19834ab3258ce92f4a202720ea09d2ecd715623c4c738be417a884b955945180ff0a9950e3d6bebe21d30e1de821b054a6511967aeed876a81cc5f1dfd6bc12",
+        "expected": "reject"
+      },
+      {
+        "id": "bip340-reject-base-nonce",
+        "defect": "nonce_not_W",
+        "derived_from": "bip340-valid-r0-even-p-even-w-even",
+        "comment": "A valid signature from the right key made with the base nonce k0 alone, as a device that ignores rho would. It verifies as a plain signature but its r is not x(W).",
+        "pk": "07ba2fffd0252a8897827675a229b535eed29964e875e0058f5a584290ed7d4d",
+        "m": "8e75c9606e0d4648330371f1082b2b68a7ddd6d812aa4df69df4b5b3c992c61f",
+        "rho": "188191e52e2179db0c1e2ea563a0f117325b061169af47973a8fcac8374b2729",
+        "R0_bytes": "02f84f9a03580aa92a25588dd01b4ed375c17040652b879494c67fd7e018c393c9",
+        "sig": "f84f9a03580aa92a25588dd01b4ed375c17040652b879494c67fd7e018c393c9d4162ced53fb3097634a420cb49926551e88952a2b14bf710211cfc25cca5269",
+        "expected": "reject"
+      },
+      {
+        "id": "bip340-reject-isolated-pk-off-curve",
+        "defect": "isolated_pk_off_curve",
+        "isolates": "BIP340 Verify: pk must be the x coordinate of a curve point",
+        "comment": "pk is an x with no curve point. R0 is valid and the signature is (x(W), s) with s*G = W, which satisfies the verification equation when the pk term is dropped, so only the failed lift of pk refuses it.",
+        "fails_at_step": 5,
+        "pk": "1e2586e887be90e633c52424e462633127a8729b523907622f868c2714ce35d5",
+        "m": "0c0ef5eb05d2c79571c78fa1a7f348a3e75a1e7ee73c6649f3ade202c9a6de23",
+        "rho": "f54a0c7779fdad701fac9494fe905774f9cca1e09ed01feb535e6194c938723c",
+        "R0_bytes": "0279be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+        "sig": "2c1e3db65a284cb3546be727380c93b21e3750f4344af20a8a310e93e77e7df838c885bed8163870388c0234bf8d97564cbf0bb438da0e5a5ea0ba9b13ff06c7",
+        "expected": "reject"
+      },
+      {
+        "id": "bip340-reject-isolated-R0-prefix-04",
+        "defect": "isolated_R0_unparsable",
+        "isolates": "parse33(R0_bytes) must succeed",
+        "comment": "R0_bytes begins with 0x04 (an uncompressed prefix). The signature is an ordinary valid signature from the key whose nonce is t = H(R0_bytes || rho), so x(W) = x(t*G) would match if R0 were dropped. Only the failed parse of R0_bytes refuses it.",
+        "fails_at_step": 1,
+        "seed": "anti-exfil vector/bip340/isolated/R0-prefix-04",
+        "pk": "67550686bc58ecdb6ca4ea723450e7e0c70b2d6231c9689b66176921723bce83",
+        "m": "afb8ac0cfe37860271fa09967c12e050937b05c570a85008d274402a1acdfaf9",
+        "rho": "61b7f429e21f7d238968427b755acf811a681715c62d24a19b26c650eb0661b6",
+        "R0_bytes": "0479be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+        "sig": "8fbc7b33084a7f2a85cf966257ad7b343385d9016eee12d18a705cb69eb841bc3078cb198af6b189df63832e1836b4ad16622568e29ae2d8ed33b18279a7fdbb",
+        "plain_signature_valid": true,
+        "expected": "reject"
+      },
+      {
+        "id": "bip340-reject-isolated-R0-x-off-curve",
+        "defect": "isolated_R0_unparsable",
+        "isolates": "parse33(R0_bytes) must succeed",
+        "comment": "R0_bytes is 0x02 followed by an x with no curve point. The signature is an ordinary valid signature from the key whose nonce is t = H(R0_bytes || rho), so x(W) = x(t*G) would match if R0 were dropped. Only the failed parse of R0_bytes refuses it.",
+        "fails_at_step": 1,
+        "seed": "anti-exfil vector/bip340/isolated/R0-x-off-curve",
+        "pk": "de382f9694508715a2a33550439cccd0db49b67fd0cb9e0e3561903fbf5cfe53",
+        "m": "e3f33d843a4266d88471d83d461281c4eeb309d538fab4150300744fdc0a623f",
+        "rho": "f35cbcf6538fa03fedc8a81d97637da442c93f4e47744e3f210377f2aef9ad71",
+        "R0_bytes": "02acd69b2855a0bedab8451340115af05bea8b0aec65030b8a5d13fac1db740431",
+        "sig": "4e726da0f3635905fcdb835f3d51fb59d96379ffb6aebadf37fe6737f24d808f552b6b144c6a04e491b4e438af0d4e56661e8d5e881b6b072e7979566fe0e402",
+        "plain_signature_valid": true,
+        "expected": "reject"
+      },
+      {
+        "id": "bip340-reject-isolated-R0-x-not-below-p",
+        "defect": "isolated_R0_unparsable",
+        "isolates": "parse33(R0_bytes) must succeed",
+        "comment": "R0_bytes is 0x02 followed by p, an x not below p. The signature is an ordinary valid signature from the key whose nonce is t = H(R0_bytes || rho), so x(W) = x(t*G) would match if R0 were dropped. Only the failed parse of R0_bytes refuses it.",
+        "fails_at_step": 1,
+        "seed": "anti-exfil vector/bip340/isolated/R0-x-not-below-p",
+        "pk": "15beeb9e3a4f08bedabf371510985cabb251a16813fd9d9fffde40881a1cb2c0",
+        "m": "01540174e4c8c2819932a3cb01b2d19afe65bcb509ad63cd4a2ddbdd53d37116",
+        "rho": "0a1b1943ac53e5de7be48fcc4586b114239fd78b4da26925f72da570708f73b6",
+        "R0_bytes": "02fffffffffffffffffffffffffffffffffffffffffffffffffffffffefffffc2f",
+        "sig": "98af8add02ad905a2646b9ddc2c9031b46b2bdcd14179a2db6e81c18216c82b426231ca2f1fefe1bbb023ae49a2df295f2ce1f761d1a52380776a6ebd2124be3",
+        "plain_signature_valid": true,
+        "expected": "reject"
+      }
+    ],
+    "forced_hash": [
+      {
+        "id": "bip340-forced-k0-zero",
+        "requires_hash_override": true,
+        "comment": "The nonce hash returns 0, so k0 = 0 and the device must fail.",
+        "operations": [
+          "device_commit",
+          "device_sign"
+        ],
+        "forced_hash": {
+          "tag": "s2c/schnorr/nonce",
+          "output": "0000000000000000000000000000000000000000000000000000000000000000",
+          "why": "k0 = int(output) mod n = 0"
+        },
+        "sk": "d2ac250587a5901574b1909526be4895830aeca93d88e3dcada51ebdec65153b",
+        "m": "8e75c9606e0d4648330371f1082b2b68a7ddd6d812aa4df69df4b5b3c992c61f",
+        "rho": "188191e52e2179db0c1e2ea563a0f117325b061169af47973a8fcac8374b2729",
+        "hc": "4cbdc23a1a93c8d004223d092d44689b1acc05ca2d70990a2120cc6c5528026b",
+        "expected": "device_fails"
+      },
+      {
+        "id": "bip340-forced-k0-n",
+        "requires_hash_override": true,
+        "comment": "The nonce hash returns n, which reduces to 0 mod n, so the device must fail.",
+        "operations": [
+          "device_commit",
+          "device_sign"
+        ],
+        "forced_hash": {
+          "tag": "s2c/schnorr/nonce",
+          "output": "fffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364141",
+          "why": "k0 = n mod n = 0"
+        },
+        "sk": "d2ac250587a5901574b1909526be4895830aeca93d88e3dcada51ebdec65153b",
+        "m": "8e75c9606e0d4648330371f1082b2b68a7ddd6d812aa4df69df4b5b3c992c61f",
+        "rho": "188191e52e2179db0c1e2ea563a0f117325b061169af47973a8fcac8374b2729",
+        "hc": "4cbdc23a1a93c8d004223d092d44689b1acc05ca2d70990a2120cc6c5528026b",
+        "expected": "device_fails"
+      },
+      {
+        "id": "bip340-forced-t-n",
+        "requires_hash_override": true,
+        "comment": "The point-tweak hash returns n, so t >= n and the device must fail in step 4.",
+        "operations": [
+          "device_sign"
+        ],
+        "forced_hash": {
+          "tag": "s2c/schnorr/point",
+          "output": "fffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364141",
+          "why": "t = n"
+        },
+        "sk": "d2ac250587a5901574b1909526be4895830aeca93d88e3dcada51ebdec65153b",
+        "m": "8e75c9606e0d4648330371f1082b2b68a7ddd6d812aa4df69df4b5b3c992c61f",
+        "rho": "188191e52e2179db0c1e2ea563a0f117325b061169af47973a8fcac8374b2729",
+        "hc": "4cbdc23a1a93c8d004223d092d44689b1acc05ca2d70990a2120cc6c5528026b",
+        "expected": "device_fails"
+      },
+      {
+        "id": "bip340-forced-t-max",
+        "requires_hash_override": true,
+        "comment": "The point-tweak hash returns 2^256-1, so t >= n and the device must fail in step 4.",
+        "operations": [
+          "device_sign"
+        ],
+        "forced_hash": {
+          "tag": "s2c/schnorr/point",
+          "output": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+          "why": "t = 2^256-1"
+        },
+        "sk": "d2ac250587a5901574b1909526be4895830aeca93d88e3dcada51ebdec65153b",
+        "m": "8e75c9606e0d4648330371f1082b2b68a7ddd6d812aa4df69df4b5b3c992c61f",
+        "rho": "188191e52e2179db0c1e2ea563a0f117325b061169af47973a8fcac8374b2729",
+        "hc": "4cbdc23a1a93c8d004223d092d44689b1acc05ca2d70990a2120cc6c5528026b",
+        "expected": "device_fails"
+      },
+      {
+        "id": "bip340-forced-kprime-zero",
+        "requires_hash_override": true,
+        "comment": "The point-tweak hash returns n - k0, where k0 is this vector's base nonce, so k' = 0 and the device must fail in step 4.",
+        "operations": [
+          "device_sign"
+        ],
+        "forced_hash": {
+          "tag": "s2c/schnorr/point",
+          "output": "e15d89f64a7025e7823cf3b4d7cd439a273871ee5615fd53bba91274de49a806",
+          "why": "t = n - k0, so k' = (k0 + t) mod n = 0"
+        },
+        "sk": "d2ac250587a5901574b1909526be4895830aeca93d88e3dcada51ebdec65153b",
+        "m": "8e75c9606e0d4648330371f1082b2b68a7ddd6d812aa4df69df4b5b3c992c61f",
+        "rho": "188191e52e2179db0c1e2ea563a0f117325b061169af47973a8fcac8374b2729",
+        "hc": "4cbdc23a1a93c8d004223d092d44689b1acc05ca2d70990a2120cc6c5528026b",
+        "expected": "device_fails"
+      },
+      {
+        "id": "bip340-forced-host-t-n",
+        "requires_hash_override": true,
+        "comment": "The host's point-tweak hash returns n, so t >= n and the host must reject the otherwise valid tuple.",
+        "operations": [
+          "host_verify"
+        ],
+        "forced_hash": {
+          "tag": "s2c/schnorr/point",
+          "output": "fffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364141",
+          "why": "t = n"
+        },
+        "pk": "07ba2fffd0252a8897827675a229b535eed29964e875e0058f5a584290ed7d4d",
+        "m": "8e75c9606e0d4648330371f1082b2b68a7ddd6d812aa4df69df4b5b3c992c61f",
+        "rho": "188191e52e2179db0c1e2ea563a0f117325b061169af47973a8fcac8374b2729",
+        "R0_bytes": "02f84f9a03580aa92a25588dd01b4ed375c17040652b879494c67fd7e018c393c9",
+        "sig": "bfdf2d6fb14b0c0af4a94bdb26e404d834193b03a71156beb4c146fd65aa33bd1607008e7b821bde19ea940691e46c36a11a16e9f1d706364330e2c11f91e72c",
+        "expected": "reject"
+      },
+      {
+        "id": "bip340-forced-host-t-max",
+        "requires_hash_override": true,
+        "comment": "The host's point-tweak hash returns 2^256-1, so t >= n and the host must reject.",
+        "operations": [
+          "host_verify"
+        ],
+        "forced_hash": {
+          "tag": "s2c/schnorr/point",
+          "output": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+          "why": "t = 2^256-1"
+        },
+        "pk": "07ba2fffd0252a8897827675a229b535eed29964e875e0058f5a584290ed7d4d",
+        "m": "8e75c9606e0d4648330371f1082b2b68a7ddd6d812aa4df69df4b5b3c992c61f",
+        "rho": "188191e52e2179db0c1e2ea563a0f117325b061169af47973a8fcac8374b2729",
+        "R0_bytes": "02f84f9a03580aa92a25588dd01b4ed375c17040652b879494c67fd7e018c393c9",
+        "sig": "bfdf2d6fb14b0c0af4a94bdb26e404d834193b03a71156beb4c146fd65aa33bd1607008e7b821bde19ea940691e46c36a11a16e9f1d706364330e2c11f91e72c",
+        "expected": "reject"
+      },
+      {
+        "id": "bip340-forced-host-W-infinity",
+        "requires_hash_override": true,
+        "comment": "The host's point-tweak hash returns n - k0, so W = R0 + t*G is the point at infinity and the host must reject.",
+        "operations": [
+          "host_verify"
+        ],
+        "forced_hash": {
+          "tag": "s2c/schnorr/point",
+          "output": "e15d89f64a7025e7823cf3b4d7cd439a273871ee5615fd53bba91274de49a806",
+          "why": "t = n - k0, so W = infinity"
+        },
+        "pk": "07ba2fffd0252a8897827675a229b535eed29964e875e0058f5a584290ed7d4d",
+        "m": "8e75c9606e0d4648330371f1082b2b68a7ddd6d812aa4df69df4b5b3c992c61f",
+        "rho": "188191e52e2179db0c1e2ea563a0f117325b061169af47973a8fcac8374b2729",
+        "R0_bytes": "02f84f9a03580aa92a25588dd01b4ed375c17040652b879494c67fd7e018c393c9",
+        "sig": "bfdf2d6fb14b0c0af4a94bdb26e404d834193b03a71156beb4c146fd65aa33bd1607008e7b821bde19ea940691e46c36a11a16e9f1d706364330e2c11f91e72c",
+        "expected": "reject"
+      },
+      {
+        "id": "bip340-forced-isolated-W-doubling",
+        "requires_hash_override": true,
+        "isolates": "W = R0 + t*G with R0 = t*G must be computed as a doubling",
+        "comment": "The point-tweak hash returns 5 and R0 = 5*G, so W = R0 + t*G = 10*G is the doubling case of the point addition. The signature is valid with nonce 10, so the host must accept. A host that fails on R0 = t*G refuses it.",
+        "operations": [
+          "host_verify"
+        ],
+        "forced_hash": {
+          "tag": "s2c/schnorr/point",
+          "output": "0000000000000000000000000000000000000000000000000000000000000005",
+          "why": "t = 5"
+        },
+        "seed": "anti-exfil vector/bip340/isolated/W",
+        "pk": "482fa7256f5fe3ec427a07d5e0102b8a90eb194ca0bcf7c761d696d10f4e1deb",
+        "m": "ec1afe4bba8e4c663ee4a48fbc891f3b565119ceb2a38944f59b71bf9f7170c6",
+        "rho": "efc85ca523f6094f79f76978fa6a1d046de7e1631997cb1d4c4c751f4dd8757f",
+        "R0_bytes": "022f8bde4d1a07209355b4a7250a5c5128e88b84bddc619ab7cba8d569b240efe4",
+        "sig": "a0434d9e47f3c86235477c7b1ae6ae5d3442d49b1943c2b752a68e2a47e247c7beadf2231286de45c4559e0412f1fe187683c4d143aecfd1c40d8dd2a54ebe9e",
+        "expected": "accept"
+      },
+      {
+        "id": "bip340-forced-isolated-W-infinity-from-negated-R0",
+        "requires_hash_override": true,
+        "isolates": "W = R0 + t*G must not be the point at infinity",
+        "comment": "The point-tweak hash returns 5 and R0 = -5*G, so W = R0 + t*G is the point at infinity. The signature is valid with nonce n - 10 and would pass every later check if W were computed as the double of R0, so only the infinity check refuses it.",
+        "operations": [
+          "host_verify"
+        ],
+        "forced_hash": {
+          "tag": "s2c/schnorr/point",
+          "output": "0000000000000000000000000000000000000000000000000000000000000005",
+          "why": "t = 5"
+        },
+        "seed": "anti-exfil vector/bip340/isolated/W",
+        "pk": "482fa7256f5fe3ec427a07d5e0102b8a90eb194ca0bcf7c761d696d10f4e1deb",
+        "m": "ec1afe4bba8e4c663ee4a48fbc891f3b565119ceb2a38944f59b71bf9f7170c6",
+        "rho": "efc85ca523f6094f79f76978fa6a1d046de7e1631997cb1d4c4c751f4dd8757f",
+        "R0_bytes": "032f8bde4d1a07209355b4a7250a5c5128e88b84bddc619ab7cba8d569b240efe4",
+        "sig": "a0434d9e47f3c86235477c7b1ae6ae5d3442d49b1943c2b752a68e2a47e247c7beadf2231286de45c4559e0412f1fe187683c4d143aecfd1c40d8dd2a54ebe9e",
+        "fails_at_step": 3,
+        "expected": "reject"
+      },
+      {
+        "id": "bip340-forced-isolated-s-equals-n",
+        "requires_hash_override": true,
+        "isolates": "BIP340 Verify: s must be below n",
+        "comment": "The point-tweak hash returns 0 and the BIP340 challenge hash returns 5. R0 = -5*P, sig = (x(R0), n). Reduced mod n the s half is 0, which would satisfy R = s*G - e*P, so only the range check s < n refuses it.",
+        "operations": [
+          "host_verify"
+        ],
+        "forced_hash": {
+          "tag": "s2c/schnorr/point",
+          "output": "0000000000000000000000000000000000000000000000000000000000000000",
+          "why": "t = 0, so W = R0"
+        },
+        "additional_forced_hashes": [
+          {
+            "tag": "BIP0340/challenge",
+            "output": "0000000000000000000000000000000000000000000000000000000000000005",
+            "why": "e = 5"
+          }
+        ],
+        "seed": "anti-exfil vector/bip340/isolated/s-equals-n",
+        "pk": "e2424cd018dd1a47a25696f9488a21e5da0ed52f373afaccb3b417043941ff78",
+        "m": "9c6556fa3be08500b5a67ec3556374cefba2f95ab7518e0cf0313e0087292c7c",
+        "rho": "87958b758f4318eac675526d1ec9b676ca14b8b2552b1b911b9e46cee08463dc",
+        "R0_bytes": "02b15402bb73fa8d9807a6b96f3bc0cc3233543f458aa5f8bbf866bd1b403802c8",
+        "sig": "b15402bb73fa8d9807a6b96f3bc0cc3233543f458aa5f8bbf866bd1b403802c8fffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364141",
+        "fails_at_step": 5,
+        "expected": "reject"
+      }
+    ]
+  },
+  "ecdsa": {
+    "valid": [
+      {
+        "id": "ecdsa-valid-r0-even-p-even-w-even",
+        "comment": "R0 has even y, the public key point P has even y and W = R0 + t*G has even y.",
+        "seed": "anti-exfil vector/ecdsa/r0-even-p-even-w-even/6",
+        "sk": "fd8a9fa57fbcc7addcc33a846c5d131d73c34424345b0d2f22388f73a10886a3",
+        "m": "12304bd5a6a18b27aa7ffe97db81a44dc23e8bff4817ceffa9660cdf3e9fb56d",
+        "rho": "9737437abd108debad689c25c1105d2c88024ae76d1b22d733b64406eb2f5ff1",
+        "pk": "0226f4a41a7fee7cac05fd2650e5ffd4a95ec7dce7511527b19ce1ddecccf57cd0",
+        "hc": "b7acfb254f8469bc6f7b290f0a1831d69783914a89f3c4b4e95e327a24b5b20c",
+        "R0_bytes": "022462b2a9299bfee37d37dc7e3ac1fdac51cc2a27698e4e1ecedb35c0a7d190f3",
+        "sig": "06f2aee2b42f85981627dba9cc9044db977d22adc5eab6b5ecbed781eb89746a0eb31abbdc61924a79660a3acf5da0bdc225b326285562ce6e214226ad0cf62b",
+        "R0_parity": "even",
+        "P_parity": "even",
+        "W_parity": "even",
+        "s_negated": false,
+        "m_length": 32
+      },
+      {
+        "id": "ecdsa-valid-r0-even-p-even-w-odd",
+        "comment": "R0 has even y, the public key point P has even y and W = R0 + t*G has odd y.",
+        "seed": "anti-exfil vector/ecdsa/r0-even-p-even-w-odd/1",
+        "sk": "de5754a763b699fcb2a51a4fdbbbb92bf774d6c92907fd973d7d101a450ebfd9",
+        "m": "1266ef8cc8e42dbf9045a4fce508618827eefce668bb7623e70849ead54b14c5",
+        "rho": "20ac66c74af588102b844ac4881b8f50da518f07b8c7f679f05ed94443827f95",
+        "pk": "020edb1e1cba296f6a1ad9bca11d2980399271c315db08f5f2b07c1b886452a1a5",
+        "hc": "8e301153d96a9667508f593e9cd7832dab471f1565e2c7dfd8f619ba7ff42303",
+        "R0_bytes": "020b333fcbd66df1d8bfe8949dc4d0a77c26ff8b4b8e3244acb4a900a724fd391f",
+        "sig": "44fd5a52e3ac9866d0e175e22bb9dc14b38576099c078ff4bf2b7d7a29ec955c5a1133101f35ece99b0773ed6ba8a9c547ca45e7210220b0dcb77f57754388e9",
+        "R0_parity": "even",
+        "P_parity": "even",
+        "W_parity": "odd",
+        "s_negated": false,
+        "m_length": 32
+      },
+      {
+        "id": "ecdsa-valid-r0-even-p-odd-w-even",
+        "comment": "R0 has even y, the public key point P has odd y and W = R0 + t*G has even y.",
+        "seed": "anti-exfil vector/ecdsa/r0-even-p-odd-w-even/7",
+        "sk": "ae6b65cf4d48f6a0511ed5ac83dd87fbf86c22b3e32785edb9d62d1efab7fce9",
+        "m": "b3a9747b0df7c0d768f882f0a7fb6648da74a259517af42b097c4bf96641c461",
+        "rho": "4bff0a40adc11c9447311370862074581d83d575477cbbabbd6ea0d7a99ccf5a",
+        "pk": "03aaa694e3a18421cd7f2c17f95bbee8f35ff1a273e307be10eef0339063901a5f",
+        "hc": "e5ea40d2a86ecb5136bacb32bf2904b38d544b428977fae6f9c0ab9751a5ca98",
+        "R0_bytes": "02ab05bda2dbcdd20cf17be2bde41358f1e4dc76838ad3a98953a81b3b71e45ee9",
+        "sig": "de2150be3a0e4bac32b02f2bcc51ea8988afcdf976561f8bd9d45f62f8c6df3c329cc83a79a8df782a15f005e74d983e5b04accc69b079073690f9930ae92527",
+        "R0_parity": "even",
+        "P_parity": "odd",
+        "W_parity": "even",
+        "s_negated": true,
+        "m_length": 32
+      },
+      {
+        "id": "ecdsa-valid-r0-even-p-odd-w-odd",
+        "comment": "R0 has even y, the public key point P has odd y and W = R0 + t*G has odd y.",
+        "seed": "anti-exfil vector/ecdsa/r0-even-p-odd-w-odd/2",
+        "sk": "d7e6a8ea8093104602b40709480f2f688efac1695bdd9d59bd340683475c20c3",
+        "m": "681ddd72fd99abdb6524a35a71f9946bb4efa9493d48d9dc557ee84fa5ff16f4",
+        "rho": "8aaf96ec45a86cf641aa8e483ba3ea487498946bb8f68a2225810b3164f3c3ab",
+        "pk": "036c8a78ec1c9afabc77a9d9238bc0ff2b6da886cb3305f6e109ced62abbd751fe",
+        "hc": "480114f9d068e7371690f0070d0e492c37c7f5cc646e816d7de078a0ccb43201",
+        "R0_bytes": "0228291e03d63c1916132db5690a27e5db6f88487ee8da6440a6454ba5123a403c",
+        "sig": "e8d792b8bdf51d607bba1c1a317e6a34678c8e766fa2a690977b99449817aaef6c0d7b829dfc146f7a06a8ad65d05b03647894d27ebd3f0fda3a69fbc680f395",
+        "R0_parity": "even",
+        "P_parity": "odd",
+        "W_parity": "odd",
+        "s_negated": false,
+        "m_length": 32
+      },
+      {
+        "id": "ecdsa-valid-r0-odd-p-even-w-even",
+        "comment": "R0 has odd y, the public key point P has even y and W = R0 + t*G has even y.",
+        "seed": "anti-exfil vector/ecdsa/r0-odd-p-even-w-even/4",
+        "sk": "9d9fa5af7aa0d91953c42f0f2c71f2e046111db5750d904c30ad1b4ed3268dc6",
+        "m": "5ecf00ebc0467067c30c3349e84a7f401b192e4668636d49c54e6da26abc9d15",
+        "rho": "7dd711689391307b1714200850c899950bb20627eb960964e380e67d916ba069",
+        "pk": "0205ede6ee476fb059b25f0837e2abd942deaa3ac4c6898a5572949b0d72b83005",
+        "hc": "ddecd5698784e7029ec83ad2960cc14fd6bdc74c03b9245f8222b3edcdda9848",
+        "R0_bytes": "03c38d7f529e608a50533318d5c00a64dfbb2a6d44a8fa0566b3018c93a91b36e8",
+        "sig": "54d14b4d373211c84ec65b948b57781019771d00b406b903a40db31a89e408af7f2f9021ea2adf2e40bbba3a87abbecb68e860bf14f578e87625ee3333db3108",
+        "R0_parity": "odd",
+        "P_parity": "even",
+        "W_parity": "even",
+        "s_negated": false,
+        "m_length": 32
+      },
+      {
+        "id": "ecdsa-valid-r0-odd-p-even-w-odd",
+        "comment": "R0 has odd y, the public key point P has even y and W = R0 + t*G has odd y.",
+        "seed": "anti-exfil vector/ecdsa/r0-odd-p-even-w-odd/13",
+        "sk": "c026858ee92913af9984a6b9f4313e7ecf5ce73dfa02e5315a379625ab84c5b9",
+        "m": "881aaecff751cd0115e3d837d17f9c25413b49043834e907586af0add134f7c7",
+        "rho": "8e9853788e9c0830d847441c38e564dfbba46c6ccfbcaf0926b5a488e0a7baef",
+        "pk": "026dd56df5bf81d88c019e238e8a48829534cbc05f42dcb9423605f3ded3e81c62",
+        "hc": "29737df5a4db209c033176bc02e955d95d09a7c9195a82bf11b2d04fcfdb05c3",
+        "R0_bytes": "03810f9be754ed9964c5304552d256c9293a5859612792e886c91393d6f3e19932",
+        "sig": "f0fdb2b7147892617f515354824c409a8185ebba41ba3da223331663f9f80da96f3b17be02c081c00ced4c5bef472bbd23d446d5390cf464ed94c643e2b51ad7",
+        "R0_parity": "odd",
+        "P_parity": "even",
+        "W_parity": "odd",
+        "s_negated": true,
+        "m_length": 32
+      },
+      {
+        "id": "ecdsa-valid-r0-odd-p-odd-w-even",
+        "comment": "R0 has odd y, the public key point P has odd y and W = R0 + t*G has even y.",
+        "seed": "anti-exfil vector/ecdsa/r0-odd-p-odd-w-even/38",
+        "sk": "58b7e6acb45cae49b30ee1bc45496f3fa2862e4c160b7445dae0b43419676a08",
+        "m": "3edfbf8e9c8cdd1356c67da6986ddd57f5a67db5bdb10e3e134923cb051412cc",
+        "rho": "a005a360c2e8c92d297557df9b71167394c14f4878cc561a3c805a3cc0cd5e86",
+        "pk": "03b96f4be14401475e4cf6e828f67679a94251e508df177cb9f48b6bc85ab93a84",
+        "hc": "b7eecc4778340189d9765c88c666cbf2a2498068a3fc58b238507c8343893f78",
+        "R0_bytes": "03e99fa7b22cacabf0e1c808962d7c4e7a2285c5b3b59b67e2d07bf6e7cbc3ff7f",
+        "sig": "c0f30de3bf8d3e1fe8f1c63996574c7050b24c4ed4481758bdec1c0884fd6e2c7b9d4db9e91fc049f4faca5f95be8229bffb83890b3048ef15c391393adbfcf2",
+        "R0_parity": "odd",
+        "P_parity": "odd",
+        "W_parity": "even",
+        "s_negated": true,
+        "m_length": 32
+      },
+      {
+        "id": "ecdsa-valid-r0-odd-p-odd-w-odd",
+        "comment": "R0 has odd y, the public key point P has odd y and W = R0 + t*G has odd y.",
+        "seed": "anti-exfil vector/ecdsa/r0-odd-p-odd-w-odd/1",
+        "sk": "eee9ef691bb4d0909e28c1d22e69e36ea837e37cf961ee892bcab6fe3709a605",
+        "m": "341cacd5cc1954ce995ca52f6d8ae3f4a6bea22075b333fded3b931f8bfc7d29",
+        "rho": "55c5a609b3447a527ee029105365afb8a0720e1395f9fbed9266b202b51f02b6",
+        "pk": "034f6b595fdeafc1c48fc598e6b3c9735b163e21d49281c12017c22477b70cb3bd",
+        "hc": "810ddf3066f2eef4fc7e09299103e4d3f07ae7d205371ab07dcbb53c6aad6be9",
+        "R0_bytes": "033b1f752cad01d770967a3287b65ce1546c850db08df342a996b360b5c3bb20af",
+        "sig": "1124a7334f2748b510c28bb5b5d189228a9d57d2f246951259dfb522d73b04ae3a8603d9a566b5ebea0f7d5de0ce5f135326965db9a83fbb5abcc542be292cc1",
+        "R0_parity": "odd",
+        "P_parity": "odd",
+        "W_parity": "odd",
+        "s_negated": false,
+        "m_length": 32
+      },
+      {
+        "id": "ecdsa-valid-low-s-negated",
+        "comment": "The raw s computed in step 4 is above (n-1)/2, so the device replaces it with n - s.",
+        "seed": "anti-exfil vector/ecdsa/low-s-negated/0",
+        "sk": "3ec3afe978a7b7c480f5f985c32520795067919d07c85dffcd3c72d27147e0a4",
+        "m": "e87f8255dc0669bcd9c34f2d06a4c12227250ee070c8f0338a9d28f6371fcead",
+        "rho": "5ad68486746dea82a7384f7cb390c752442c41eaa5baa77d4612bffbd0bf1bba",
+        "pk": "0399fc08a4eb3269ac965d2bc468d2cc47996a58a291abc82253a87e2b719b457b",
+        "hc": "d2916e9c04d74b31b09356294d3a9062259be7effb3b0d8d7abc57d0782f115f",
+        "R0_bytes": "029f526df5c08bec405de0fe11b081d412c4344321c186495e870313d3a868550e",
+        "sig": "a03211144b5c2fce61953a0f6907e5361919b88e1862fd7aae6330bb5ebc38174ec4a5050cc9ca310da26191a0f01d1910412f9cd7f682ce0c84f9b8f302701f",
+        "R0_parity": "even",
+        "P_parity": "odd",
+        "W_parity": "odd",
+        "s_negated": true,
+        "m_length": 32
+      },
+      {
+        "id": "ecdsa-valid-low-s-not-negated",
+        "comment": "The raw s computed in step 4 is already at most (n-1)/2, so s is used as computed.",
+        "seed": "anti-exfil vector/ecdsa/low-s-not-negated/0",
+        "sk": "716c574ee3013cf36a0d9e9a20fae0871a758d40b009a397ac719169eacd31ee",
+        "m": "1afa7ef951a0bcfe0e517b50d545e02a9efce9d135fbfe7f90cc95e552c1c772",
+        "rho": "01ee3e6eaf24a37a7248674f033420acb960daf62c4f5d29aef5dc72cdd2d099",
+        "pk": "03ebe2f3a1a0f8c54d1e1dd55405ab38a5bd1764dea956c5d509f8a58a987dc9b9",
+        "hc": "54fb2dd1bd2a8f3b04d90b7cc4b8e0217557e43be86fa85d473e4656f195a5aa",
+        "R0_bytes": "0297815edb8aa3199563930ac9bc4efe9a52c259a52a2f2327515be03edf759490",
+        "sig": "90b6a6d278270aca27ae5f6a1daa6594c50c28b7a55847f1e40153db9f1c7a893d8cb6d30ac7e7ff3f93acb5a943c5474bfbec92323012642f8a1eb6f6d101df",
+        "R0_parity": "even",
+        "P_parity": "odd",
+        "W_parity": "odd",
+        "s_negated": false,
+        "m_length": 32
+      }
+    ],
+    "reject": [
+      {
+        "id": "ecdsa-reject-wrong-rho-a",
+        "defect": "wrong_rho",
+        "derived_from": "ecdsa-valid-r0-even-p-even-w-even",
+        "comment": "rho differs from the one the device was given. t changes, so W no longer matches r.",
+        "pk": "0226f4a41a7fee7cac05fd2650e5ffd4a95ec7dce7511527b19ce1ddecccf57cd0",
+        "m": "12304bd5a6a18b27aa7ffe97db81a44dc23e8bff4817ceffa9660cdf3e9fb56d",
+        "rho": "869fc2ccb151885da204c032db5d61e4d2268a0abf69f66889f219faa56ba11a",
+        "R0_bytes": "022462b2a9299bfee37d37dc7e3ac1fdac51cc2a27698e4e1ecedb35c0a7d190f3",
+        "sig": "06f2aee2b42f85981627dba9cc9044db977d22adc5eab6b5ecbed781eb89746a0eb31abbdc61924a79660a3acf5da0bdc225b326285562ce6e214226ad0cf62b",
+        "expected": "reject"
+      },
+      {
+        "id": "ecdsa-reject-wrong-R0-a",
+        "defect": "wrong_R0",
+        "derived_from": "ecdsa-valid-r0-even-p-even-w-even",
+        "comment": "R0_bytes is a valid point from another vector, not the device's commitment for this signature.",
+        "pk": "0226f4a41a7fee7cac05fd2650e5ffd4a95ec7dce7511527b19ce1ddecccf57cd0",
+        "m": "12304bd5a6a18b27aa7ffe97db81a44dc23e8bff4817ceffa9660cdf3e9fb56d",
+        "rho": "9737437abd108debad689c25c1105d2c88024ae76d1b22d733b64406eb2f5ff1",
+        "R0_bytes": "020b333fcbd66df1d8bfe8949dc4d0a77c26ff8b4b8e3244acb4a900a724fd391f",
+        "sig": "06f2aee2b42f85981627dba9cc9044db977d22adc5eab6b5ecbed781eb89746a0eb31abbdc61924a79660a3acf5da0bdc225b326285562ce6e214226ad0cf62b",
+        "expected": "reject"
+      },
+      {
+        "id": "ecdsa-reject-wrong-m-a",
+        "defect": "wrong_m",
+        "derived_from": "ecdsa-valid-r0-even-p-even-w-even",
+        "comment": "The message differs from the one that was signed (first bit flipped).",
+        "pk": "0226f4a41a7fee7cac05fd2650e5ffd4a95ec7dce7511527b19ce1ddecccf57cd0",
+        "m": "13304bd5a6a18b27aa7ffe97db81a44dc23e8bff4817ceffa9660cdf3e9fb56d",
+        "rho": "9737437abd108debad689c25c1105d2c88024ae76d1b22d733b64406eb2f5ff1",
+        "R0_bytes": "022462b2a9299bfee37d37dc7e3ac1fdac51cc2a27698e4e1ecedb35c0a7d190f3",
+        "sig": "06f2aee2b42f85981627dba9cc9044db977d22adc5eab6b5ecbed781eb89746a0eb31abbdc61924a79660a3acf5da0bdc225b326285562ce6e214226ad0cf62b",
+        "expected": "reject"
+      },
+      {
+        "id": "ecdsa-reject-wrong-pk-a",
+        "defect": "wrong_pk",
+        "derived_from": "ecdsa-valid-r0-even-p-even-w-even",
+        "comment": "pk is a valid public key of a different key.",
+        "pk": "020edb1e1cba296f6a1ad9bca11d2980399271c315db08f5f2b07c1b886452a1a5",
+        "m": "12304bd5a6a18b27aa7ffe97db81a44dc23e8bff4817ceffa9660cdf3e9fb56d",
+        "rho": "9737437abd108debad689c25c1105d2c88024ae76d1b22d733b64406eb2f5ff1",
+        "R0_bytes": "022462b2a9299bfee37d37dc7e3ac1fdac51cc2a27698e4e1ecedb35c0a7d190f3",
+        "sig": "06f2aee2b42f85981627dba9cc9044db977d22adc5eab6b5ecbed781eb89746a0eb31abbdc61924a79660a3acf5da0bdc225b326285562ce6e214226ad0cf62b",
+        "expected": "reject"
+      },
+      {
+        "id": "ecdsa-reject-r-changed-a",
+        "defect": "r_changed",
+        "derived_from": "ecdsa-valid-r0-even-p-even-w-even",
+        "comment": "The first half of sig (r) is replaced by the r of another signature; s is unchanged.",
+        "pk": "0226f4a41a7fee7cac05fd2650e5ffd4a95ec7dce7511527b19ce1ddecccf57cd0",
+        "m": "12304bd5a6a18b27aa7ffe97db81a44dc23e8bff4817ceffa9660cdf3e9fb56d",
+        "rho": "9737437abd108debad689c25c1105d2c88024ae76d1b22d733b64406eb2f5ff1",
+        "R0_bytes": "022462b2a9299bfee37d37dc7e3ac1fdac51cc2a27698e4e1ecedb35c0a7d190f3",
+        "sig": "44fd5a52e3ac9866d0e175e22bb9dc14b38576099c078ff4bf2b7d7a29ec955c0eb31abbdc61924a79660a3acf5da0bdc225b326285562ce6e214226ad0cf62b",
+        "expected": "reject"
+      },
+      {
+        "id": "ecdsa-reject-s-changed-a",
+        "defect": "s_changed",
+        "derived_from": "ecdsa-valid-r0-even-p-even-w-even",
+        "comment": "The second half of sig (s) is changed by one, staying in range and low.",
+        "pk": "0226f4a41a7fee7cac05fd2650e5ffd4a95ec7dce7511527b19ce1ddecccf57cd0",
+        "m": "12304bd5a6a18b27aa7ffe97db81a44dc23e8bff4817ceffa9660cdf3e9fb56d",
+        "rho": "9737437abd108debad689c25c1105d2c88024ae76d1b22d733b64406eb2f5ff1",
+        "R0_bytes": "022462b2a9299bfee37d37dc7e3ac1fdac51cc2a27698e4e1ecedb35c0a7d190f3",
+        "sig": "06f2aee2b42f85981627dba9cc9044db977d22adc5eab6b5ecbed781eb89746a0eb31abbdc61924a79660a3acf5da0bdc225b326285562ce6e214226ad0cf62c",
+        "expected": "reject"
+      },
+      {
+        "id": "ecdsa-reject-wrong-rho-b",
+        "defect": "wrong_rho",
+        "derived_from": "ecdsa-valid-r0-odd-p-odd-w-odd",
+        "comment": "rho differs from the one the device was given. t changes, so W no longer matches r.",
+        "pk": "034f6b595fdeafc1c48fc598e6b3c9735b163e21d49281c12017c22477b70cb3bd",
+        "m": "341cacd5cc1954ce995ca52f6d8ae3f4a6bea22075b333fded3b931f8bfc7d29",
+        "rho": "11efa2cbae1253ba42c509727f35c53aa811321c6a814ea00425eb8217a98b7c",
+        "R0_bytes": "033b1f752cad01d770967a3287b65ce1546c850db08df342a996b360b5c3bb20af",
+        "sig": "1124a7334f2748b510c28bb5b5d189228a9d57d2f246951259dfb522d73b04ae3a8603d9a566b5ebea0f7d5de0ce5f135326965db9a83fbb5abcc542be292cc1",
+        "expected": "reject"
+      },
+      {
+        "id": "ecdsa-reject-wrong-R0-b",
+        "defect": "wrong_R0",
+        "derived_from": "ecdsa-valid-r0-odd-p-odd-w-odd",
+        "comment": "R0_bytes is a valid point from another vector, not the device's commitment for this signature.",
+        "pk": "034f6b595fdeafc1c48fc598e6b3c9735b163e21d49281c12017c22477b70cb3bd",
+        "m": "341cacd5cc1954ce995ca52f6d8ae3f4a6bea22075b333fded3b931f8bfc7d29",
+        "rho": "55c5a609b3447a527ee029105365afb8a0720e1395f9fbed9266b202b51f02b6",
+        "R0_bytes": "020b333fcbd66df1d8bfe8949dc4d0a77c26ff8b4b8e3244acb4a900a724fd391f",
+        "sig": "1124a7334f2748b510c28bb5b5d189228a9d57d2f246951259dfb522d73b04ae3a8603d9a566b5ebea0f7d5de0ce5f135326965db9a83fbb5abcc542be292cc1",
+        "expected": "reject"
+      },
+      {
+        "id": "ecdsa-reject-wrong-m-b",
+        "defect": "wrong_m",
+        "derived_from": "ecdsa-valid-r0-odd-p-odd-w-odd",
+        "comment": "The message differs from the one that was signed (first bit flipped).",
+        "pk": "034f6b595fdeafc1c48fc598e6b3c9735b163e21d49281c12017c22477b70cb3bd",
+        "m": "351cacd5cc1954ce995ca52f6d8ae3f4a6bea22075b333fded3b931f8bfc7d29",
+        "rho": "55c5a609b3447a527ee029105365afb8a0720e1395f9fbed9266b202b51f02b6",
+        "R0_bytes": "033b1f752cad01d770967a3287b65ce1546c850db08df342a996b360b5c3bb20af",
+        "sig": "1124a7334f2748b510c28bb5b5d189228a9d57d2f246951259dfb522d73b04ae3a8603d9a566b5ebea0f7d5de0ce5f135326965db9a83fbb5abcc542be292cc1",
+        "expected": "reject"
+      },
+      {
+        "id": "ecdsa-reject-wrong-pk-b",
+        "defect": "wrong_pk",
+        "derived_from": "ecdsa-valid-r0-odd-p-odd-w-odd",
+        "comment": "pk is a valid public key of a different key.",
+        "pk": "020edb1e1cba296f6a1ad9bca11d2980399271c315db08f5f2b07c1b886452a1a5",
+        "m": "341cacd5cc1954ce995ca52f6d8ae3f4a6bea22075b333fded3b931f8bfc7d29",
+        "rho": "55c5a609b3447a527ee029105365afb8a0720e1395f9fbed9266b202b51f02b6",
+        "R0_bytes": "033b1f752cad01d770967a3287b65ce1546c850db08df342a996b360b5c3bb20af",
+        "sig": "1124a7334f2748b510c28bb5b5d189228a9d57d2f246951259dfb522d73b04ae3a8603d9a566b5ebea0f7d5de0ce5f135326965db9a83fbb5abcc542be292cc1",
+        "expected": "reject"
+      },
+      {
+        "id": "ecdsa-reject-r-changed-b",
+        "defect": "r_changed",
+        "derived_from": "ecdsa-valid-r0-odd-p-odd-w-odd",
+        "comment": "The first half of sig (r) is replaced by the r of another signature; s is unchanged.",
+        "pk": "034f6b595fdeafc1c48fc598e6b3c9735b163e21d49281c12017c22477b70cb3bd",
+        "m": "341cacd5cc1954ce995ca52f6d8ae3f4a6bea22075b333fded3b931f8bfc7d29",
+        "rho": "55c5a609b3447a527ee029105365afb8a0720e1395f9fbed9266b202b51f02b6",
+        "R0_bytes": "033b1f752cad01d770967a3287b65ce1546c850db08df342a996b360b5c3bb20af",
+        "sig": "44fd5a52e3ac9866d0e175e22bb9dc14b38576099c078ff4bf2b7d7a29ec955c3a8603d9a566b5ebea0f7d5de0ce5f135326965db9a83fbb5abcc542be292cc1",
+        "expected": "reject"
+      },
+      {
+        "id": "ecdsa-reject-s-changed-b",
+        "defect": "s_changed",
+        "derived_from": "ecdsa-valid-r0-odd-p-odd-w-odd",
+        "comment": "The second half of sig (s) is changed by one, staying in range and low.",
+        "pk": "034f6b595fdeafc1c48fc598e6b3c9735b163e21d49281c12017c22477b70cb3bd",
+        "m": "341cacd5cc1954ce995ca52f6d8ae3f4a6bea22075b333fded3b931f8bfc7d29",
+        "rho": "55c5a609b3447a527ee029105365afb8a0720e1395f9fbed9266b202b51f02b6",
+        "R0_bytes": "033b1f752cad01d770967a3287b65ce1546c850db08df342a996b360b5c3bb20af",
+        "sig": "1124a7334f2748b510c28bb5b5d189228a9d57d2f246951259dfb522d73b04ae3a8603d9a566b5ebea0f7d5de0ce5f135326965db9a83fbb5abcc542be292cc2",
+        "expected": "reject"
+      },
+      {
+        "id": "ecdsa-reject-R0-prefix-06",
+        "defect": "R0_prefix",
+        "derived_from": "ecdsa-valid-r0-even-p-even-w-even",
+        "comment": "R0_bytes begins with 0x06. Only 0x02 and 0x03 are accepted by parse33 (0x06 and 0x07 are hybrid prefixes in SEC1).",
+        "pk": "0226f4a41a7fee7cac05fd2650e5ffd4a95ec7dce7511527b19ce1ddecccf57cd0",
+        "m": "12304bd5a6a18b27aa7ffe97db81a44dc23e8bff4817ceffa9660cdf3e9fb56d",
+        "rho": "9737437abd108debad689c25c1105d2c88024ae76d1b22d733b64406eb2f5ff1",
+        "R0_bytes": "062462b2a9299bfee37d37dc7e3ac1fdac51cc2a27698e4e1ecedb35c0a7d190f3",
+        "sig": "06f2aee2b42f85981627dba9cc9044db977d22adc5eab6b5ecbed781eb89746a0eb31abbdc61924a79660a3acf5da0bdc225b326285562ce6e214226ad0cf62b",
+        "expected": "reject"
+      },
+      {
+        "id": "ecdsa-reject-R0-prefix-07",
+        "defect": "R0_prefix",
+        "derived_from": "ecdsa-valid-r0-even-p-even-w-even",
+        "comment": "R0_bytes begins with 0x07. Only 0x02 and 0x03 are accepted by parse33 (0x06 and 0x07 are hybrid prefixes in SEC1).",
+        "pk": "0226f4a41a7fee7cac05fd2650e5ffd4a95ec7dce7511527b19ce1ddecccf57cd0",
+        "m": "12304bd5a6a18b27aa7ffe97db81a44dc23e8bff4817ceffa9660cdf3e9fb56d",
+        "rho": "9737437abd108debad689c25c1105d2c88024ae76d1b22d733b64406eb2f5ff1",
+        "R0_bytes": "072462b2a9299bfee37d37dc7e3ac1fdac51cc2a27698e4e1ecedb35c0a7d190f3",
+        "sig": "06f2aee2b42f85981627dba9cc9044db977d22adc5eab6b5ecbed781eb89746a0eb31abbdc61924a79660a3acf5da0bdc225b326285562ce6e214226ad0cf62b",
+        "expected": "reject"
+      },
+      {
+        "id": "ecdsa-reject-R0-prefix-00",
+        "defect": "R0_prefix",
+        "derived_from": "ecdsa-valid-r0-even-p-even-w-even",
+        "comment": "R0_bytes begins with 0x00. Only 0x02 and 0x03 are accepted by parse33.",
+        "pk": "0226f4a41a7fee7cac05fd2650e5ffd4a95ec7dce7511527b19ce1ddecccf57cd0",
+        "m": "12304bd5a6a18b27aa7ffe97db81a44dc23e8bff4817ceffa9660cdf3e9fb56d",
+        "rho": "9737437abd108debad689c25c1105d2c88024ae76d1b22d733b64406eb2f5ff1",
+        "R0_bytes": "002462b2a9299bfee37d37dc7e3ac1fdac51cc2a27698e4e1ecedb35c0a7d190f3",
+        "sig": "06f2aee2b42f85981627dba9cc9044db977d22adc5eab6b5ecbed781eb89746a0eb31abbdc61924a79660a3acf5da0bdc225b326285562ce6e214226ad0cf62b",
+        "expected": "reject"
+      },
+      {
+        "id": "ecdsa-reject-R0-prefix-04",
+        "defect": "R0_prefix",
+        "derived_from": "ecdsa-valid-r0-even-p-even-w-even",
+        "comment": "R0_bytes begins with 0x04. Only 0x02 and 0x03 are accepted by parse33.",
+        "pk": "0226f4a41a7fee7cac05fd2650e5ffd4a95ec7dce7511527b19ce1ddecccf57cd0",
+        "m": "12304bd5a6a18b27aa7ffe97db81a44dc23e8bff4817ceffa9660cdf3e9fb56d",
+        "rho": "9737437abd108debad689c25c1105d2c88024ae76d1b22d733b64406eb2f5ff1",
+        "R0_bytes": "042462b2a9299bfee37d37dc7e3ac1fdac51cc2a27698e4e1ecedb35c0a7d190f3",
+        "sig": "06f2aee2b42f85981627dba9cc9044db977d22adc5eab6b5ecbed781eb89746a0eb31abbdc61924a79660a3acf5da0bdc225b326285562ce6e214226ad0cf62b",
+        "expected": "reject"
+      },
+      {
+        "id": "ecdsa-reject-R0-x-p",
+        "defect": "R0_x_range",
+        "derived_from": "ecdsa-valid-r0-even-p-even-w-even",
+        "comment": "R0_bytes is 0x02 followed by p, an x coordinate that is not below p.",
+        "pk": "0226f4a41a7fee7cac05fd2650e5ffd4a95ec7dce7511527b19ce1ddecccf57cd0",
+        "m": "12304bd5a6a18b27aa7ffe97db81a44dc23e8bff4817ceffa9660cdf3e9fb56d",
+        "rho": "9737437abd108debad689c25c1105d2c88024ae76d1b22d733b64406eb2f5ff1",
+        "R0_bytes": "02fffffffffffffffffffffffffffffffffffffffffffffffffffffffefffffc2f",
+        "sig": "06f2aee2b42f85981627dba9cc9044db977d22adc5eab6b5ecbed781eb89746a0eb31abbdc61924a79660a3acf5da0bdc225b326285562ce6e214226ad0cf62b",
+        "expected": "reject"
+      },
+      {
+        "id": "ecdsa-reject-pk-x-p",
+        "defect": "pk_x_range",
+        "derived_from": "ecdsa-valid-r0-even-p-even-w-even",
+        "comment": "pk is 0x02 followed by p, an x coordinate that is not below p.",
+        "pk": "02fffffffffffffffffffffffffffffffffffffffffffffffffffffffefffffc2f",
+        "m": "12304bd5a6a18b27aa7ffe97db81a44dc23e8bff4817ceffa9660cdf3e9fb56d",
+        "rho": "9737437abd108debad689c25c1105d2c88024ae76d1b22d733b64406eb2f5ff1",
+        "R0_bytes": "022462b2a9299bfee37d37dc7e3ac1fdac51cc2a27698e4e1ecedb35c0a7d190f3",
+        "sig": "06f2aee2b42f85981627dba9cc9044db977d22adc5eab6b5ecbed781eb89746a0eb31abbdc61924a79660a3acf5da0bdc225b326285562ce6e214226ad0cf62b",
+        "expected": "reject"
+      },
+      {
+        "id": "ecdsa-reject-R0-x-max",
+        "defect": "R0_x_range",
+        "derived_from": "ecdsa-valid-r0-even-p-even-w-even",
+        "comment": "R0_bytes is 0x02 followed by 2^256-1, an x coordinate that is not below p.",
+        "pk": "0226f4a41a7fee7cac05fd2650e5ffd4a95ec7dce7511527b19ce1ddecccf57cd0",
+        "m": "12304bd5a6a18b27aa7ffe97db81a44dc23e8bff4817ceffa9660cdf3e9fb56d",
+        "rho": "9737437abd108debad689c25c1105d2c88024ae76d1b22d733b64406eb2f5ff1",
+        "R0_bytes": "02ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+        "sig": "06f2aee2b42f85981627dba9cc9044db977d22adc5eab6b5ecbed781eb89746a0eb31abbdc61924a79660a3acf5da0bdc225b326285562ce6e214226ad0cf62b",
+        "expected": "reject"
+      },
+      {
+        "id": "ecdsa-reject-pk-x-max",
+        "defect": "pk_x_range",
+        "derived_from": "ecdsa-valid-r0-even-p-even-w-even",
+        "comment": "pk is 0x02 followed by 2^256-1, an x coordinate that is not below p.",
+        "pk": "02ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+        "m": "12304bd5a6a18b27aa7ffe97db81a44dc23e8bff4817ceffa9660cdf3e9fb56d",
+        "rho": "9737437abd108debad689c25c1105d2c88024ae76d1b22d733b64406eb2f5ff1",
+        "R0_bytes": "022462b2a9299bfee37d37dc7e3ac1fdac51cc2a27698e4e1ecedb35c0a7d190f3",
+        "sig": "06f2aee2b42f85981627dba9cc9044db977d22adc5eab6b5ecbed781eb89746a0eb31abbdc61924a79660a3acf5da0bdc225b326285562ce6e214226ad0cf62b",
+        "expected": "reject"
+      },
+      {
+        "id": "ecdsa-reject-sig-r-zero",
+        "defect": "sig_r_range",
+        "derived_from": "ecdsa-valid-r0-even-p-even-w-even",
+        "comment": "The r half of sig is 0.",
+        "pk": "0226f4a41a7fee7cac05fd2650e5ffd4a95ec7dce7511527b19ce1ddecccf57cd0",
+        "m": "12304bd5a6a18b27aa7ffe97db81a44dc23e8bff4817ceffa9660cdf3e9fb56d",
+        "rho": "9737437abd108debad689c25c1105d2c88024ae76d1b22d733b64406eb2f5ff1",
+        "R0_bytes": "022462b2a9299bfee37d37dc7e3ac1fdac51cc2a27698e4e1ecedb35c0a7d190f3",
+        "sig": "00000000000000000000000000000000000000000000000000000000000000000eb31abbdc61924a79660a3acf5da0bdc225b326285562ce6e214226ad0cf62b",
+        "expected": "reject"
+      },
+      {
+        "id": "ecdsa-reject-sig-r-n",
+        "defect": "sig_r_range",
+        "derived_from": "ecdsa-valid-r0-even-p-even-w-even",
+        "comment": "The r half of sig is n, which is not below n.",
+        "pk": "0226f4a41a7fee7cac05fd2650e5ffd4a95ec7dce7511527b19ce1ddecccf57cd0",
+        "m": "12304bd5a6a18b27aa7ffe97db81a44dc23e8bff4817ceffa9660cdf3e9fb56d",
+        "rho": "9737437abd108debad689c25c1105d2c88024ae76d1b22d733b64406eb2f5ff1",
+        "R0_bytes": "022462b2a9299bfee37d37dc7e3ac1fdac51cc2a27698e4e1ecedb35c0a7d190f3",
+        "sig": "fffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd03641410eb31abbdc61924a79660a3acf5da0bdc225b326285562ce6e214226ad0cf62b",
+        "expected": "reject"
+      },
+      {
+        "id": "ecdsa-reject-sig-s-zero",
+        "defect": "sig_s_range",
+        "derived_from": "ecdsa-valid-r0-even-p-even-w-even",
+        "comment": "The s half of sig is 0.",
+        "pk": "0226f4a41a7fee7cac05fd2650e5ffd4a95ec7dce7511527b19ce1ddecccf57cd0",
+        "m": "12304bd5a6a18b27aa7ffe97db81a44dc23e8bff4817ceffa9660cdf3e9fb56d",
+        "rho": "9737437abd108debad689c25c1105d2c88024ae76d1b22d733b64406eb2f5ff1",
+        "R0_bytes": "022462b2a9299bfee37d37dc7e3ac1fdac51cc2a27698e4e1ecedb35c0a7d190f3",
+        "sig": "06f2aee2b42f85981627dba9cc9044db977d22adc5eab6b5ecbed781eb89746a0000000000000000000000000000000000000000000000000000000000000000",
+        "expected": "reject"
+      },
+      {
+        "id": "ecdsa-reject-sig-s-n",
+        "defect": "sig_s_range",
+        "derived_from": "ecdsa-valid-r0-even-p-even-w-even",
+        "comment": "The s half of sig is n.",
+        "pk": "0226f4a41a7fee7cac05fd2650e5ffd4a95ec7dce7511527b19ce1ddecccf57cd0",
+        "m": "12304bd5a6a18b27aa7ffe97db81a44dc23e8bff4817ceffa9660cdf3e9fb56d",
+        "rho": "9737437abd108debad689c25c1105d2c88024ae76d1b22d733b64406eb2f5ff1",
+        "R0_bytes": "022462b2a9299bfee37d37dc7e3ac1fdac51cc2a27698e4e1ecedb35c0a7d190f3",
+        "sig": "06f2aee2b42f85981627dba9cc9044db977d22adc5eab6b5ecbed781eb89746afffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364141",
+        "expected": "reject"
+      },
+      {
+        "id": "ecdsa-reject-R0-off-curve",
+        "defect": "R0_off_curve",
+        "derived_from": "ecdsa-valid-r0-even-p-even-w-even",
+        "comment": "R0_bytes is 0x02 followed by an x for which x^3 + 7 has no square root, so there is no point.",
+        "pk": "0226f4a41a7fee7cac05fd2650e5ffd4a95ec7dce7511527b19ce1ddecccf57cd0",
+        "m": "12304bd5a6a18b27aa7ffe97db81a44dc23e8bff4817ceffa9660cdf3e9fb56d",
+        "rho": "9737437abd108debad689c25c1105d2c88024ae76d1b22d733b64406eb2f5ff1",
+        "R0_bytes": "029f29e99890e3cc11aa37785b01dc3632008c729e15c5a6824c30265621e7e0ac",
+        "sig": "06f2aee2b42f85981627dba9cc9044db977d22adc5eab6b5ecbed781eb89746a0eb31abbdc61924a79660a3acf5da0bdc225b326285562ce6e214226ad0cf62b",
+        "expected": "reject"
+      },
+      {
+        "id": "ecdsa-reject-pk-off-curve",
+        "defect": "pk_off_curve",
+        "derived_from": "ecdsa-valid-r0-even-p-even-w-even",
+        "comment": "pk is 0x02 followed by an x for which x^3 + 7 has no square root, so there is no point.",
+        "pk": "02be67538cb77d779cb2b6b554b32cd3c95178049f699d87a4af62126fca5491d7",
+        "m": "12304bd5a6a18b27aa7ffe97db81a44dc23e8bff4817ceffa9660cdf3e9fb56d",
+        "rho": "9737437abd108debad689c25c1105d2c88024ae76d1b22d733b64406eb2f5ff1",
+        "R0_bytes": "022462b2a9299bfee37d37dc7e3ac1fdac51cc2a27698e4e1ecedb35c0a7d190f3",
+        "sig": "06f2aee2b42f85981627dba9cc9044db977d22adc5eab6b5ecbed781eb89746a0eb31abbdc61924a79660a3acf5da0bdc225b326285562ce6e214226ad0cf62b",
+        "expected": "reject"
+      },
+      {
+        "id": "ecdsa-reject-pk-prefix-06",
+        "defect": "pk_prefix",
+        "derived_from": "ecdsa-valid-r0-even-p-even-w-even",
+        "comment": "pk begins with 0x06. Only 0x02 and 0x03 are accepted by parse33.",
+        "pk": "0626f4a41a7fee7cac05fd2650e5ffd4a95ec7dce7511527b19ce1ddecccf57cd0",
+        "m": "12304bd5a6a18b27aa7ffe97db81a44dc23e8bff4817ceffa9660cdf3e9fb56d",
+        "rho": "9737437abd108debad689c25c1105d2c88024ae76d1b22d733b64406eb2f5ff1",
+        "R0_bytes": "022462b2a9299bfee37d37dc7e3ac1fdac51cc2a27698e4e1ecedb35c0a7d190f3",
+        "sig": "06f2aee2b42f85981627dba9cc9044db977d22adc5eab6b5ecbed781eb89746a0eb31abbdc61924a79660a3acf5da0bdc225b326285562ce6e214226ad0cf62b",
+        "expected": "reject"
+      },
+      {
+        "id": "ecdsa-reject-pk-prefix-07",
+        "defect": "pk_prefix",
+        "derived_from": "ecdsa-valid-r0-even-p-even-w-even",
+        "comment": "pk begins with 0x07. Only 0x02 and 0x03 are accepted by parse33.",
+        "pk": "0726f4a41a7fee7cac05fd2650e5ffd4a95ec7dce7511527b19ce1ddecccf57cd0",
+        "m": "12304bd5a6a18b27aa7ffe97db81a44dc23e8bff4817ceffa9660cdf3e9fb56d",
+        "rho": "9737437abd108debad689c25c1105d2c88024ae76d1b22d733b64406eb2f5ff1",
+        "R0_bytes": "022462b2a9299bfee37d37dc7e3ac1fdac51cc2a27698e4e1ecedb35c0a7d190f3",
+        "sig": "06f2aee2b42f85981627dba9cc9044db977d22adc5eab6b5ecbed781eb89746a0eb31abbdc61924a79660a3acf5da0bdc225b326285562ce6e214226ad0cf62b",
+        "expected": "reject"
+      },
+      {
+        "id": "ecdsa-reject-pk-prefix-04",
+        "defect": "pk_prefix",
+        "derived_from": "ecdsa-valid-r0-even-p-even-w-even",
+        "comment": "pk begins with 0x04. Only 0x02 and 0x03 are accepted by parse33.",
+        "pk": "0426f4a41a7fee7cac05fd2650e5ffd4a95ec7dce7511527b19ce1ddecccf57cd0",
+        "m": "12304bd5a6a18b27aa7ffe97db81a44dc23e8bff4817ceffa9660cdf3e9fb56d",
+        "rho": "9737437abd108debad689c25c1105d2c88024ae76d1b22d733b64406eb2f5ff1",
+        "R0_bytes": "022462b2a9299bfee37d37dc7e3ac1fdac51cc2a27698e4e1ecedb35c0a7d190f3",
+        "sig": "06f2aee2b42f85981627dba9cc9044db977d22adc5eab6b5ecbed781eb89746a0eb31abbdc61924a79660a3acf5da0bdc225b326285562ce6e214226ad0cf62b",
+        "expected": "reject"
+      },
+      {
+        "id": "ecdsa-reject-pk-prefix-00",
+        "defect": "pk_prefix",
+        "derived_from": "ecdsa-valid-r0-even-p-even-w-even",
+        "comment": "pk begins with 0x00. Only 0x02 and 0x03 are accepted by parse33.",
+        "pk": "0026f4a41a7fee7cac05fd2650e5ffd4a95ec7dce7511527b19ce1ddecccf57cd0",
+        "m": "12304bd5a6a18b27aa7ffe97db81a44dc23e8bff4817ceffa9660cdf3e9fb56d",
+        "rho": "9737437abd108debad689c25c1105d2c88024ae76d1b22d733b64406eb2f5ff1",
+        "R0_bytes": "022462b2a9299bfee37d37dc7e3ac1fdac51cc2a27698e4e1ecedb35c0a7d190f3",
+        "sig": "06f2aee2b42f85981627dba9cc9044db977d22adc5eab6b5ecbed781eb89746a0eb31abbdc61924a79660a3acf5da0bdc225b326285562ce6e214226ad0cf62b",
+        "expected": "reject"
+      },
+      {
+        "id": "ecdsa-reject-high-s-a",
+        "defect": "high_s",
+        "derived_from": "ecdsa-valid-r0-even-p-even-w-even",
+        "comment": "sig is (r, n - s) with the correct r. It is valid ECDSA but s is above (n-1)/2.",
+        "pk": "0226f4a41a7fee7cac05fd2650e5ffd4a95ec7dce7511527b19ce1ddecccf57cd0",
+        "m": "12304bd5a6a18b27aa7ffe97db81a44dc23e8bff4817ceffa9660cdf3e9fb56d",
+        "rho": "9737437abd108debad689c25c1105d2c88024ae76d1b22d733b64406eb2f5ff1",
+        "R0_bytes": "022462b2a9299bfee37d37dc7e3ac1fdac51cc2a27698e4e1ecedb35c0a7d190f3",
+        "sig": "06f2aee2b42f85981627dba9cc9044db977d22adc5eab6b5ecbed781eb89746af14ce544239e6db58699f5c530a25f40f88929c086f33d6d51b11c6623294b16",
+        "expected": "reject"
+      },
+      {
+        "id": "ecdsa-reject-high-s-b",
+        "defect": "high_s",
+        "derived_from": "ecdsa-valid-r0-odd-p-odd-w-odd",
+        "comment": "sig is (r, n - s) with the correct r. It is valid ECDSA but s is above (n-1)/2.",
+        "pk": "034f6b595fdeafc1c48fc598e6b3c9735b163e21d49281c12017c22477b70cb3bd",
+        "m": "341cacd5cc1954ce995ca52f6d8ae3f4a6bea22075b333fded3b931f8bfc7d29",
+        "rho": "55c5a609b3447a527ee029105365afb8a0720e1395f9fbed9266b202b51f02b6",
+        "R0_bytes": "033b1f752cad01d770967a3287b65ce1546c850db08df342a996b360b5c3bb20af",
+        "sig": "1124a7334f2748b510c28bb5b5d189228a9d57d2f246951259dfb522d73b04aec579fc265a994a1415f082a21f31a0eb67884688f5a060806515994a120d1480",
+        "expected": "reject"
+      },
+      {
+        "id": "ecdsa-reject-s-half-plus-one",
+        "defect": "high_s",
+        "derived_from": "ecdsa-valid-r0-even-p-even-w-even",
+        "comment": "s is (n-1)/2 + 1, the smallest value above the low-s limit.",
+        "pk": "0226f4a41a7fee7cac05fd2650e5ffd4a95ec7dce7511527b19ce1ddecccf57cd0",
+        "m": "12304bd5a6a18b27aa7ffe97db81a44dc23e8bff4817ceffa9660cdf3e9fb56d",
+        "rho": "9737437abd108debad689c25c1105d2c88024ae76d1b22d733b64406eb2f5ff1",
+        "R0_bytes": "022462b2a9299bfee37d37dc7e3ac1fdac51cc2a27698e4e1ecedb35c0a7d190f3",
+        "sig": "06f2aee2b42f85981627dba9cc9044db977d22adc5eab6b5ecbed781eb89746a7fffffffffffffffffffffffffffffff5d576e7357a4501ddfe92f46681b20a1",
+        "expected": "reject"
+      },
+      {
+        "id": "ecdsa-reject-pk-length-short",
+        "defect": "length",
+        "derived_from": "ecdsa-valid-r0-even-p-even-w-even",
+        "comment": "pk is one byte too short.",
+        "pk": "0226f4a41a7fee7cac05fd2650e5ffd4a95ec7dce7511527b19ce1ddecccf57c",
+        "m": "12304bd5a6a18b27aa7ffe97db81a44dc23e8bff4817ceffa9660cdf3e9fb56d",
+        "rho": "9737437abd108debad689c25c1105d2c88024ae76d1b22d733b64406eb2f5ff1",
+        "R0_bytes": "022462b2a9299bfee37d37dc7e3ac1fdac51cc2a27698e4e1ecedb35c0a7d190f3",
+        "sig": "06f2aee2b42f85981627dba9cc9044db977d22adc5eab6b5ecbed781eb89746a0eb31abbdc61924a79660a3acf5da0bdc225b326285562ce6e214226ad0cf62b",
+        "expected": "reject"
+      },
+      {
+        "id": "ecdsa-reject-pk-length-long",
+        "defect": "length",
+        "derived_from": "ecdsa-valid-r0-even-p-even-w-even",
+        "comment": "pk is one byte too long (a zero byte appended).",
+        "pk": "0226f4a41a7fee7cac05fd2650e5ffd4a95ec7dce7511527b19ce1ddecccf57cd000",
+        "m": "12304bd5a6a18b27aa7ffe97db81a44dc23e8bff4817ceffa9660cdf3e9fb56d",
+        "rho": "9737437abd108debad689c25c1105d2c88024ae76d1b22d733b64406eb2f5ff1",
+        "R0_bytes": "022462b2a9299bfee37d37dc7e3ac1fdac51cc2a27698e4e1ecedb35c0a7d190f3",
+        "sig": "06f2aee2b42f85981627dba9cc9044db977d22adc5eab6b5ecbed781eb89746a0eb31abbdc61924a79660a3acf5da0bdc225b326285562ce6e214226ad0cf62b",
+        "expected": "reject"
+      },
+      {
+        "id": "ecdsa-reject-rho-length-short",
+        "defect": "length",
+        "derived_from": "ecdsa-valid-r0-even-p-even-w-even",
+        "comment": "rho is one byte too short.",
+        "pk": "0226f4a41a7fee7cac05fd2650e5ffd4a95ec7dce7511527b19ce1ddecccf57cd0",
+        "m": "12304bd5a6a18b27aa7ffe97db81a44dc23e8bff4817ceffa9660cdf3e9fb56d",
+        "rho": "9737437abd108debad689c25c1105d2c88024ae76d1b22d733b64406eb2f5f",
+        "R0_bytes": "022462b2a9299bfee37d37dc7e3ac1fdac51cc2a27698e4e1ecedb35c0a7d190f3",
+        "sig": "06f2aee2b42f85981627dba9cc9044db977d22adc5eab6b5ecbed781eb89746a0eb31abbdc61924a79660a3acf5da0bdc225b326285562ce6e214226ad0cf62b",
+        "expected": "reject"
+      },
+      {
+        "id": "ecdsa-reject-rho-length-long",
+        "defect": "length",
+        "derived_from": "ecdsa-valid-r0-even-p-even-w-even",
+        "comment": "rho is one byte too long (a zero byte appended).",
+        "pk": "0226f4a41a7fee7cac05fd2650e5ffd4a95ec7dce7511527b19ce1ddecccf57cd0",
+        "m": "12304bd5a6a18b27aa7ffe97db81a44dc23e8bff4817ceffa9660cdf3e9fb56d",
+        "rho": "9737437abd108debad689c25c1105d2c88024ae76d1b22d733b64406eb2f5ff100",
+        "R0_bytes": "022462b2a9299bfee37d37dc7e3ac1fdac51cc2a27698e4e1ecedb35c0a7d190f3",
+        "sig": "06f2aee2b42f85981627dba9cc9044db977d22adc5eab6b5ecbed781eb89746a0eb31abbdc61924a79660a3acf5da0bdc225b326285562ce6e214226ad0cf62b",
+        "expected": "reject"
+      },
+      {
+        "id": "ecdsa-reject-R0_bytes-length-short",
+        "defect": "length",
+        "derived_from": "ecdsa-valid-r0-even-p-even-w-even",
+        "comment": "R0_bytes is one byte too short.",
+        "pk": "0226f4a41a7fee7cac05fd2650e5ffd4a95ec7dce7511527b19ce1ddecccf57cd0",
+        "m": "12304bd5a6a18b27aa7ffe97db81a44dc23e8bff4817ceffa9660cdf3e9fb56d",
+        "rho": "9737437abd108debad689c25c1105d2c88024ae76d1b22d733b64406eb2f5ff1",
+        "R0_bytes": "022462b2a9299bfee37d37dc7e3ac1fdac51cc2a27698e4e1ecedb35c0a7d190",
+        "sig": "06f2aee2b42f85981627dba9cc9044db977d22adc5eab6b5ecbed781eb89746a0eb31abbdc61924a79660a3acf5da0bdc225b326285562ce6e214226ad0cf62b",
+        "expected": "reject"
+      },
+      {
+        "id": "ecdsa-reject-R0_bytes-length-long",
+        "defect": "length",
+        "derived_from": "ecdsa-valid-r0-even-p-even-w-even",
+        "comment": "R0_bytes is one byte too long (a zero byte appended).",
+        "pk": "0226f4a41a7fee7cac05fd2650e5ffd4a95ec7dce7511527b19ce1ddecccf57cd0",
+        "m": "12304bd5a6a18b27aa7ffe97db81a44dc23e8bff4817ceffa9660cdf3e9fb56d",
+        "rho": "9737437abd108debad689c25c1105d2c88024ae76d1b22d733b64406eb2f5ff1",
+        "R0_bytes": "022462b2a9299bfee37d37dc7e3ac1fdac51cc2a27698e4e1ecedb35c0a7d190f300",
+        "sig": "06f2aee2b42f85981627dba9cc9044db977d22adc5eab6b5ecbed781eb89746a0eb31abbdc61924a79660a3acf5da0bdc225b326285562ce6e214226ad0cf62b",
+        "expected": "reject"
+      },
+      {
+        "id": "ecdsa-reject-sig-length-short",
+        "defect": "length",
+        "derived_from": "ecdsa-valid-r0-even-p-even-w-even",
+        "comment": "sig is one byte too short.",
+        "pk": "0226f4a41a7fee7cac05fd2650e5ffd4a95ec7dce7511527b19ce1ddecccf57cd0",
+        "m": "12304bd5a6a18b27aa7ffe97db81a44dc23e8bff4817ceffa9660cdf3e9fb56d",
+        "rho": "9737437abd108debad689c25c1105d2c88024ae76d1b22d733b64406eb2f5ff1",
+        "R0_bytes": "022462b2a9299bfee37d37dc7e3ac1fdac51cc2a27698e4e1ecedb35c0a7d190f3",
+        "sig": "06f2aee2b42f85981627dba9cc9044db977d22adc5eab6b5ecbed781eb89746a0eb31abbdc61924a79660a3acf5da0bdc225b326285562ce6e214226ad0cf6",
+        "expected": "reject"
+      },
+      {
+        "id": "ecdsa-reject-sig-length-long",
+        "defect": "length",
+        "derived_from": "ecdsa-valid-r0-even-p-even-w-even",
+        "comment": "sig is one byte too long (a zero byte appended).",
+        "pk": "0226f4a41a7fee7cac05fd2650e5ffd4a95ec7dce7511527b19ce1ddecccf57cd0",
+        "m": "12304bd5a6a18b27aa7ffe97db81a44dc23e8bff4817ceffa9660cdf3e9fb56d",
+        "rho": "9737437abd108debad689c25c1105d2c88024ae76d1b22d733b64406eb2f5ff1",
+        "R0_bytes": "022462b2a9299bfee37d37dc7e3ac1fdac51cc2a27698e4e1ecedb35c0a7d190f3",
+        "sig": "06f2aee2b42f85981627dba9cc9044db977d22adc5eab6b5ecbed781eb89746a0eb31abbdc61924a79660a3acf5da0bdc225b326285562ce6e214226ad0cf62b00",
+        "expected": "reject"
+      },
+      {
+        "id": "ecdsa-reject-m-length-short",
+        "defect": "length",
+        "derived_from": "ecdsa-valid-r0-even-p-even-w-even",
+        "comment": "m is 31 bytes. ECDSA m must be exactly 32.",
+        "pk": "0226f4a41a7fee7cac05fd2650e5ffd4a95ec7dce7511527b19ce1ddecccf57cd0",
+        "m": "12304bd5a6a18b27aa7ffe97db81a44dc23e8bff4817ceffa9660cdf3e9fb5",
+        "rho": "9737437abd108debad689c25c1105d2c88024ae76d1b22d733b64406eb2f5ff1",
+        "R0_bytes": "022462b2a9299bfee37d37dc7e3ac1fdac51cc2a27698e4e1ecedb35c0a7d190f3",
+        "sig": "06f2aee2b42f85981627dba9cc9044db977d22adc5eab6b5ecbed781eb89746a0eb31abbdc61924a79660a3acf5da0bdc225b326285562ce6e214226ad0cf62b",
+        "expected": "reject"
+      },
+      {
+        "id": "ecdsa-reject-m-length-long",
+        "defect": "length",
+        "derived_from": "ecdsa-valid-r0-even-p-even-w-even",
+        "comment": "m is 33 bytes. ECDSA m must be exactly 32.",
+        "pk": "0226f4a41a7fee7cac05fd2650e5ffd4a95ec7dce7511527b19ce1ddecccf57cd0",
+        "m": "12304bd5a6a18b27aa7ffe97db81a44dc23e8bff4817ceffa9660cdf3e9fb56d00",
+        "rho": "9737437abd108debad689c25c1105d2c88024ae76d1b22d733b64406eb2f5ff1",
+        "R0_bytes": "022462b2a9299bfee37d37dc7e3ac1fdac51cc2a27698e4e1ecedb35c0a7d190f3",
+        "sig": "06f2aee2b42f85981627dba9cc9044db977d22adc5eab6b5ecbed781eb89746a0eb31abbdc61924a79660a3acf5da0bdc225b326285562ce6e214226ad0cf62b",
+        "expected": "reject"
+      },
+      {
+        "id": "ecdsa-reject-other-nonce",
+        "defect": "nonce_not_W",
+        "derived_from": "ecdsa-valid-r0-even-p-even-w-even",
+        "comment": "A valid signature from the right key made with a nonce k of the signer's choice instead of W's k'. It verifies as a plain signature but its r is not x(W).",
+        "pk": "0226f4a41a7fee7cac05fd2650e5ffd4a95ec7dce7511527b19ce1ddecccf57cd0",
+        "m": "12304bd5a6a18b27aa7ffe97db81a44dc23e8bff4817ceffa9660cdf3e9fb56d",
+        "rho": "9737437abd108debad689c25c1105d2c88024ae76d1b22d733b64406eb2f5ff1",
+        "R0_bytes": "022462b2a9299bfee37d37dc7e3ac1fdac51cc2a27698e4e1ecedb35c0a7d190f3",
+        "sig": "5e74d047339aec99b776cbe5b22aaf4d6ce154d2a42863021f5e44c023e7566d269a7ee4f3aa5dcc0d2869e1fb905a77f48d25442e0d7e5e8739db937a7bd1ed",
+        "expected": "reject"
+      },
+      {
+        "id": "ecdsa-reject-base-nonce",
+        "defect": "nonce_not_W",
+        "derived_from": "ecdsa-valid-r0-even-p-even-w-even",
+        "comment": "A valid signature from the right key made with the base nonce k0 alone, as a device that ignores rho would. It verifies as a plain signature but its r is not x(W).",
+        "pk": "0226f4a41a7fee7cac05fd2650e5ffd4a95ec7dce7511527b19ce1ddecccf57cd0",
+        "m": "12304bd5a6a18b27aa7ffe97db81a44dc23e8bff4817ceffa9660cdf3e9fb56d",
+        "rho": "9737437abd108debad689c25c1105d2c88024ae76d1b22d733b64406eb2f5ff1",
+        "R0_bytes": "022462b2a9299bfee37d37dc7e3ac1fdac51cc2a27698e4e1ecedb35c0a7d190f3",
+        "sig": "2462b2a9299bfee37d37dc7e3ac1fdac51cc2a27698e4e1ecedb35c0a7d190f32392e5b7ddc7963f24b6c97a13a998f4ce805cc69663dd96ccf379a7831effeb",
+        "expected": "reject"
+      },
+      {
+        "id": "ecdsa-reject-isolated-pk-off-curve",
+        "defect": "isolated_pk_off_curve",
+        "isolates": "parse33(pk) must succeed",
+        "comment": "pk is 0x02 followed by an x with no curve point. R0 is valid and the signature satisfies V = W when the pk term is dropped, so only parse33 failing on pk refuses it.",
+        "fails_at_step": 1,
+        "pk": "021e2586e887be90e633c52424e462633127a8729b523907622f868c2714ce35d5",
+        "m": "b0326d9210c18c06118c55c874094fd09ce607c6000a7561e922e11d540aa94d",
+        "rho": "8805d3c569958b6140472d1d7a66101136f9f204e7e953d65cc4798e02fd4161",
+        "R0_bytes": "0279be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+        "sig": "0a63e44645dca5e276a0a72ad92c1a81be5b6134cb2dd36176edc7a12195d0b0025934f65e1ad6677a7678c80d37f08e72f11f24ff284e19d88446ddbc0bb156",
+        "expected": "reject"
+      },
+      {
+        "id": "ecdsa-reject-isolated-R0-prefix-04",
+        "defect": "isolated_R0_unparsable",
+        "isolates": "parse33(R0_bytes) must succeed",
+        "comment": "R0_bytes begins with 0x04 (an uncompressed prefix). The signature is an ordinary valid signature from the key whose nonce is t = H(R0_bytes || rho), so x(W) = x(t*G) would match if R0 were dropped. Only the failed parse of R0_bytes refuses it.",
+        "fails_at_step": 1,
+        "seed": "anti-exfil vector/ecdsa/isolated/R0-prefix-04",
+        "pk": "02b2a9e0b98c19fc45c330adaf7fdba571eb7e06e08975d8bd1c8b56ea47cb5e75",
+        "m": "2afb6c8ba501eb160e8d68095a3da1de3f56ea4e22cf2a552a832e4329265353",
+        "rho": "5478f29882ed951c68b1ab182d72a0a7a3de05d4c9df929e5b52470e0a4c8dbe",
+        "R0_bytes": "0479be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+        "sig": "5d63f645005240d737ad3e98b53949aab4e0ddd2b840d1a896b0ee2c8b25af977e2e2cacc93bc5b59a0779e801e5e028a999904de332beed4630be67c236b7ea",
+        "plain_signature_valid": true,
+        "expected": "reject"
+      },
+      {
+        "id": "ecdsa-reject-isolated-R0-x-off-curve",
+        "defect": "isolated_R0_unparsable",
+        "isolates": "parse33(R0_bytes) must succeed",
+        "comment": "R0_bytes is 0x02 followed by an x with no curve point. The signature is an ordinary valid signature from the key whose nonce is t = H(R0_bytes || rho), so x(W) = x(t*G) would match if R0 were dropped. Only the failed parse of R0_bytes refuses it.",
+        "fails_at_step": 1,
+        "seed": "anti-exfil vector/ecdsa/isolated/R0-x-off-curve",
+        "pk": "030fefce1099339b7662f579803ddc66081ae33d8d23632962c1baea5850c52f5c",
+        "m": "9c7d50f5dee622b8f9939513f5dbed8ec93dfb8e8ae1494848d6aeb20ab4e424",
+        "rho": "547601419332cca9cd25f2a5aa9d44ab0a09e2b39d4bf7b3ece027d1a69a7856",
+        "R0_bytes": "02acd69b2855a0bedab8451340115af05bea8b0aec65030b8a5d13fac1db740431",
+        "sig": "446c65d356af0a3ab70a6f8db64cef7ecc87804415d07dc0a47ab4fae724956608c016aa64a123ffde58ca7d05fc3ecf0f05fa221fd33595c3e7c9d1bb54fcf7",
+        "plain_signature_valid": true,
+        "expected": "reject"
+      },
+      {
+        "id": "ecdsa-reject-isolated-R0-x-not-below-p",
+        "defect": "isolated_R0_unparsable",
+        "isolates": "parse33(R0_bytes) must succeed",
+        "comment": "R0_bytes is 0x02 followed by p, an x not below p. The signature is an ordinary valid signature from the key whose nonce is t = H(R0_bytes || rho), so x(W) = x(t*G) would match if R0 were dropped. Only the failed parse of R0_bytes refuses it.",
+        "fails_at_step": 1,
+        "seed": "anti-exfil vector/ecdsa/isolated/R0-x-not-below-p",
+        "pk": "0387fa36dca180a6d870cf8864e5572d109c1fc57bbc248715d50ff947e8f3ef2a",
+        "m": "5e943201c2107863f4f588be5016834284a8c08c7eb1f7be8ba2b53b6d90b390",
+        "rho": "adc311fa6ce7f093889f4e95061b04ef57bb0764f00e63e5e01da01e674f01d5",
+        "R0_bytes": "02fffffffffffffffffffffffffffffffffffffffffffffffffffffffefffffc2f",
+        "sig": "a4a2a8befd007a082031a26180e081e7c000e50dcfde80134f9365687c5812843661cec17c576ae9af3d5ac08dd2d078b08350941ba0db8145c755b6a050bd1e",
+        "plain_signature_valid": true,
+        "expected": "reject"
+      }
+    ],
+    "forced_hash": [
+      {
+        "id": "ecdsa-forced-k0-zero",
+        "requires_hash_override": true,
+        "comment": "The nonce hash returns 0, so the device must fail.",
+        "operations": [
+          "device_commit",
+          "device_sign"
+        ],
+        "forced_hash": {
+          "tag": "s2c/ecdsa/nonce",
+          "output": "0000000000000000000000000000000000000000000000000000000000000000",
+          "why": "k0 = 0 is not in 1..n-1"
+        },
+        "sk": "fd8a9fa57fbcc7addcc33a846c5d131d73c34424345b0d2f22388f73a10886a3",
+        "m": "12304bd5a6a18b27aa7ffe97db81a44dc23e8bff4817ceffa9660cdf3e9fb56d",
+        "rho": "9737437abd108debad689c25c1105d2c88024ae76d1b22d733b64406eb2f5ff1",
+        "hc": "b7acfb254f8469bc6f7b290f0a1831d69783914a89f3c4b4e95e327a24b5b20c",
+        "expected": "device_fails"
+      },
+      {
+        "id": "ecdsa-forced-k0-n",
+        "requires_hash_override": true,
+        "comment": "The nonce hash returns n. ECDSA does not reduce, so the device must fail.",
+        "operations": [
+          "device_commit",
+          "device_sign"
+        ],
+        "forced_hash": {
+          "tag": "s2c/ecdsa/nonce",
+          "output": "fffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364141",
+          "why": "k0 = n is not below n"
+        },
+        "sk": "fd8a9fa57fbcc7addcc33a846c5d131d73c34424345b0d2f22388f73a10886a3",
+        "m": "12304bd5a6a18b27aa7ffe97db81a44dc23e8bff4817ceffa9660cdf3e9fb56d",
+        "rho": "9737437abd108debad689c25c1105d2c88024ae76d1b22d733b64406eb2f5ff1",
+        "hc": "b7acfb254f8469bc6f7b290f0a1831d69783914a89f3c4b4e95e327a24b5b20c",
+        "expected": "device_fails"
+      },
+      {
+        "id": "ecdsa-forced-k0-max",
+        "requires_hash_override": true,
+        "comment": "The nonce hash returns 2^256-1. ECDSA does not reduce or retry, so the device must fail.",
+        "operations": [
+          "device_commit",
+          "device_sign"
+        ],
+        "forced_hash": {
+          "tag": "s2c/ecdsa/nonce",
+          "output": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+          "why": "k0 = 2^256-1 is not below n"
+        },
+        "sk": "fd8a9fa57fbcc7addcc33a846c5d131d73c34424345b0d2f22388f73a10886a3",
+        "m": "12304bd5a6a18b27aa7ffe97db81a44dc23e8bff4817ceffa9660cdf3e9fb56d",
+        "rho": "9737437abd108debad689c25c1105d2c88024ae76d1b22d733b64406eb2f5ff1",
+        "hc": "b7acfb254f8469bc6f7b290f0a1831d69783914a89f3c4b4e95e327a24b5b20c",
+        "expected": "device_fails"
+      },
+      {
+        "id": "ecdsa-forced-t-n",
+        "requires_hash_override": true,
+        "comment": "The point-tweak hash returns n, so t >= n and the device must fail in step 4.",
+        "operations": [
+          "device_sign"
+        ],
+        "forced_hash": {
+          "tag": "s2c/ecdsa/point",
+          "output": "fffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364141",
+          "why": "t = n"
+        },
+        "sk": "fd8a9fa57fbcc7addcc33a846c5d131d73c34424345b0d2f22388f73a10886a3",
+        "m": "12304bd5a6a18b27aa7ffe97db81a44dc23e8bff4817ceffa9660cdf3e9fb56d",
+        "rho": "9737437abd108debad689c25c1105d2c88024ae76d1b22d733b64406eb2f5ff1",
+        "hc": "b7acfb254f8469bc6f7b290f0a1831d69783914a89f3c4b4e95e327a24b5b20c",
+        "expected": "device_fails"
+      },
+      {
+        "id": "ecdsa-forced-t-max",
+        "requires_hash_override": true,
+        "comment": "The point-tweak hash returns 2^256-1, so t >= n and the device must fail in step 4.",
+        "operations": [
+          "device_sign"
+        ],
+        "forced_hash": {
+          "tag": "s2c/ecdsa/point",
+          "output": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+          "why": "t = 2^256-1"
+        },
+        "sk": "fd8a9fa57fbcc7addcc33a846c5d131d73c34424345b0d2f22388f73a10886a3",
+        "m": "12304bd5a6a18b27aa7ffe97db81a44dc23e8bff4817ceffa9660cdf3e9fb56d",
+        "rho": "9737437abd108debad689c25c1105d2c88024ae76d1b22d733b64406eb2f5ff1",
+        "hc": "b7acfb254f8469bc6f7b290f0a1831d69783914a89f3c4b4e95e327a24b5b20c",
+        "expected": "device_fails"
+      },
+      {
+        "id": "ecdsa-forced-kprime-zero",
+        "requires_hash_override": true,
+        "comment": "The point-tweak hash returns n - k0, where k0 is this vector's base nonce, so k' = 0 and the device must fail in step 4.",
+        "operations": [
+          "device_sign"
+        ],
+        "forced_hash": {
+          "tag": "s2c/ecdsa/point",
+          "output": "9795cfd9094d242edad48ddcbb1dd0d0c9de03bc5e4c636955dc3f64639f1893",
+          "why": "t = n - k0, so k' = (k0 + t) mod n = 0"
+        },
+        "sk": "fd8a9fa57fbcc7addcc33a846c5d131d73c34424345b0d2f22388f73a10886a3",
+        "m": "12304bd5a6a18b27aa7ffe97db81a44dc23e8bff4817ceffa9660cdf3e9fb56d",
+        "rho": "9737437abd108debad689c25c1105d2c88024ae76d1b22d733b64406eb2f5ff1",
+        "hc": "b7acfb254f8469bc6f7b290f0a1831d69783914a89f3c4b4e95e327a24b5b20c",
+        "expected": "device_fails"
+      },
+      {
+        "id": "ecdsa-forced-host-t-n",
+        "requires_hash_override": true,
+        "comment": "The host's point-tweak hash returns n, so t >= n and the host must reject the otherwise valid tuple.",
+        "operations": [
+          "host_verify"
+        ],
+        "forced_hash": {
+          "tag": "s2c/ecdsa/point",
+          "output": "fffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364141",
+          "why": "t = n"
+        },
+        "pk": "0226f4a41a7fee7cac05fd2650e5ffd4a95ec7dce7511527b19ce1ddecccf57cd0",
+        "m": "12304bd5a6a18b27aa7ffe97db81a44dc23e8bff4817ceffa9660cdf3e9fb56d",
+        "rho": "9737437abd108debad689c25c1105d2c88024ae76d1b22d733b64406eb2f5ff1",
+        "R0_bytes": "022462b2a9299bfee37d37dc7e3ac1fdac51cc2a27698e4e1ecedb35c0a7d190f3",
+        "sig": "06f2aee2b42f85981627dba9cc9044db977d22adc5eab6b5ecbed781eb89746a0eb31abbdc61924a79660a3acf5da0bdc225b326285562ce6e214226ad0cf62b",
+        "expected": "reject"
+      },
+      {
+        "id": "ecdsa-forced-host-t-max",
+        "requires_hash_override": true,
+        "comment": "The host's point-tweak hash returns 2^256-1, so t >= n and the host must reject.",
+        "operations": [
+          "host_verify"
+        ],
+        "forced_hash": {
+          "tag": "s2c/ecdsa/point",
+          "output": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+          "why": "t = 2^256-1"
+        },
+        "pk": "0226f4a41a7fee7cac05fd2650e5ffd4a95ec7dce7511527b19ce1ddecccf57cd0",
+        "m": "12304bd5a6a18b27aa7ffe97db81a44dc23e8bff4817ceffa9660cdf3e9fb56d",
+        "rho": "9737437abd108debad689c25c1105d2c88024ae76d1b22d733b64406eb2f5ff1",
+        "R0_bytes": "022462b2a9299bfee37d37dc7e3ac1fdac51cc2a27698e4e1ecedb35c0a7d190f3",
+        "sig": "06f2aee2b42f85981627dba9cc9044db977d22adc5eab6b5ecbed781eb89746a0eb31abbdc61924a79660a3acf5da0bdc225b326285562ce6e214226ad0cf62b",
+        "expected": "reject"
+      },
+      {
+        "id": "ecdsa-forced-host-W-infinity",
+        "requires_hash_override": true,
+        "comment": "The host's point-tweak hash returns n - k0, so W = R0 + t*G is the point at infinity and the host must reject.",
+        "operations": [
+          "host_verify"
+        ],
+        "forced_hash": {
+          "tag": "s2c/ecdsa/point",
+          "output": "9795cfd9094d242edad48ddcbb1dd0d0c9de03bc5e4c636955dc3f64639f1893",
+          "why": "t = n - k0, so W = infinity"
+        },
+        "pk": "0226f4a41a7fee7cac05fd2650e5ffd4a95ec7dce7511527b19ce1ddecccf57cd0",
+        "m": "12304bd5a6a18b27aa7ffe97db81a44dc23e8bff4817ceffa9660cdf3e9fb56d",
+        "rho": "9737437abd108debad689c25c1105d2c88024ae76d1b22d733b64406eb2f5ff1",
+        "R0_bytes": "022462b2a9299bfee37d37dc7e3ac1fdac51cc2a27698e4e1ecedb35c0a7d190f3",
+        "sig": "06f2aee2b42f85981627dba9cc9044db977d22adc5eab6b5ecbed781eb89746a0eb31abbdc61924a79660a3acf5da0bdc225b326285562ce6e214226ad0cf62b",
+        "expected": "reject"
+      },
+      {
+        "id": "ecdsa-forced-isolated-W-doubling",
+        "requires_hash_override": true,
+        "isolates": "W = R0 + t*G with R0 = t*G must be computed as a doubling",
+        "comment": "The point-tweak hash returns 5 and R0 = 5*G, so W = R0 + t*G = 10*G is the doubling case of the point addition. The signature is valid with nonce 10, so the host must accept. A host that fails on R0 = t*G refuses it.",
+        "operations": [
+          "host_verify"
+        ],
+        "forced_hash": {
+          "tag": "s2c/ecdsa/point",
+          "output": "0000000000000000000000000000000000000000000000000000000000000005",
+          "why": "t = 5"
+        },
+        "seed": "anti-exfil vector/ecdsa/isolated/W",
+        "pk": "0316e16d3e7323a4833aeb03efe3784963f9a43fd8d85435676093a81067c425f7",
+        "m": "6f910e47a2eabfbc9265ea1783a5a780bf332c6a70544f8fff346f98344b1ea4",
+        "rho": "662409c938a995d382f443762bcb7e8ca3e7ba0c3aeb6e559d6e0aca0eb98293",
+        "R0_bytes": "022f8bde4d1a07209355b4a7250a5c5128e88b84bddc619ab7cba8d569b240efe4",
+        "sig": "a0434d9e47f3c86235477c7b1ae6ae5d3442d49b1943c2b752a68e2a47e247c73c47e801cfbd0323aaabae3c38dc3edd9bdb430c0e6689b84b5ed3b475a48d19",
+        "expected": "accept"
+      },
+      {
+        "id": "ecdsa-forced-isolated-W-infinity-from-negated-R0",
+        "requires_hash_override": true,
+        "isolates": "W = R0 + t*G must not be the point at infinity",
+        "comment": "The point-tweak hash returns 5 and R0 = -5*G, so W = R0 + t*G is the point at infinity. The signature is valid with nonce n - 10 and would pass every later check if W were computed as the double of R0, so only the infinity check refuses it.",
+        "operations": [
+          "host_verify"
+        ],
+        "forced_hash": {
+          "tag": "s2c/ecdsa/point",
+          "output": "0000000000000000000000000000000000000000000000000000000000000005",
+          "why": "t = 5"
+        },
+        "seed": "anti-exfil vector/ecdsa/isolated/W",
+        "pk": "0316e16d3e7323a4833aeb03efe3784963f9a43fd8d85435676093a81067c425f7",
+        "m": "6f910e47a2eabfbc9265ea1783a5a780bf332c6a70544f8fff346f98344b1ea4",
+        "rho": "662409c938a995d382f443762bcb7e8ca3e7ba0c3aeb6e559d6e0aca0eb98293",
+        "R0_bytes": "032f8bde4d1a07209355b4a7250a5c5128e88b84bddc619ab7cba8d569b240efe4",
+        "sig": "a0434d9e47f3c86235477c7b1ae6ae5d3442d49b1943c2b752a68e2a47e247c73c47e801cfbd0323aaabae3c38dc3edd9bdb430c0e6689b84b5ed3b475a48d19",
+        "fails_at_step": 3,
+        "expected": "reject"
+      },
+      {
+        "id": "ecdsa-forced-isolated-s-one-device",
+        "requires_hash_override": true,
+        "isolates": "step 4: s = 1 is a valid s and is not refused",
+        "comment": "The nonce hash returns 11 and the point-tweak hash returns 13, so k' = 24 and m is chosen so that the raw s is 1. The device must return exactly R0_bytes and sig.",
+        "operations": [
+          "device_commit",
+          "device_sign"
+        ],
+        "forced_hash": {
+          "tag": "s2c/ecdsa/point",
+          "output": "000000000000000000000000000000000000000000000000000000000000000d",
+          "why": "t = 13"
+        },
+        "additional_forced_hashes": [
+          {
+            "tag": "s2c/ecdsa/nonce",
+            "output": "000000000000000000000000000000000000000000000000000000000000000b",
+            "why": "k0 = 11"
+          }
+        ],
+        "seed": "anti-exfil vector/ecdsa/isolated/s-one",
+        "sk": "f3a80205beeae6befc49ff56085c0cd01ed6a3cf2924d6dbacf1b57c0b86154a",
+        "m": "e93d8f450ba9dfae9987191a9f6b5e62a0ed613156e75f71be3a682470de517d",
+        "rho": "90ea29528f5b86ea1ac3be6d0c42d420791fc0b7df8ee99ff0dca5a0c25c3a2e",
+        "hc": "2b9d8d3fc5001d7679dc93e2d07553982a1529a2923b8dc389c6d0ed88e2e26c",
+        "R0_bytes": "03774ae7f858a9411e5ef4246b70c65aac5649980be5c17891bbec17895da008cb",
+        "sig": "fe72c435413d33d48ac09c9161ba8b09683215439d62b7940502bda8b202e6ce0000000000000000000000000000000000000000000000000000000000000001",
+        "expected": "device_produces"
+      },
+      {
+        "id": "ecdsa-forced-isolated-s-one-host",
+        "requires_hash_override": true,
+        "isolates": "host step 4: 0 < s <= (n-1)/2 includes both ends",
+        "comment": "The nonce hash returns 11 and the point-tweak hash returns 13, so k' = 24 and m is chosen so that the raw s is 1. The signature is valid and the host must accept it. A host whose s check is off by one at the bottom (s = 1) refuses it.",
+        "operations": [
+          "host_verify"
+        ],
+        "forced_hash": {
+          "tag": "s2c/ecdsa/point",
+          "output": "000000000000000000000000000000000000000000000000000000000000000d",
+          "why": "t = 13"
+        },
+        "seed": "anti-exfil vector/ecdsa/isolated/s-one",
+        "pk": "0273c81075ae6a04695dfcc5dea617a77a6ee97569de16d533eb064dc147255a72",
+        "m": "e93d8f450ba9dfae9987191a9f6b5e62a0ed613156e75f71be3a682470de517d",
+        "rho": "90ea29528f5b86ea1ac3be6d0c42d420791fc0b7df8ee99ff0dca5a0c25c3a2e",
+        "R0_bytes": "03774ae7f858a9411e5ef4246b70c65aac5649980be5c17891bbec17895da008cb",
+        "sig": "fe72c435413d33d48ac09c9161ba8b09683215439d62b7940502bda8b202e6ce0000000000000000000000000000000000000000000000000000000000000001",
+        "expected": "accept"
+      },
+      {
+        "id": "ecdsa-forced-isolated-s-low-limit-device",
+        "requires_hash_override": true,
+        "isolates": "step 4: s = (n-1)/2 is kept as is, not negated",
+        "comment": "The nonce hash returns 11 and the point-tweak hash returns 13, so k' = 24 and m is chosen so that the raw s is (n-1)/2, the largest low-s value. The device must return exactly R0_bytes and sig.",
+        "operations": [
+          "device_commit",
+          "device_sign"
+        ],
+        "forced_hash": {
+          "tag": "s2c/ecdsa/point",
+          "output": "000000000000000000000000000000000000000000000000000000000000000d",
+          "why": "t = 13"
+        },
+        "additional_forced_hashes": [
+          {
+            "tag": "s2c/ecdsa/nonce",
+            "output": "000000000000000000000000000000000000000000000000000000000000000b",
+            "why": "k0 = 11"
+          }
+        ],
+        "seed": "anti-exfil vector/ecdsa/isolated/s-low-limit",
+        "sk": "787668017c3a53e0f8c597e53f6c906f84e2f2caf421e77ba96228b65435b719",
+        "m": "8a02d37dfee5bae4d1f57e2dab7f86b44c93044c4ccc8be5475ba1d644ba127f",
+        "rho": "64023da2847a0dbc6d7f6f973e7931f6363bff3f08c03f5b01209db0e98b926f",
+        "hc": "c800aa852a1591e6f1713a961cd0a5da698b4c9bf4e2f941c3fd2d602afab222",
+        "R0_bytes": "03774ae7f858a9411e5ef4246b70c65aac5649980be5c17891bbec17895da008cb",
+        "sig": "fe72c435413d33d48ac09c9161ba8b09683215439d62b7940502bda8b202e6ce7fffffffffffffffffffffffffffffff5d576e7357a4501ddfe92f46681b20a0",
+        "expected": "device_produces"
+      },
+      {
+        "id": "ecdsa-forced-isolated-s-low-limit-host",
+        "requires_hash_override": true,
+        "isolates": "host step 4: 0 < s <= (n-1)/2 includes both ends",
+        "comment": "The nonce hash returns 11 and the point-tweak hash returns 13, so k' = 24 and m is chosen so that the raw s is (n-1)/2, the largest low-s value. The signature is valid and the host must accept it. A host whose s check is off by one at the low-s limit (s <= (n-1)/2) refuses it.",
+        "operations": [
+          "host_verify"
+        ],
+        "forced_hash": {
+          "tag": "s2c/ecdsa/point",
+          "output": "000000000000000000000000000000000000000000000000000000000000000d",
+          "why": "t = 13"
+        },
+        "seed": "anti-exfil vector/ecdsa/isolated/s-low-limit",
+        "pk": "03c0141bf937978bb00de8f0022e1758f9f4628259937ceff59d400d4aeffa1b3d",
+        "m": "8a02d37dfee5bae4d1f57e2dab7f86b44c93044c4ccc8be5475ba1d644ba127f",
+        "rho": "64023da2847a0dbc6d7f6f973e7931f6363bff3f08c03f5b01209db0e98b926f",
+        "R0_bytes": "03774ae7f858a9411e5ef4246b70c65aac5649980be5c17891bbec17895da008cb",
+        "sig": "fe72c435413d33d48ac09c9161ba8b09683215439d62b7940502bda8b202e6ce7fffffffffffffffffffffffffffffff5d576e7357a4501ddfe92f46681b20a0",
+        "expected": "accept"
+      }
+    ]
+  }
+}

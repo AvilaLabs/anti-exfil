@@ -1,0 +1,29 @@
+{"model": "ae_symbolic.pv", "source_sha256": "d28d355bd1d7a6665583385491e2e3c4abb66dbf097fd0a0c06a0e800d7d7514", "expected": true, "returncode": 0, "results": ["true"], "trace_present": false, "pass": true}
+{"model": "ae_symbolic_mutated_no_binding.pv", "source_sha256": "6fe22ad86326c6d52e741fccb827b01e2cb3cb48a2d5433e81657aefb7c72082", "expected": false, "returncode": 0, "results": ["false"], "trace_present": true, "pass": true}
+{"model": "ae_preopen_secrecy.pv", "source_sha256": "78c47781e6ba92b04231854023e7b5b1dd3471e94309c7cae97ed8921a2496af", "expected": true, "returncode": 0, "results": ["true"], "trace_present": false, "pass": true}
+{"model": "ae_public_opening_control.pv", "source_sha256": "5672baa01aceb0b95da182a71ccc1ffb2e2341d0f34243c72ed8d82f6024941d", "expected": false, "returncode": 0, "results": ["false"], "trace_present": true, "pass": true}
+{"model": "ae_private_opening_control.pv", "source_sha256": "77886c58f8aa4238d8e055ec74a8313d413df1d97ebb082df8c7c0758e3bf6d3", "expected": true, "returncode": 0, "results": ["true"], "trace_present": false, "pass": true}
+SYMBOLIC TRACE MODEL CHECKS: PASS
+	Command being timed: "python3 -B -I scripts/check_proverif_models.py run1"
+	User time (seconds): 0.05
+	System time (seconds): 0.02
+	Percent of CPU this job got: 96%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 0:00.08
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 24940
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 0
+	Minor (reclaiming a frame) page faults: 9292
+	Voluntary context switches: 52
+	Involuntary context switches: 5
+	Swaps: 0
+	File system inputs: 928
+	File system outputs: 72
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 0

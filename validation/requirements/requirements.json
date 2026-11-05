@@ -1,0 +1,3577 @@
+{
+ "documents": {
+  "B": {
+   "path": "spec/bip-anti-exfil-psbt.md",
+   "sha256": "9c2d648d93a3d0dbd94172abcb4be75b155ff0435ce4bcc763a0a6bfbfdbc9df"
+  },
+  "P": {
+   "path": "spec/bip-anti-exfil.md",
+   "sha256": "401ad2fc0eb117c86308e9342cb7551a43cd67bdc41c6d289d6d289e7ce67d2a"
+  }
+ },
+ "exclusions": [
+  {
+   "document": "P",
+   "line": 47,
+   "reason": "definition of Fail; behaviour is in the rows that say fails",
+   "text": "**Fail** means the party stops the attempt and outputs no commitment or signature."
+  },
+  {
+   "document": "P",
+   "line": 26,
+   "reason": "defines the key words; no behaviour",
+   "text": "The key words MUST, MUST NOT, SHOULD, SHOULD NOT and MAY are as in RFC 2119."
+  },
+  {
+   "document": "P",
+   "line": 51,
+   "reason": "consequence of rows P-006 and P-014, not a separate rule",
+   "text": "If the data differs, the device derives a different nonce and the host's check in step 5 fails, so no separate check is needed."
+  },
+  {
+   "document": "P",
+   "line": 155,
+   "reason": "motivation for the rules below, not a rule",
+   "text": "A device that refuses selectively leaks through its refusals: accepting 1 attempt in `2^b` conveys about `b` bits."
+  },
+  {
+   "document": "P",
+   "line": 191,
+   "reason": "rationale",
+   "text": "**Why BIP340 reduces and ECDSA range-fails.** BIP340 signing already reduces its nonce hash, and this keeps that form."
+  },
+  {
+   "document": "P",
+   "line": 193,
+   "reason": "rationale",
+   "text": "**Why `R0` keeps its parity.** Implementations must agree, because the choice changes the signature."
+  },
+  {
+   "document": "P",
+   "line": 201,
+   "reason": "rationale",
+   "text": "**Why failures count even when a retry succeeds.** A device can present a refusal as a disconnect."
+  },
+  {
+   "document": "P",
+   "line": 219,
+   "reason": "describes the vector file; the vectors are checked by their own scripts, not by this gate",
+   "text": "`vectors/bip-anti-exfil.json` gives `sk`, `m`, `rho`, `pk`, `hc`, `R0_bytes` and `sig` for both schemes: odd and even `R0`, `P` and `W`, empty and long BIP340 messages, and tuples a host must reject."
+  },
+  {
+   "document": "P",
+   "line": 219,
+   "reason": "describes the vector file",
+   "text": "Failure cases such as `k0 = 0` cannot be reached with real hashes, so their vectors state the hash output a test must substitute."
+  },
+  {
+   "document": "P",
+   "line": 227,
+   "reason": "security discussion, not a rule beyond rows P-024 to P-028",
+   "text": "A device can still choose `k0` freely, including from a backdoor secret, and that is why `rho` must stay secret: anyone who learns `rho` and `k0` can compute the key from a signature."
+  },
+  {
+   "document": "P",
+   "line": 227,
+   "reason": "security claim, not a rule",
+   "text": "With `rho` secret, Part 2 of the security argument, which is shorter and less reviewed, argues that published signatures depend on what the device holds only through which attempts it refuses, at most about 1.44 bits per expected failed attempt past the reveal."
+  },
+  {
+   "document": "P",
+   "line": 227,
+   "reason": "security discussion",
+   "text": "Refusals remain a channel, as described under Attempts and failures."
+  },
+  {
+   "document": "B",
+   "line": 44,
+   "reason": "explains how row B-006 is met",
+   "text": "The host achieves this by keeping its own PSBT, which never contains them, and building a separate request for each exchange."
+  },
+  {
+   "document": "B",
+   "line": 124,
+   "reason": "explains the list above; not a rule",
+   "text": "A conforming signer never triggers the conditions above, so they do not fail an honest exchange."
+  },
+  {
+   "document": "B",
+   "line": 144,
+   "reason": "introduces rows B-114 and B-115",
+   "text": "In a conforming exchange these fields reach no other role."
+  },
+  {
+   "document": "B",
+   "line": 156,
+   "reason": "rationale",
+   "text": "It would fail honest exchanges whenever a library reserializes a field or adds metadata, and each such failure would count against the device."
+  },
+  {
+   "document": "B",
+   "line": 164,
+   "reason": "backward-compatibility consequence of rows B-006 and B-079",
+   "text": "Other software never sees the fields, because the host does not release them."
+  },
+  {
+   "document": "B",
+   "line": 174,
+   "reason": "describes the vector file",
+   "text": "`vectors/bip-anti-exfil-psbt.json` gives, for each spend form and PSBT version, both requests, both responses and the host's result, plus each signer and host refusal and each difference a host must accept."
+  },
+  {
+   "document": "P",
+   "line": 22,
+   "reason": "motivation; no behaviour",
+   "text": "Each implementer has to decide its own byte formats, failure rules and host checks, and several of those decisions affect what is protected, such as whether the host compares a repeated `R0_bytes` or counts a failed attempt."
+  },
+  {
+   "document": "P",
+   "line": 33,
+   "reason": "states a goal; security claim, not a rule",
+   "text": "**Malicious device, honest host:** an accepted signature carries nothing the device chose, apart from what it can convey by refusing, as long as `rho` stays secret from every third party."
+  },
+  {
+   "document": "P",
+   "line": 183,
+   "reason": "rationale; no behaviour",
+   "text": "This protocol uses the extra round to remove it, leaving only the choice to refuse."
+  }
+ ],
+ "requirements": [
+  {
+   "class": "not_machine_testable",
+   "document": "P",
+   "id": "P-001",
+   "modal": "must",
+   "party": "device",
+   "quotes": [
+    {
+     "line": 32,
+     "text": "**Malicious host, honest device:** the host cannot recover the key or obtain a signature on a message the user did not approve."
+    }
+   ],
+   "reason": "security goal; established by the security argument, not by a finite test"
+  },
+  {
+   "class": "math",
+   "coverage": [
+    "the reference arithmetic of the protocol document, unchanged since its first draft"
+   ],
+   "document": "P",
+   "id": "P-002",
+   "modal": "FAIL",
+   "mutant_exempt": "arithmetic of the protocol document; the vectors and the reference stand for it",
+   "party": "any",
+   "quotes": [
+    {
+     "line": 45,
+     "text": "It fails unless `b` is 33 bytes, its first byte is `0x02` or `0x03`, the remaining bytes as an integer are below `p`, and that integer is the x coordinate of a curve point."
+    }
+   ],
+   "target": "math"
+  },
+  {
+   "class": "psbt",
+   "coverage": [
+    "test_signer.SignerPhases.test_lengths",
+    "test_host_response.HandlingResponse.test_bad_commitment"
+   ],
+   "document": "P",
+   "id": "P-003",
+   "modal": "FAIL",
+   "party": "any",
+   "quotes": [
+    {
+     "line": 47,
+     "text": "`rho`, `hc` and `sk` are 32 bytes, `R0_bytes` is 33 and `sig` is 64."
+    },
+    {
+     "line": 47,
+     "text": "A party fails on any other length."
+    }
+   ],
+   "target": "signer"
+  },
+  {
+   "class": "psbt",
+   "coverage": [
+    "test_positive.Positive.test_each_form_each_version",
+    "test_host_response.HandlingResponse.test_signature_by_another_key_or_message",
+    "test_known_answers.KnownAnswers.test_every_exchange_pair"
+   ],
+   "document": "P",
+   "id": "P-004",
+   "modal": "MUST",
+   "note": "the signer computes the signature hash from the PSBT; the host recomputes it with the same code",
+   "party": "device",
+   "quotes": [
+    {
+     "line": 51,
+     "text": "The device MUST compute `m` itself from data the user approves, either as a consensus signature hash or as a hash under a message-signing scheme shown to the user."
+    }
+   ],
+   "target": "spend"
+  },
+  {
+   "class": "not_machine_testable",
+   "document": "P",
+   "id": "P-005",
+   "modal": "MUST NOT",
+   "party": "device",
+   "quotes": [
+    {
+     "line": 51,
+     "text": "It MUST NOT offer an entry point that signs a value supplied by a host, because approval means nothing for a value the user cannot read."
+    }
+   ],
+   "reason": "absence of an entry point cannot be shown by a finite test; the signer's only entry is sign(psbt bytes)"
+  },
+  {
+   "class": "operational",
+   "coverage": [
+    "test_host_response.ChoosingPairs.test_step3_same_transaction_and_pair_set",
+    "test_host_response.ChoosingPairs.test_step3_transaction_change_alone"
+   ],
+   "document": "P",
+   "id": "P-006",
+   "modal": "MUST",
+   "party": "host",
+   "quotes": [
+    {
+     "line": 51,
+     "text": "It MUST send the same data in steps 1 and 3."
+    }
+   ],
+   "target": "host"
+  },
+  {
+   "class": "psbt",
+   "coverage": [
+    "test_signer.SighashRules.test_single_without_output"
+   ],
+   "document": "P",
+   "id": "P-007",
+   "modal": "MUST",
+   "party": "device",
+   "quotes": [
+    {
+     "line": 53,
+     "text": "A device MUST refuse `SIGHASH_SINGLE` with no matching output."
+    }
+   ],
+   "target": "spend"
+  },
+  {
+   "class": "math",
+   "coverage": [
+    "the reference arithmetic of the protocol document, unchanged since its first draft"
+   ],
+   "document": "P",
+   "id": "P-008",
+   "modal": "FAIL",
+   "mutant_exempt": "arithmetic of the protocol document; the vectors and the reference stand for it",
+   "party": "device",
+   "quotes": [
+    {
+     "line": 63,
+     "text": "The device fails unless `0 < int(sk) < n`, then computes:"
+    }
+   ],
+   "target": "math"
+  },
+  {
+   "class": "math",
+   "coverage": [
+    "the reference arithmetic of the protocol document, unchanged since its first draft"
+   ],
+   "document": "P",
+   "id": "P-009",
+   "modal": "FAIL",
+   "mutant_exempt": "arithmetic of the protocol document; the vectors and the reference stand for it",
+   "party": "device",
+   "quotes": [
+    {
+     "line": 71,
+     "text": "fail if k0 = 0"
+    }
+   ],
+   "target": "math"
+  },
+  {
+   "class": "math",
+   "coverage": [
+    "the reference arithmetic of the protocol document, unchanged since its first draft"
+   ],
+   "document": "P",
+   "id": "P-010",
+   "modal": "MUST NOT",
+   "mutant_exempt": "arithmetic of the protocol document; the vectors and the reference stand for it",
+   "party": "device",
+   "quotes": [
+    {
+     "line": 74,
+     "text": "The device MUST NOT negate `k0` at this step, because the host hashes the actual point and both sides must agree on the bytes."
+    }
+   ],
+   "target": "math"
+  },
+  {
+   "class": "operational",
+   "coverage": [
+    "test_host_response.HandlingResponse.test_bad_commitment",
+    "test_host_response.HandlingResponse.test_missing_commitment_and_signature",
+    "test_lifecycle.Bullets.test_r0_compared_across_all_responses_including_rejected",
+    "test_host_response.RuleGaps.test_reveal_before_commit_sends_nothing"
+   ],
+   "document": "P",
+   "id": "P-011",
+   "modal": "MUST NOT",
+   "party": "host",
+   "quotes": [
+    {
+     "line": 76,
+     "text": "The host MUST NOT send `rho` until it has received `R0_bytes`, checked that `parse33` accepts it, and stored it."
+    }
+   ],
+   "target": "host"
+  },
+  {
+   "class": "psbt",
+   "coverage": [
+    "test_signer.SignerPhases.test_stale_commitments_fail",
+    "test_signer.SignerPhases.test_first_pass_adds_commitment_and_needs_no_approval"
+   ],
+   "document": "P",
+   "id": "P-012",
+   "modal": "MUST",
+   "note": "a stateless signer; a hc or R0_bytes in the second pass that differs from the recomputed value fails",
+   "party": "device",
+   "quotes": [
+    {
+     "line": 78,
+     "text": "After user approval, the device MUST recompute `hc` from `rho`, and `d`, `pk`, `k0` and `R0_bytes` as in step 2."
+    },
+    {
+     "line": 78,
+     "text": "It MUST NOT use a stored value or accept any of these values from the host, because a host that could supply them could get two signatures on one base nonce and solve for the key."
+    }
+   ],
+   "target": "signer"
+  },
+  {
+   "class": "math",
+   "coverage": [
+    "the reference arithmetic of the protocol document, unchanged since its first draft"
+   ],
+   "document": "P",
+   "id": "P-013",
+   "modal": "FAIL",
+   "mutant_exempt": "arithmetic of the protocol document; the vectors and the reference stand for it",
+   "party": "device",
+   "quotes": [
+    {
+     "line": 81,
+     "text": "fail if t >= n"
+    },
+    {
+     "line": 83,
+     "text": "fail if k' = 0"
+    }
+   ],
+   "target": "math"
+  },
+  {
+   "class": "not_machine_testable",
+   "document": "P",
+   "id": "P-014",
+   "modal": "SHOULD",
+   "party": "device",
+   "quotes": [
+    {
+     "line": 90,
+     "text": "The device SHOULD run the checks in step 5 on `sig` with its own values, and fail if any does not pass."
+    }
+   ],
+   "reason": "guards against faults only (the text says so); a fault cannot be injected through the signer's public entry point"
+  },
+  {
+   "class": "psbt",
+   "coverage": [
+    "test_host_response.HandlingResponse.test_valid_signature_with_wrong_nonce",
+    "test_host_response.HandlingResponse.test_flipped_bits",
+    "test_host_response.HandlingResponse.test_signature_by_another_key_or_message"
+   ],
+   "document": "P",
+   "id": "P-015",
+   "modal": "FAIL",
+   "note": "the five checks are the arithmetic of the reference; this row is the host running them on the stored values",
+   "party": "host",
+   "quotes": [
+    {
+     "line": 92,
+     "text": "The host uses its own `pk`, `m` and `rho` and the `R0_bytes` it stored."
+    },
+    {
+     "line": 92,
+     "text": "It fails unless all of these hold:"
+    }
+   ],
+   "target": "host"
+  },
+  {
+   "class": "operational",
+   "coverage": [
+    "test_host_response.HandlingResponse.test_reject_every_signature_if_one_fails",
+    "test_host_response.HandlingResponse.test_result_holds_only_rebuilt_fields_and_no_ae_fields",
+    "test_host_response.HandlingResponse.test_other_differences_ignored_and_never_copied"
+   ],
+   "document": "P",
+   "id": "P-016",
+   "modal": "MUST NOT",
+   "party": "host",
+   "quotes": [
+    {
+     "line": 100,
+     "text": "The host MUST NOT use a signature that fails these checks, and MUST NOT forward anything else the device produced, because that is device-chosen data."
+    }
+   ],
+   "target": "host"
+  },
+  {
+   "class": "math",
+   "coverage": [
+    "the reference arithmetic of the protocol document, unchanged since its first draft"
+   ],
+   "document": "P",
+   "id": "P-017",
+   "modal": "FAIL",
+   "mutant_exempt": "arithmetic of the protocol document; the vectors and the reference stand for it",
+   "party": "device",
+   "quotes": [
+    {
+     "line": 106,
+     "text": "`d = int(sk)` with no negation, and the device fails unless `0 < d < n`."
+    }
+   ],
+   "target": "math"
+  },
+  {
+   "class": "psbt",
+   "coverage": [
+    "test_signer.MoreRefusals.test_ecdsa_key_must_match_script",
+    "test_host_response.ChoosingPairs.test_ambiguous_or_unsupported"
+   ],
+   "document": "P",
+   "id": "P-018",
+   "modal": "FAIL",
+   "party": "host",
+   "quotes": [
+    {
+     "line": 108,
+     "text": "The host fails if `parse33(pk)` fails, before sending anything."
+    }
+   ],
+   "target": "spend"
+  },
+  {
+   "class": "psbt",
+   "coverage": [
+    "test_signer.SignerPhases.test_stale_commitments_fail"
+   ],
+   "document": "P",
+   "id": "P-019",
+   "modal": "MUST",
+   "note": "same signer code path as P-012",
+   "party": "device",
+   "quotes": [
+    {
+     "line": 120,
+     "text": "After user approval, the device MUST recompute these values from `rho` under the same rule as the BIP340 protocol, then:"
+    }
+   ],
+   "target": "signer"
+  },
+  {
+   "class": "math",
+   "coverage": [
+    "the reference arithmetic of the protocol document, unchanged since its first draft"
+   ],
+   "document": "P",
+   "id": "P-020",
+   "modal": "FAIL",
+   "mutant_exempt": "arithmetic of the protocol document; the vectors and the reference stand for it",
+   "party": "device",
+   "quotes": [
+    {
+     "line": 123,
+     "text": "fail if t >= n"
+    },
+    {
+     "line": 125,
+     "text": "fail if k' = 0"
+    },
+    {
+     "line": 129,
+     "text": "fail if r = 0 or s = 0"
+    },
+    {
+     "line": 115,
+     "text": "fail if k0 = 0 or k0 >= n"
+    }
+   ],
+   "target": "math"
+  },
+  {
+   "class": "not_machine_testable",
+   "document": "P",
+   "id": "P-021",
+   "modal": "SHOULD",
+   "party": "device",
+   "quotes": [
+    {
+     "line": 90,
+     "text": "The device SHOULD run the checks in step 5 on `sig` with its own values, and fail if any does not pass."
+    }
+   ],
+   "reason": "same as P-014 for ECDSA"
+  },
+  {
+   "class": "psbt",
+   "coverage": [
+    "test_host_response.HandlingResponse.test_high_s_rejected",
+    "test_host_response.HandlingResponse.test_valid_signature_with_wrong_nonce",
+    "test_host_response.HandlingResponse.test_signature_by_another_key_or_message"
+   ],
+   "document": "P",
+   "id": "P-022",
+   "modal": "FAIL",
+   "note": "the ECDSA arithmetic is the reference's; this row is the host running it on the response",
+   "party": "host",
+   "quotes": [
+    {
+     "line": 133,
+     "text": "The host fails unless all of these hold, where `r` and `s` are the two halves of `sig`:"
+    }
+   ],
+   "target": "host"
+  },
+  {
+   "class": "operational",
+   "coverage": [
+    "test_lifecycle.Bullets.test_new_attempt_new_rho"
+   ],
+   "document": "P",
+   "id": "P-023",
+   "modal": "MUST",
+   "party": "host",
+   "quotes": [
+    {
+     "line": 143,
+     "text": "The host MUST draw a new `rho` for every attempt and for every message and key within it."
+    }
+   ],
+   "target": "host"
+  },
+  {
+   "class": "operational",
+   "coverage": [
+    "test_lifecycle.Bullets.test_rho_comes_from_secrets"
+   ],
+   "document": "P",
+   "id": "P-024",
+   "modal": "MUST NOT",
+   "party": "host",
+   "quotes": [
+    {
+     "line": 143,
+     "text": "`rho` MUST NOT be derived deterministically, because its secrecy would then rest on whatever it was derived from."
+    }
+   ],
+   "target": "host"
+  },
+  {
+   "class": "operational",
+   "coverage": [
+    "test_lifecycle.Bullets.test_new_attempt_new_rho"
+   ],
+   "document": "P",
+   "id": "P-025",
+   "modal": "MUST NOT",
+   "party": "host",
+   "quotes": [
+    {
+     "line": 143,
+     "text": "A `rho` the device has seen MUST NOT be used in a later attempt, because the device could then grind against it."
+    }
+   ],
+   "target": "host"
+  },
+  {
+   "class": "operational",
+   "coverage": [
+    "test_lifecycle.Bullets.test_rho_and_r0_never_reach_the_store"
+   ],
+   "document": "P",
+   "id": "P-026",
+   "modal": "MUST NOT",
+   "party": "host",
+   "quotes": [
+    {
+     "line": 145,
+     "text": "`rho` MUST NOT be logged, published or shared with anyone but the device, during or after signing, and MUST NOT be written to durable storage."
+    }
+   ],
+   "target": "host"
+  },
+  {
+   "class": "operational",
+   "coverage": [
+    "test_lifecycle.Bullets.test_rho_and_r0_never_reach_the_store"
+   ],
+   "document": "P",
+   "id": "P-027",
+   "modal": "SHOULD",
+   "party": "host",
+   "quotes": [
+    {
+     "line": 145,
+     "text": "The host SHOULD erase it when the attempt ends."
+    }
+   ],
+   "target": "host"
+  },
+  {
+   "class": "not_machine_testable",
+   "document": "P",
+   "id": "P-028",
+   "modal": "MUST",
+   "party": "any",
+   "quotes": [
+    {
+     "line": 147,
+     "text": "The link between host and device MUST keep `rho` from third parties."
+    }
+   ],
+   "reason": "a property of the physical or logical link; the in-process link has no third party"
+  },
+  {
+   "class": "psbt",
+   "coverage": [
+    "test_signer.SignerPhases.test_approval_rules",
+    "test_regressions.Unimplemented.test_um3_approval_has_no_default_and_covers_what_is_signed"
+   ],
+   "document": "P",
+   "id": "P-029",
+   "modal": "MUST",
+   "party": "device",
+   "quotes": [
+    {
+     "line": 151,
+     "text": "The device MUST obtain the user's approval before every run of step 4."
+    }
+   ],
+   "target": "signer"
+  },
+  {
+   "class": "psbt",
+   "coverage": [
+    "test_signer.SignerPhases.test_approval_describes_path_leaf_sighash",
+    "test_regressions.Unimplemented.test_um3_approval_has_no_default_and_covers_what_is_signed"
+   ],
+   "document": "P",
+   "id": "P-030",
+   "modal": "MUST",
+   "party": "device",
+   "quotes": [
+    {
+     "line": 151,
+     "text": "Approval MUST cover everything the signature commits to, including a non-default sighash type and, for a Taproot script path, the leaf being satisfied."
+    }
+   ],
+   "target": "signer"
+  },
+  {
+   "class": "psbt",
+   "coverage": [
+    "test_signer.SignerPhases.test_approval_rules",
+    "test_signer.SignerPhases.test_first_pass_adds_commitment_and_needs_no_approval"
+   ],
+   "document": "P",
+   "id": "P-031",
+   "modal": "MUST NOT",
+   "party": "device",
+   "quotes": [
+    {
+     "line": 151,
+     "text": "Approval given around step 2 MUST NOT be relied on for step 4, because a stateless device cannot tell that the two steps concern the same message."
+    }
+   ],
+   "target": "signer"
+  },
+  {
+   "class": "operational",
+   "coverage": [
+    "test_lifecycle.Bullets.test_attempt_recorded_open_before_hc_is_sent",
+    "test_lifecycle.Bullets.test_store_that_cannot_be_written_stops_before_hc"
+   ],
+   "document": "P",
+   "id": "P-032",
+   "modal": "MUST",
+   "party": "host",
+   "quotes": [
+    {
+     "line": 157,
+     "text": "The host MUST durably record the attempt as open for that device before sending `hc`, so that a crash cannot hide a failure."
+    }
+   ],
+   "target": "host"
+  },
+  {
+   "class": "operational",
+   "coverage": [
+    "test_lifecycle.Bullets.test_refused_before_the_record_is_not_an_attempt"
+   ],
+   "document": "P",
+   "id": "P-033",
+   "modal": "MUST",
+   "party": "host",
+   "quotes": [
+    {
+     "line": 157,
+     "text": "A request the host refuses before making that record is not an attempt."
+    }
+   ],
+   "target": "host"
+  },
+  {
+   "class": "operational",
+   "coverage": [
+    "test_host_response.HandlingResponse.test_reject_every_signature_if_one_fails",
+    "test_lifecycle.Bullets.test_abandon_is_not_charged_and_failed_is"
+   ],
+   "document": "P",
+   "id": "P-034",
+   "modal": "MUST",
+   "party": "host",
+   "quotes": [
+    {
+     "line": 159,
+     "text": "- **Completed:** every requested signature passed step 5."
+    }
+   ],
+   "target": "host"
+  },
+  {
+   "class": "operational",
+   "coverage": [
+    "test_lifecycle.Bullets.test_abandon_is_not_charged_and_failed_is",
+    "test_lifecycle.Bullets.test_cancel_with_nothing_outstanding_is_an_abandon",
+    "test_lifecycle.AfterFailure.test_stop_after_rho_was_sent_is_a_failure"
+   ],
+   "document": "P",
+   "id": "P-035",
+   "modal": "MUST",
+   "party": "host",
+   "quotes": [
+    {
+     "line": 160,
+     "text": "- **Abandoned:** before `rho` was sent, the user stopped or changed the request for a reason independent of the device, with no response outstanding and no failure recorded."
+    }
+   ],
+   "target": "host"
+  },
+  {
+   "class": "operational",
+   "coverage": [
+    "test_lifecycle.AfterFailure.test_stop_after_rho_was_sent_is_a_failure",
+    "test_lifecycle.AfterFailure.test_stop_after_rho_sent_counts_once"
+   ],
+   "document": "P",
+   "id": "P-036",
+   "modal": "MUST",
+   "party": "host",
+   "quotes": [
+    {
+     "line": 161,
+     "text": "- **Failed:** anything else that ends it."
+    }
+   ],
+   "target": "host"
+  },
+  {
+   "class": "operational",
+   "coverage": [
+    "test_lifecycle.Bullets.test_decline_counts_unless_user_confirms_it_was_unrelated"
+   ],
+   "document": "P",
+   "id": "P-037",
+   "modal": "MUST",
+   "party": "host",
+   "quotes": [
+    {
+     "line": 160,
+     "text": "A decline that is not counted, under the rule below, also ends this way."
+    }
+   ],
+   "target": "host"
+  },
+  {
+   "class": "operational",
+   "coverage": [
+    "test_lifecycle.Bullets.test_refusal_presented_as_disconnect_costs_the_same",
+    "test_lifecycle.Bullets.test_cancel_with_response_outstanding_is_a_failure",
+    "test_lifecycle.Bullets.test_message_the_host_did_not_request",
+    "test_lifecycle.Bullets.test_open_attempt_at_startup_counts_as_failed",
+    "test_lifecycle.Bullets.test_r0_changed_in_second_pass_response",
+    "test_host_response.HandlingResponse.test_malformed_response",
+    "test_host_response.HandlingResponse.test_missing_commitment_and_signature"
+   ],
+   "document": "P",
+   "id": "P-038",
+   "modal": "MUST",
+   "party": "host",
+   "quotes": [
+    {
+     "line": 163,
+     "text": "A **failure event** during an attempt is a timeout, a device error or refusal, a cancellation on either side while a response is outstanding, a malformed or missing response, a changed `R0_bytes`, a failed host check, a message the host did not request, or a host restart."
+    }
+   ],
+   "target": "host"
+  },
+  {
+   "class": "operational",
+   "coverage": [
+    "test_lifecycle.Bullets.test_message_the_host_did_not_request",
+    "test_lifecycle.Bullets.test_message_outside_any_attempt_is_discarded_and_charged_nothing",
+    "test_lifecycle.Bullets.test_unsolicited_message_during_an_attempt_via_poll"
+   ],
+   "document": "P",
+   "id": "P-039",
+   "modal": "MUST",
+   "party": "host",
+   "quotes": [
+    {
+     "line": 163,
+     "text": "A message the host did not request is a failure event but does not end the attempt."
+    }
+   ],
+   "target": "host"
+  },
+  {
+   "class": "operational",
+   "coverage": [
+    "test_lifecycle.Bullets.test_refusal_presented_as_disconnect_costs_the_same"
+   ],
+   "document": "P",
+   "id": "P-040",
+   "modal": "MUST",
+   "party": "host",
+   "quotes": [
+    {
+     "line": 163,
+     "text": "The host does not try to separate transport faults from refusals, because a device can present one as the other."
+    }
+   ],
+   "target": "host"
+  },
+  {
+   "class": "not_machine_testable",
+   "document": "P",
+   "id": "P-041",
+   "modal": "SHOULD",
+   "party": "host",
+   "quotes": [
+    {
+     "line": 163,
+     "text": "A timeout on a step that waits for the user SHOULD leave time to read the device and decide, because each one counts as a failure."
+    }
+   ],
+   "reason": "a policy on timeout length; the in-process link has no clock and the host sets no timeout"
+  },
+  {
+   "class": "operational",
+   "coverage": [
+    "test_lifecycle.Bullets.test_device_identity_is_the_wallets_not_the_devices",
+    "test_host_response.RuleGaps.test_identity_ignores_what_the_link_reports"
+   ],
+   "document": "P",
+   "id": "P-042",
+   "modal": "MUST",
+   "party": "host",
+   "quotes": [
+    {
+     "line": 165,
+     "text": "A device is identified by the keys or fingerprint in the host's own wallet data, never by an identifier the device reports."
+    }
+   ],
+   "target": "host"
+  },
+  {
+   "class": "operational",
+   "coverage": [
+    "test_lifecycle.Bullets.test_one_durable_increment_at_first_failure",
+    "test_lifecycle.Bullets.test_kill_between_every_durable_step",
+    "test_lifecycle.Bullets.test_store_is_durable_and_atomic",
+    "test_lifecycle.Bullets.test_retry_then_succeed_cannot_clear_the_count"
+   ],
+   "document": "P",
+   "id": "P-043",
+   "modal": "MUST",
+   "party": "host",
+   "quotes": [
+    {
+     "line": 165,
+     "text": "The host MUST add one, durably and in one atomic write with the attempt's state, at the first failure event in an attempt, and at most once per attempt, so that a crash can neither lose the count nor add it twice."
+    }
+   ],
+   "target": "host"
+  },
+  {
+   "class": "operational",
+   "coverage": [
+    "test_lifecycle.Bullets.test_retry_then_succeed_cannot_clear_the_count"
+   ],
+   "document": "P",
+   "id": "P-044",
+   "modal": "MUST",
+   "party": "host",
+   "quotes": [
+    {
+     "line": 165,
+     "text": "A later success on that attempt does not undo it."
+    }
+   ],
+   "target": "host"
+  },
+  {
+   "class": "operational",
+   "coverage": [
+    "test_lifecycle.Bullets.test_open_attempt_at_startup_counts_as_failed",
+    "test_lifecycle.Bullets.test_kill_between_every_durable_step"
+   ],
+   "document": "P",
+   "id": "P-045",
+   "modal": "MUST",
+   "party": "host",
+   "quotes": [
+    {
+     "line": 165,
+     "text": "At startup, an attempt still recorded as open counts as failed."
+    }
+   ],
+   "target": "host"
+  },
+  {
+   "class": "operational",
+   "coverage": [
+    "test_lifecycle.Bullets.test_unreadable_records_count_as_a_failure"
+   ],
+   "document": "P",
+   "id": "P-046",
+   "modal": "MUST",
+   "party": "host",
+   "quotes": [
+    {
+     "line": 165,
+     "text": "A host that cannot read its records for a device MUST treat that device as having a count of at least one."
+    }
+   ],
+   "target": "host"
+  },
+  {
+   "class": "operational",
+   "coverage": [
+    "test_lifecycle.Bullets.test_open_attempt_at_startup_counts_as_failed"
+   ],
+   "document": "P",
+   "id": "P-047",
+   "modal": "MUST",
+   "party": "host",
+   "quotes": [
+    {
+     "line": 165,
+     "text": "A host with no records at all cannot tell a new device from deleted records, and treats the device as new."
+    }
+   ],
+   "target": "host"
+  },
+  {
+   "class": "operational",
+   "coverage": [
+    "test_lifecycle.Bullets.test_reset_is_an_explicit_user_action_that_states_what_is_cleared"
+   ],
+   "document": "P",
+   "id": "P-048",
+   "modal": "MUST",
+   "party": "host",
+   "quotes": [
+    {
+     "line": 165,
+     "text": "The count resets only by an explicit user action that states what is being cleared."
+    }
+   ],
+   "target": "host"
+  },
+  {
+   "class": "operational",
+   "coverage": [
+    "test_lifecycle.Bullets.test_retries_are_bounded_and_reuse_rho"
+   ],
+   "document": "P",
+   "id": "P-049",
+   "modal": "MAY",
+   "party": "host",
+   "quotes": [
+    {
+     "line": 167,
+     "text": "Within an attempt, the host MAY retry a bounded number of times."
+    }
+   ],
+   "target": "host"
+  },
+  {
+   "class": "operational",
+   "coverage": [
+    "test_lifecycle.Bullets.test_r0_compared_across_all_responses_including_rejected",
+    "test_lifecycle.Bullets.test_r0_changed_in_second_pass_response",
+    "test_lifecycle.Bullets.test_repeated_step2_shares_the_step2_retry_budget",
+    "test_regressions.CodeBugs.test_cb2_repeated_step2_must_check_r0_unchanged"
+   ],
+   "document": "P",
+   "id": "P-050",
+   "modal": "MUST",
+   "party": "host",
+   "quotes": [
+    {
+     "line": 167,
+     "text": "It MAY repeat step 2 with the same `(m, hc)`, and MUST end the attempt as failed if `R0_bytes` differs from any value received for that attempt, whatever its form, including one in a response it rejected, because a second value is a second choice of nonce."
+    }
+   ],
+   "target": "host"
+  },
+  {
+   "class": "operational",
+   "coverage": [
+    "test_lifecycle.Bullets.test_retries_are_bounded_and_reuse_rho"
+   ],
+   "document": "P",
+   "id": "P-051",
+   "modal": "SHOULD",
+   "party": "host",
+   "quotes": [
+    {
+     "line": 167,
+     "text": "After a failure event past step 2, it SHOULD repeat steps 3 and 4 with the same `rho` rather than start a new attempt, because a new attempt gives the device a fresh choice."
+    }
+   ],
+   "target": "host"
+  },
+  {
+   "class": "operational",
+   "coverage": [
+    "test_lifecycle.Bullets.test_retries_are_bounded_and_reuse_rho"
+   ],
+   "document": "P",
+   "id": "P-052",
+   "modal": "SHOULD",
+   "party": "host",
+   "quotes": [
+    {
+     "line": 167,
+     "text": "This covers every failure event past step 2 other than a changed `R0_bytes`, including a response that failed a check."
+    }
+   ],
+   "target": "host"
+  },
+  {
+   "class": "operational",
+   "coverage": [
+    "test_regressions.CodeBugs.test_cb2_unchanged_r0_on_repeat_is_accepted",
+    "test_regressions.CodeBugs.test_cb2_repeated_step2_must_check_r0_unchanged",
+    "test_lifecycle.Bullets.test_repeat_step2_after_failure_with_unchanged_r0"
+   ],
+   "document": "P",
+   "id": "P-053",
+   "modal": "MAY",
+   "party": "host",
+   "quotes": [
+    {
+     "line": 167,
+     "text": "It MAY do so after a repeated step 2 returns an unchanged `R0_bytes`."
+    }
+   ],
+   "target": "host"
+  },
+  {
+   "class": "operational",
+   "coverage": [
+    "test_lifecycle.Bullets.test_retries_are_bounded_and_reuse_rho"
+   ],
+   "document": "P",
+   "id": "P-054",
+   "modal": "MUST",
+   "party": "host",
+   "quotes": [
+    {
+     "line": 167,
+     "text": "When retries run out, the attempt has failed."
+    }
+   ],
+   "target": "host"
+  },
+  {
+   "class": "operational",
+   "coverage": [
+    "test_lifecycle.Bullets.test_warning_before_next_attempt_and_acknowledgement_covers_one",
+    "test_lifecycle.Bullets.test_no_silent_new_attempt_after_failure"
+   ],
+   "document": "P",
+   "id": "P-055",
+   "modal": "MUST",
+   "party": "host",
+   "quotes": [
+    {
+     "line": 169,
+     "text": "If the failure count has risen since the user last acknowledged a warning, the host MUST warn the user before starting another attempt with that device."
+    }
+   ],
+   "target": "host"
+  },
+  {
+   "class": "not_machine_testable",
+   "document": "P",
+   "id": "P-056",
+   "modal": "MUST",
+   "party": "host",
+   "quotes": [
+    {
+     "line": 169,
+     "text": "The warning says that the attempt failed and that repeated failures can mean a malicious device."
+    }
+   ],
+   "reason": "the wording belongs to the user interface; the reference host passes the failure count to UI.warn and holds no text"
+  },
+  {
+   "class": "operational",
+   "coverage": [
+    "test_lifecycle.Bullets.test_warning_not_cleared_by_change_reconnect_restart"
+   ],
+   "document": "P",
+   "id": "P-057",
+   "modal": "MUST",
+   "party": "host",
+   "quotes": [
+    {
+     "line": 169,
+     "text": "Changing the message, coins or fee, reconnecting and restarting do not clear this requirement."
+    }
+   ],
+   "target": "host"
+  },
+  {
+   "class": "operational",
+   "coverage": [
+    "test_lifecycle.Bullets.test_acknowledgement_is_used_up_in_the_write_that_records_the_attempt",
+    "test_lifecycle.Bullets.test_acknowledged_attempt_that_fails_needs_a_new_acknowledgement"
+   ],
+   "document": "P",
+   "id": "P-058",
+   "modal": "MUST",
+   "party": "host",
+   "quotes": [
+    {
+     "line": 171,
+     "text": "An acknowledgement covers exactly one new attempt and is used up in the same durable write that records it, so it does not survive into another attempt after a restart."
+    }
+   ],
+   "target": "host"
+  },
+  {
+   "class": "operational",
+   "coverage": [
+    "test_lifecycle.Bullets.test_reset_clears_a_pending_warning"
+   ],
+   "document": "P",
+   "id": "P-059",
+   "modal": "MUST",
+   "party": "host",
+   "quotes": [
+    {
+     "line": 171,
+     "text": "A reset clears any pending warning."
+    }
+   ],
+   "target": "host"
+  },
+  {
+   "class": "operational",
+   "coverage": [
+    "test_lifecycle.AfterFailure.test_new_attempt_after_failure_carries_the_same_transaction",
+    "test_lifecycle.AfterFailure.test_user_may_choose_to_change_after_failure",
+    "test_lifecycle.AfterFailure.test_transaction_rule_applies_to_an_attempt_recovered_as_failed",
+    "test_lifecycle.AfterFailure.test_no_constraint_without_a_failure_or_after_success"
+   ],
+   "document": "P",
+   "id": "P-060",
+   "modal": "SHOULD",
+   "party": "host",
+   "quotes": [
+    {
+     "line": 173,
+     "text": "Until an attempt completes, a new attempt after a failure SHOULD carry the same core transaction unless the user chooses to change it"
+    }
+   ],
+   "target": "host"
+  },
+  {
+   "class": "operational",
+   "coverage": [
+    "test_lifecycle.AfterFailure.test_new_attempt_after_failure_carries_the_same_transaction"
+   ],
+   "document": "P",
+   "id": "P-061",
+   "modal": "MUST NOT",
+   "note": "the host never builds or edits a transaction; it refuses a changed one without the user's choice",
+   "party": "host",
+   "quotes": [
+    {
+     "line": 173,
+     "text": "a host MUST NOT change the fee or coins on its own because of a failure, since a published change tells an observer a failure happened."
+    }
+   ],
+   "target": "host"
+  },
+  {
+   "class": "operational",
+   "coverage": [
+    "test_lifecycle.Bullets.test_no_silent_new_attempt_after_failure"
+   ],
+   "document": "P",
+   "id": "P-062",
+   "modal": "MUST NOT",
+   "party": "host",
+   "quotes": [
+    {
+     "line": 173,
+     "text": "The host MUST NOT start a new attempt silently in response to a failure."
+    }
+   ],
+   "target": "host"
+  },
+  {
+   "class": "operational",
+   "coverage": [
+    "test_lifecycle.Bullets.test_decline_counts_unless_user_confirms_it_was_unrelated",
+    "test_lifecycle.Bullets.test_confirmed_decline_after_a_counted_failure_ends_the_attempt_charged_once"
+   ],
+   "document": "P",
+   "id": "P-063",
+   "modal": "MAY",
+   "party": "host",
+   "quotes": [
+    {
+     "line": 175,
+     "text": "After a refusal at step 4, a host MAY ask the user whether they declined on the device, and need not count a decline the user confirms was unrelated to what the device showed"
+    }
+   ],
+   "target": "host"
+  },
+  {
+   "class": "operational",
+   "coverage": [
+    "test_lifecycle.Bullets.test_decline_counts_unless_user_confirms_it_was_unrelated"
+   ],
+   "document": "P",
+   "id": "P-064",
+   "modal": "MUST",
+   "party": "host",
+   "quotes": [
+    {
+     "line": 175,
+     "text": "A decline because the device showed something unexpected counts, because a device can induce it."
+    }
+   ],
+   "target": "host"
+  },
+  {
+   "class": "operational",
+   "coverage": [
+    "test_lifecycle.Bullets.test_failure_limit"
+   ],
+   "document": "P",
+   "id": "P-065",
+   "modal": "SHOULD",
+   "party": "host",
+   "quotes": [
+    {
+     "line": 175,
+     "text": "It SHOULD refuse further attempts past a small limit on the count."
+    }
+   ],
+   "target": "host"
+  },
+  {
+   "class": "not_machine_testable",
+   "document": "P",
+   "id": "P-066",
+   "modal": "MUST NOT",
+   "party": "device",
+   "quotes": [
+    {
+     "line": 179,
+     "text": "An implementation MUST NOT expose the nonce functions in this document through an ordinary signing interface, and a device MUST NOT use them for any signature outside this protocol, because a second signature on one base nonce can reveal the key."
+    }
+   ],
+   "reason": "absence of an interface; the reference signer has one entry point and no ordinary signing path (see B rows on a PSBT without request fields)"
+  },
+  {
+   "class": "not_machine_testable",
+   "document": "P",
+   "id": "P-067",
+   "modal": "MUST NOT",
+   "party": "device",
+   "quotes": [
+    {
+     "line": 179,
+     "text": "An ordinary signing interface under the same key MUST NOT let a host choose inputs that make it produce the base nonce `k0`."
+    }
+   ],
+   "reason": "constrains an ordinary signing interface outside this document's code"
+  },
+  {
+   "class": "not_machine_testable",
+   "document": "P",
+   "id": "P-068",
+   "modal": "MUST",
+   "party": "device",
+   "quotes": [
+    {
+     "line": 207,
+     "text": "A device that does not implement it fails or returns no commitment."
+    }
+   ],
+   "reason": "describes a device that lacks the protocol; the host side is row P-069"
+  },
+  {
+   "class": "operational",
+   "coverage": [
+    "test_host_response.HandlingResponse.test_ordinary_signature_is_refused_no_fallback",
+    "test_host_response.HandlingResponse.test_unmodified_echo_is_a_missing_commitment"
+   ],
+   "document": "P",
+   "id": "P-069",
+   "modal": "MUST NOT",
+   "party": "host",
+   "quotes": [
+    {
+     "line": 207,
+     "text": "The host MUST NOT fall back to ordinary signing without a separate user decision that discloses the loss of protection."
+    }
+   ],
+   "target": "host"
+  },
+  {
+   "class": "not_machine_testable",
+   "document": "P",
+   "id": "P-070",
+   "modal": "MUST",
+   "party": "device",
+   "quotes": [
+    {
+     "line": 211,
+     "text": "A device that keeps an older derivation MUST ensure that no ordinary signing interface lets a host supply `hc` as auxiliary or additional nonce data under the same key"
+    }
+   ],
+   "reason": "constrains other devices' signing interfaces"
+  },
+  {
+   "class": "not_machine_testable",
+   "document": "P",
+   "id": "P-071",
+   "modal": "MUST NOT",
+   "party": "any",
+   "quotes": [
+    {
+     "line": 215,
+     "text": "It is for reading and test generation, uses variable-time arithmetic and MUST NOT be used with real funds."
+    }
+   ],
+   "reason": "a restriction on use of the reference code"
+  },
+  {
+   "class": "operational",
+   "coverage": [
+    "test_host_response.HandlingResponse.test_result_holds_only_rebuilt_fields_and_no_ae_fields",
+    "test_host_response.HandlingResponse.test_other_differences_ignored_and_never_copied"
+   ],
+   "document": "P",
+   "id": "P-072",
+   "modal": "MUST NOT",
+   "party": "host",
+   "quotes": [
+    {
+     "line": 227,
+     "text": "`R0_bytes` is itself device-controlled output that the host sees, and it MUST NOT be forwarded."
+    }
+   ],
+   "target": "host"
+  },
+  {
+   "class": "not_machine_testable",
+   "document": "P",
+   "id": "P-073",
+   "modal": "MUST NOT",
+   "party": "any",
+   "quotes": [
+    {
+     "line": 231,
+     "text": "`t`, `k0`, `k'`, the masked secret and intermediate hash states MUST NOT be logged or disclosed and SHOULD be erased after use."
+    }
+   ],
+   "reason": "memory erasure and logging of intermediates are not observable in Python; the reference states it is variable-time and not for real keys"
+  },
+  {
+   "class": "not_machine_testable",
+   "document": "P",
+   "id": "P-074",
+   "modal": "SHOULD",
+   "party": "any",
+   "quotes": [
+    {
+     "line": 231,
+     "text": "Parties SHOULD process `rho` and values derived from it in constant time."
+    }
+   ],
+   "reason": "timing property; the reference uses variable-time arithmetic"
+  },
+  {
+   "class": "psbt",
+   "coverage": [
+    "test_math_codec.Codec.test_ae_fields_only_in_input_maps",
+    "test_signer.SignerPhases.test_unknown_fields_preserved",
+    "test_signer.RuleGaps.test_numbers_in_global_and_output_maps_survive_the_signer"
+   ],
+   "document": "B",
+   "id": "B-001",
+   "modal": "MUST",
+   "party": "any",
+   "quotes": [
+    {
+     "line": 34,
+     "text": "They are defined only for input maps. The same numbers in a global or output map are ordinary unknown fields."
+    }
+   ],
+   "target": "signer"
+  },
+  {
+   "class": "psbt",
+   "coverage": [
+    "test_signer.Unsupported.test_non_minimal_key_type_fails"
+   ],
+   "document": "B",
+   "id": "B-002",
+   "modal": "MUST",
+   "note": "run 2: code fixed after run 1 (psbt_codec._parse_map)",
+   "party": "any",
+   "quotes": [
+    {
+     "line": 34,
+     "text": "An implementation either fails on a key type written as a non-minimal CompactSize or reads it as the same number."
+    },
+    {
+     "line": 34,
+     "text": "It never treats it as an unknown field."
+    }
+   ],
+   "target": "codec"
+  },
+  {
+   "class": "psbt",
+   "coverage": [
+    "test_positive.Positive.test_each_form_each_version",
+    "test_signer.SignerPhases.test_lengths",
+    "test_known_answers.KnownAnswers.test_every_exchange_pair"
+   ],
+   "document": "B",
+   "id": "B-003",
+   "modal": "MUST",
+   "party": "any",
+   "quotes": [
+    {
+     "line": 38,
+     "text": "- for ECDSA, the 33-byte public key, as in `PSBT_IN_PARTIAL_SIG`"
+    },
+    {
+     "line": 39,
+     "text": "- for a Taproot key-path spend, the 32-byte x-only internal key"
+    },
+    {
+     "line": 40,
+     "text": "- for a Taproot script-path spend, the 32-byte x-only key followed by the 32-byte leaf hash, as in `PSBT_IN_TAP_SCRIPT_SIG`"
+    }
+   ],
+   "target": "spend"
+  },
+  {
+   "class": "psbt",
+   "coverage": [
+    "test_signer.SignerPhases.test_lengths",
+    "test_signer.Unsupported.test_uncompressed_key"
+   ],
+   "document": "B",
+   "id": "B-004",
+   "modal": "FAIL",
+   "party": "any",
+   "quotes": [
+    {
+     "line": 42,
+     "text": "Any other length fails."
+    }
+   ],
+   "target": "signer"
+  },
+  {
+   "class": "psbt",
+   "coverage": [
+    "test_lifecycle.Bullets.test_new_attempt_new_rho",
+    "test_positive.Positive.test_each_form_each_version",
+    "test_host_response.RuleGaps.test_key_in_two_leaves_forms_two_pairs"
+   ],
+   "document": "B",
+   "id": "B-005",
+   "modal": "MUST",
+   "party": "host",
+   "quotes": [
+    {
+     "line": 42,
+     "text": "Each pair has its own independently drawn `rho`, and a key used in two leaves forms two pairs."
+    }
+   ],
+   "target": "host"
+  },
+  {
+   "class": "psbt",
+   "coverage": [
+    "test_host_response.HandlingResponse.test_result_holds_only_rebuilt_fields_and_no_ae_fields"
+   ],
+   "document": "B",
+   "id": "B-006",
+   "modal": "MUST NOT",
+   "party": "host",
+   "quotes": [
+    {
+     "line": 44,
+     "text": "They MUST NOT appear in a PSBT given to any other party, because `rho` has to stay secret."
+    }
+   ],
+   "target": "host"
+  },
+  {
+   "class": "psbt",
+   "coverage": [
+    "test_positive.Positive.test_each_form_each_version",
+    "test_known_answers.KnownAnswers.test_every_exchange_pair",
+    "test_known_answers.LegacyDigestProperties.test_other_sequences_are_zeroed_under_none_and_single"
+   ],
+   "document": "B",
+   "id": "B-007",
+   "modal": "MUST",
+   "note": "table row: the digest and the field",
+   "party": "any",
+   "quotes": [
+    {
+     "line": 50,
+     "text": "| Legacy, including P2SH | ECDSA | Legacy signature hash | The key | `PSBT_IN_PARTIAL_SIG` |"
+    }
+   ],
+   "target": "spend"
+  },
+  {
+   "class": "psbt",
+   "coverage": [
+    "test_positive.Positive.test_each_form_each_version",
+    "test_known_answers.KnownAnswers.test_every_exchange_pair"
+   ],
+   "document": "B",
+   "id": "B-008",
+   "modal": "MUST",
+   "party": "any",
+   "quotes": [
+    {
+     "line": 51,
+     "text": "| Segwit v0, including wrapped | ECDSA | BIP143 signature hash | The key | `PSBT_IN_PARTIAL_SIG` |"
+    }
+   ],
+   "target": "spend"
+  },
+  {
+   "class": "psbt",
+   "coverage": [
+    "test_positive.Positive.test_each_form_each_version",
+    "test_positive.Positive.test_key_path_with_and_without_merkle_root",
+    "test_known_answers.KnownAnswers.test_every_exchange_pair"
+   ],
+   "document": "B",
+   "id": "B-009",
+   "modal": "MUST",
+   "party": "any",
+   "quotes": [
+    {
+     "line": 52,
+     "text": "| Taproot key path | BIP340 | BIP341 signature hash | The tweaked key | `PSBT_IN_TAP_KEY_SIG` |"
+    }
+   ],
+   "target": "spend"
+  },
+  {
+   "class": "psbt",
+   "coverage": [
+    "test_positive.Positive.test_each_form_each_version",
+    "test_known_answers.KnownAnswers.test_every_exchange_pair"
+   ],
+   "document": "B",
+   "id": "B-010",
+   "modal": "MUST",
+   "party": "any",
+   "quotes": [
+    {
+     "line": 53,
+     "text": "| Taproot script path | BIP340 | BIP342 signature hash for the leaf | The key | `PSBT_IN_TAP_SCRIPT_SIG` |"
+    }
+   ],
+   "target": "spend"
+  },
+  {
+   "class": "psbt",
+   "coverage": [
+    "test_positive.Positive.test_key_path_with_and_without_merkle_root",
+    "test_signer.MoreRefusals.test_bad_merkle_root",
+    "test_known_answers.KnownAnswers.test_every_exchange_pair"
+   ],
+   "document": "B",
+   "id": "B-011",
+   "modal": "MUST",
+   "party": "signer",
+   "quotes": [
+    {
+     "line": 55,
+     "text": "the signer normalizes and tweaks the secret as in BIP341, using the internal key and `PSBT_IN_TAP_MERKLE_ROOT`, or an empty script path if that field is absent."
+    }
+   ],
+   "target": "signer"
+  },
+  {
+   "class": "psbt",
+   "coverage": [
+    "test_positive.Positive.test_each_form_each_version",
+    "test_known_answers.KnownAnswers.test_every_exchange_pair"
+   ],
+   "document": "B",
+   "id": "B-012",
+   "modal": "MUST",
+   "party": "any",
+   "quotes": [
+    {
+     "line": 55,
+     "text": "Signature hashes are computed with no annex."
+    }
+   ],
+   "target": "spend"
+  },
+  {
+   "class": "psbt",
+   "coverage": [
+    "test_signer.Unsupported.test_other_script_forms",
+    "test_signer.TaprootScriptPair.test_other_keys_do_not_count",
+    "test_signer.RuleGaps.test_op_pushdata_key_is_not_a_direct_push"
+   ],
+   "document": "B",
+   "id": "B-013",
+   "modal": "MUST",
+   "party": "any",
+   "quotes": [
+    {
+     "line": 57,
+     "text": "A **direct push** of a key is the single opcode equal to its length, `0x21` for 33 bytes and `0x20` for 32."
+    },
+    {
+     "line": 57,
+     "text": "`OP_PUSHDATA` forms do not count."
+    }
+   ],
+   "target": "spend"
+  },
+  {
+   "class": "psbt",
+   "coverage": [
+    "test_positive.Positive.test_each_form_each_version",
+    "test_signer.RuleGaps.test_required_forms_work_with_optional_forms_off"
+   ],
+   "document": "B",
+   "id": "B-014",
+   "modal": "MUST",
+   "party": "signer",
+   "quotes": [
+    {
+     "line": 59,
+     "text": "Signers MUST support P2PKH, P2WPKH, P2SH-P2WPKH, the Taproot key path, and P2WSH and P2SH-P2WSH whose witness script is exactly one of:"
+    }
+   ],
+   "target": "spend"
+  },
+  {
+   "class": "psbt",
+   "coverage": [
+    "test_positive.Positive.test_each_form_each_version",
+    "test_signer.RuleGaps.test_required_forms_work_with_optional_forms_off"
+   ],
+   "document": "B",
+   "id": "B-015",
+   "modal": "MUST",
+   "party": "signer",
+   "quotes": [
+    {
+     "line": 61,
+     "text": "- `<key> OP_CHECKSIG`"
+    }
+   ],
+   "target": "spend"
+  },
+  {
+   "class": "psbt",
+   "coverage": [
+    "test_positive.Positive.test_each_form_each_version",
+    "test_signer.Unsupported.test_other_script_forms",
+    "test_signer.Unsupported.test_multisig_key_must_be_valid",
+    "test_signer.RuleGaps.test_sixteen_key_multisig",
+    "test_signer.RuleGaps.test_multisig_m_greater_than_n_is_not_a_required_form",
+    "test_signer.RuleGaps.test_multisig_n_must_equal_the_number_of_keys",
+    "test_signer.RuleGaps.test_multisig_key_with_a_bad_prefix_is_not_a_required_form"
+   ],
+   "document": "B",
+   "id": "B-016",
+   "modal": "MUST",
+   "party": "signer",
+   "quotes": [
+    {
+     "line": 62,
+     "text": "- `OP_m <key> ... <key> OP_n OP_CHECKMULTISIG`, with `1 <= m <= n <= 16`, `OP_m` and `OP_n` being `OP_1` to `OP_16`, and each key a direct push of a valid 33-byte key."
+    }
+   ],
+   "target": "spend"
+  },
+  {
+   "class": "psbt",
+   "coverage": [
+    "test_signer.SignerPhases.test_signer_independent_of_key_order"
+   ],
+   "document": "B",
+   "id": "B-017",
+   "modal": "MUST",
+   "party": "signer",
+   "quotes": [
+    {
+     "line": 62,
+     "text": "Key order is not constrained."
+    }
+   ],
+   "target": "spend"
+  },
+  {
+   "class": "psbt",
+   "coverage": [
+    "test_host_response.ChoosingPairs.test_ambiguous_or_unsupported"
+   ],
+   "document": "B",
+   "id": "B-018",
+   "modal": "FAIL",
+   "party": "signer",
+   "quotes": [
+    {
+     "line": 62,
+     "text": "A device key listed twice fails."
+    }
+   ],
+   "target": "spend"
+  },
+  {
+   "class": "psbt",
+   "coverage": [
+    "test_positive.Positive.test_each_form_each_version",
+    "test_signer.Unsupported.test_other_script_forms",
+    "test_signer.Unsupported.test_optional_forms_can_be_refused"
+   ],
+   "document": "B",
+   "id": "B-019",
+   "modal": "MAY",
+   "note": "the reference supports all optional forms and can switch them off",
+   "party": "signer",
+   "quotes": [
+    {
+     "line": 64,
+     "text": "**Optional forms.** Signers MAY support the Taproot script path, the required script forms under legacy P2SH, and other scripts in which exactly one `OP_CHECKSIG` or `OP_CHECKSIGVERIFY` is immediately preceded by a direct push of the key."
+    }
+   ],
+   "target": "spend"
+  },
+  {
+   "class": "psbt",
+   "coverage": [
+    "test_signer.Unsupported.test_optional_forms_can_be_refused",
+    "test_signer.Unsupported.test_other_script_forms",
+    "test_signer.MoreRefusals.test_unsupported_spent_script_and_wrong_scheme"
+   ],
+   "document": "B",
+   "id": "B-020",
+   "modal": "FAIL",
+   "party": "signer",
+   "quotes": [
+    {
+     "line": 64,
+     "text": "A signer fails on any form it does not support."
+    }
+   ],
+   "target": "spend"
+  },
+  {
+   "class": "psbt",
+   "coverage": [
+    "test_host_response.ChoosingPairs.test_ambiguous_or_unsupported"
+   ],
+   "document": "B",
+   "id": "B-021",
+   "modal": "SHOULD NOT",
+   "note": "the reference host has an optional_forms switch and refuses an optional form before an attempt when it is off",
+   "party": "host",
+   "quotes": [
+    {
+     "line": 64,
+     "text": "A host SHOULD NOT request an optional form unless it knows the signer supports it, because a refusal is a failed attempt."
+    }
+   ],
+   "target": "host"
+  },
+  {
+   "class": "psbt",
+   "coverage": [
+    "test_signer.TaprootScriptPair.test_leaf_missing",
+    "test_signer.TaprootScriptPair.test_leaf_ambiguous"
+   ],
+   "document": "B",
+   "id": "B-022",
+   "modal": "MUST",
+   "party": "signer",
+   "quotes": [
+    {
+     "line": 66,
+     "text": "**Script-path pairs.** Exactly one `PSBT_IN_TAP_LEAF_SCRIPT` entry MUST match the leaf hash."
+    }
+   ],
+   "target": "spend"
+  },
+  {
+   "class": "psbt",
+   "coverage": [
+    "test_signer.TaprootScriptPair.test_leaf_version",
+    "test_signer.TaprootScriptPair.test_control_block_mismatch",
+    "test_signer.TaprootScriptPair.test_control_block_depth"
+   ],
+   "document": "B",
+   "id": "B-023",
+   "modal": "MUST",
+   "party": "signer",
+   "quotes": [
+    {
+     "line": 66,
+     "text": "Its leaf version MUST be `0xC0`, and its control block MUST compute the spent output key with at most 128 path elements."
+    }
+   ],
+   "target": "spend"
+  },
+  {
+   "class": "psbt",
+   "coverage": [
+    "test_signer.TaprootScriptPair.test_key_mapping_zero_and_two",
+    "test_signer.TaprootScriptPair.test_other_keys_do_not_count"
+   ],
+   "document": "B",
+   "id": "B-024",
+   "modal": "MUST",
+   "party": "signer",
+   "quotes": [
+    {
+     "line": 66,
+     "text": "Exactly one `OP_CHECKSIG`, `OP_CHECKSIGVERIFY` or `OP_CHECKSIGADD` in the leaf MUST be immediately preceded by a 32-byte direct push of this key."
+    },
+    {
+     "line": 66,
+     "text": "Other keys in the leaf do not count."
+    }
+   ],
+   "target": "spend"
+  },
+  {
+   "class": "psbt",
+   "coverage": [
+    "test_signer.Unsupported.test_op_success"
+   ],
+   "document": "B",
+   "id": "B-025",
+   "modal": "FAIL",
+   "party": "signer",
+   "quotes": [
+    {
+     "line": 66,
+     "text": "Scripts containing an `OP_SUCCESSx` opcode fail."
+    }
+   ],
+   "target": "spend"
+  },
+  {
+   "class": "psbt",
+   "coverage": [
+    "test_signer.Unsupported.test_codeseparator_ecdsa",
+    "test_signer.Unsupported.test_codeseparator_taproot",
+    "test_signer.Unsupported.test_codeseparator_as_data_is_not_an_opcode"
+   ],
+   "document": "B",
+   "id": "B-026",
+   "modal": "MUST NOT",
+   "party": "signer",
+   "quotes": [
+    {
+     "line": 68,
+     "text": "The script code for any pair MUST NOT contain `OP_CODESEPARATOR` as an opcode, because it changes what the signature hash covers."
+    }
+   ],
+   "target": "spend"
+  },
+  {
+   "class": "psbt",
+   "coverage": [
+    "test_signer.Unsupported.test_uncompressed_key",
+    "test_signer.SignerPhases.test_lengths"
+   ],
+   "document": "B",
+   "id": "B-027",
+   "modal": "FAIL",
+   "party": "signer",
+   "quotes": [
+    {
+     "line": 70,
+     "text": "- a 65-byte key identifier"
+    },
+    {
+     "line": 68,
+     "text": "Each of these also fails:"
+    }
+   ],
+   "target": "signer"
+  },
+  {
+   "class": "psbt",
+   "coverage": [
+    "test_signer.Unsupported.test_derivation_record_with_uncompressed_device_key",
+    "test_host_response.ChoosingPairs.test_uncompressed_key_in_derivation_record",
+    "test_host_response.ChoosingPairs.test_every_encoding_of_a_device_key_in_a_derivation_record"
+   ],
+   "document": "B",
+   "id": "B-028",
+   "modal": "FAIL",
+   "party": "any",
+   "quotes": [
+    {
+     "line": 71,
+     "text": "- on an input with a pair, a derivation record whose 65-byte key, with prefix `0x04`, `0x06` or `0x07`, has the x coordinate of a device key, because that is the same secret under another encoding"
+    }
+   ],
+   "target": "spend"
+  },
+  {
+   "class": "psbt",
+   "coverage": [
+    "test_signer.Unsupported.test_musig2_participant",
+    "test_host_response.ChoosingPairs.test_musig_and_aggregate_fail_not_ignored",
+    "test_signer.RuleGaps.test_musig2_participant_in_either_parity_form"
+   ],
+   "document": "B",
+   "id": "B-029",
+   "modal": "FAIL",
+   "party": "any",
+   "quotes": [
+    {
+     "line": 72,
+     "text": "- a Taproot input with a pair whose `PSBT_IN_MUSIG2_PARTICIPANT_PUBKEYS` lists a device key, in either parity form, because the protocol covers single signers only"
+    }
+   ],
+   "target": "spend"
+  },
+  {
+   "class": "psbt",
+   "coverage": [
+    "test_signer.Unsupported.test_musig2_aggregate_internal_key",
+    "test_host_response.ChoosingPairs.test_musig_and_aggregate_fail_not_ignored"
+   ],
+   "document": "B",
+   "id": "B-030",
+   "modal": "FAIL",
+   "party": "any",
+   "quotes": [
+    {
+     "line": 73,
+     "text": "- a key-path pair whose internal key is the x-only form of the aggregate key in that field's key data, for the same reason"
+    }
+   ],
+   "target": "spend"
+  },
+  {
+   "class": "psbt",
+   "coverage": [
+    "test_signer.Unsupported.test_aggregate_internal_key_on_a_script_path_is_allowed"
+   ],
+   "document": "B",
+   "id": "B-031",
+   "modal": "MUST",
+   "party": "any",
+   "quotes": [
+    {
+     "line": 75,
+     "text": "A script-path pair under an aggregate internal key is allowed if the device is not a participant."
+    }
+   ],
+   "target": "spend"
+  },
+  {
+   "class": "psbt",
+   "coverage": [
+    "test_signer.Unsupported.test_uncompressed_key",
+    "test_host_response.RuleGaps.test_uncompressed_record_for_a_non_device_key_is_not_examined"
+   ],
+   "document": "B",
+   "id": "B-032",
+   "modal": "MUST",
+   "party": "any",
+   "quotes": [
+    {
+     "line": 75,
+     "text": "Uncompressed keys that are not device keys are not examined."
+    }
+   ],
+   "target": "spend"
+  },
+  {
+   "class": "not_machine_testable",
+   "document": "B",
+   "id": "B-033",
+   "modal": "MAY",
+   "party": "signer",
+   "quotes": [
+    {
+     "line": 75,
+     "text": "A signer that cannot tell whether such a key is a device key, because it holds a seed and not a list of keys, MAY fail on any uncompressed derivation record"
+    }
+   ],
+   "reason": "an option for a seed-only signer; the reference holds a list of keys and does not take it"
+  },
+  {
+   "class": "psbt",
+   "coverage": [
+    "test_positive.Positive.test_each_sighash_type",
+    "test_signer.SighashRules.test_unsupported_values",
+    "test_signer.SighashRules.test_zero_ok_for_bip340"
+   ],
+   "document": "B",
+   "id": "B-034",
+   "modal": "MUST",
+   "party": "any",
+   "quotes": [
+    {
+     "line": 79,
+     "text": "Accepted values are `SIGHASH_ALL`, `NONE` and `SINGLE`, each with or without `ANYONECANPAY`, and for BIP340 also `SIGHASH_DEFAULT`."
+    }
+   ],
+   "target": "spend"
+  },
+  {
+   "class": "psbt",
+   "coverage": [
+    "test_signer.SighashRules.test_bad_length",
+    "test_positive.Positive.test_each_sighash_type"
+   ],
+   "document": "B",
+   "id": "B-035",
+   "modal": "MUST",
+   "party": "any",
+   "quotes": [
+    {
+     "line": 79,
+     "text": "the type is the input's `PSBT_IN_SIGHASH_TYPE`, a 32-bit little-endian value, if present."
+    }
+   ],
+   "target": "spend"
+  },
+  {
+   "class": "psbt",
+   "coverage": [
+    "test_positive.Positive.test_absent_sighash_defaults"
+   ],
+   "document": "B",
+   "id": "B-036",
+   "modal": "MUST",
+   "party": "any",
+   "quotes": [
+    {
+     "line": 79,
+     "text": "If absent, it is `SIGHASH_ALL` for ECDSA and `SIGHASH_DEFAULT` for BIP340."
+    }
+   ],
+   "target": "spend"
+  },
+  {
+   "class": "psbt",
+   "coverage": [
+    "test_signer.SighashRules.test_unsupported_values",
+    "test_signer.SighashRules.test_present_zero_ecdsa",
+    "test_signer.SighashRules.test_single_without_output"
+   ],
+   "document": "B",
+   "id": "B-037",
+   "modal": "FAIL",
+   "party": "any",
+   "quotes": [
+    {
+     "line": 79,
+     "text": "Each party fails on any other value, on a present zero for ECDSA, and on `SIGHASH_SINGLE` with no matching output, on either pass."
+    }
+   ],
+   "target": "spend"
+  },
+  {
+   "class": "not_machine_testable",
+   "document": "B",
+   "id": "B-038",
+   "modal": "MAY",
+   "party": "signer",
+   "quotes": [
+    {
+     "line": 79,
+     "text": "it MAY treat a present zero as absent, and it then signs `SIGHASH_ALL`."
+    }
+   ],
+   "reason": "an option for libraries that cannot tell a present zero from absent; the reference fails on a present zero"
+  },
+  {
+   "class": "not_machine_testable",
+   "document": "B",
+   "id": "B-039",
+   "modal": "MAY",
+   "party": "signer",
+   "quotes": [
+    {
+     "line": 79,
+     "text": "A signer MAY accept only `SIGHASH_ALL` and, for BIP340, `SIGHASH_DEFAULT`, and fail on the rest, stating that it does."
+    }
+   ],
+   "reason": "an option; the reference accepts every listed type and states no restriction"
+  },
+  {
+   "class": "not_machine_testable",
+   "document": "B",
+   "id": "B-040",
+   "modal": "SHOULD NOT",
+   "party": "host",
+   "quotes": [
+    {
+     "line": 79,
+     "text": "A host SHOULD NOT request another type unless it knows the signer supports it, because a refusal is a failed attempt."
+    }
+   ],
+   "reason": "the host cannot know a signer's support; the reference signer accepts every listed type, so there is nothing to refuse"
+  },
+  {
+   "class": "psbt",
+   "coverage": [
+    "test_signer.SighashRules.test_trailing_byte_unless_default",
+    "test_host_response.HandlingResponse.test_wrong_sighash_byte_each_scheme"
+   ],
+   "document": "B",
+   "id": "B-041",
+   "modal": "MUST",
+   "party": "any",
+   "quotes": [
+    {
+     "line": 79,
+     "text": "A BIP340 signature has a trailing sighash byte unless the type is `SIGHASH_DEFAULT`."
+    }
+   ],
+   "target": "spend"
+  },
+  {
+   "class": "psbt",
+   "coverage": [
+    "test_signer.ValidationScope.test_final_inputs"
+   ],
+   "document": "B",
+   "id": "B-042",
+   "modal": "FAIL",
+   "party": "any",
+   "quotes": [
+    {
+     "line": 83,
+     "text": "Each party fails on a requested input with a final scriptSig or final witness,"
+    }
+   ],
+   "target": "spend"
+  },
+  {
+   "class": "psbt",
+   "coverage": [
+    "test_signer.ValidationScope.test_missing_and_mismatched_utxo",
+    "test_signer.ValidationScope.test_redeem_and_witness_script_mismatch",
+    "test_signer.ValidationScope.test_taproot_output_key_mismatch"
+   ],
+   "document": "B",
+   "id": "B-043",
+   "modal": "FAIL",
+   "party": "any",
+   "quotes": [
+    {
+     "line": 83,
+     "text": "or on missing or mismatched data that the input's signature hash needs: a UTXO field, redeem script, witness script or Taproot output key."
+    }
+   ],
+   "target": "spend"
+  },
+  {
+   "class": "psbt",
+   "coverage": [
+    "test_signer.ValidationScope.test_legacy_needs_non_witness_utxo"
+   ],
+   "document": "B",
+   "id": "B-044",
+   "modal": "MUST",
+   "party": "any",
+   "quotes": [
+    {
+     "line": 83,
+     "text": "Legacy spends need `PSBT_IN_NON_WITNESS_UTXO`."
+    }
+   ],
+   "target": "spend"
+  },
+  {
+   "class": "psbt",
+   "coverage": [
+    "test_positive.Positive.test_utxo_field_variants"
+   ],
+   "document": "B",
+   "id": "B-045",
+   "modal": "MUST",
+   "party": "any",
+   "quotes": [
+    {
+     "line": 83,
+     "text": "Segwit v0 and Taproot spends need either UTXO field."
+    }
+   ],
+   "target": "spend"
+  },
+  {
+   "class": "psbt",
+   "coverage": [
+    "test_signer.ValidationScope.test_missing_and_mismatched_utxo"
+   ],
+   "document": "B",
+   "id": "B-046",
+   "modal": "MUST",
+   "party": "any",
+   "quotes": [
+    {
+     "line": 83,
+     "text": "If both are present on a requested input they MUST agree."
+    }
+   ],
+   "target": "spend"
+  },
+  {
+   "class": "psbt",
+   "coverage": [
+    "test_signer.ValidationScope.test_non_witness_utxo_must_hash_to_txid_and_hold_index"
+   ],
+   "document": "B",
+   "id": "B-047",
+   "modal": "MUST",
+   "party": "any",
+   "quotes": [
+    {
+     "line": 83,
+     "text": "A `PSBT_IN_NON_WITNESS_UTXO` MUST hash to the input's previous txid and contain its output index."
+    }
+   ],
+   "target": "spend"
+  },
+  {
+   "class": "psbt",
+   "coverage": [
+    "test_signer.ValidationScope.test_taproot_non_acp_needs_every_prevout"
+   ],
+   "document": "B",
+   "id": "B-048",
+   "modal": "MUST",
+   "party": "any",
+   "quotes": [
+    {
+     "line": 83,
+     "text": "Taproot pairs without `ANYONECANPAY` also need every input's previous output."
+    }
+   ],
+   "target": "spend"
+  },
+  {
+   "class": "psbt",
+   "coverage": [
+    "test_signer.ValidationScope.test_outputs_exceeding_inputs"
+   ],
+   "document": "B",
+   "id": "B-049",
+   "modal": "FAIL",
+   "party": "any",
+   "quotes": [
+    {
+     "line": 83,
+     "text": "When every input has a valid UTXO field, each party fails if the outputs exceed the inputs."
+    }
+   ],
+   "target": "spend"
+  },
+  {
+   "class": "psbt",
+   "coverage": [
+    "test_signer.ValidationScope.test_inputs_without_pair_are_unconstrained",
+    "test_positive.Positive.test_mixed_inputs",
+    "test_positive.Positive.test_foreign_cosigner_untouched"
+   ],
+   "document": "B",
+   "id": "B-050",
+   "modal": "MUST",
+   "party": "any",
+   "quotes": [
+    {
+     "line": 85,
+     "text": "Inputs with no pair are not otherwise constrained by this document."
+    }
+   ],
+   "target": "spend"
+  },
+  {
+   "class": "psbt",
+   "coverage": [
+    "test_signer.TaprootScriptPair.test_other_leaves_ignored"
+   ],
+   "document": "B",
+   "id": "B-051",
+   "modal": "MUST",
+   "party": "any",
+   "quotes": [
+    {
+     "line": 85,
+     "text": "Leaves other than the requested one are ignored."
+    }
+   ],
+   "target": "spend"
+  },
+  {
+   "class": "not_machine_testable",
+   "document": "B",
+   "id": "B-052",
+   "modal": "MUST",
+   "party": "any",
+   "quotes": [
+    {
+     "line": 85,
+     "text": "An implementation MAY apply stricter general PSBT validation, but MUST state in its documentation that it does, because a stricter party fails where a conforming one would not."
+    }
+   ],
+   "reason": "a documentation requirement; psbt_codec.py states in its docstring that it applies none"
+  },
+  {
+   "class": "psbt",
+   "coverage": [
+    "test_signer.MoreRefusals.test_caps_fail_and_never_truncate",
+    "test_signer.RuleGaps.test_pair_cap_fails_and_never_truncates",
+    "test_math_codec.RuleGaps.test_size_cap_fails_and_never_truncates",
+    "test_math_codec.RuleGaps.test_input_count_cap_fails_in_both_versions"
+   ],
+   "document": "B",
+   "id": "B-053",
+   "modal": "MAY",
+   "party": "any",
+   "quotes": [
+    {
+     "line": 85,
+     "text": "An implementation MAY cap sizes and counts; exceeding a cap fails and never truncates."
+    }
+   ],
+   "target": "codec"
+  },
+  {
+   "class": "psbt",
+   "coverage": [
+    "test_regressions.CodeBugs.test_cb1_both_parity_forms_of_a_taproot_internal_key",
+    "test_host_response.ChoosingPairs.test_two_forms_of_one_xonly_key_make_one_pair"
+   ],
+   "document": "B",
+   "id": "B-054",
+   "modal": "MUST NOT",
+   "party": "host",
+   "quotes": [
+    {
+     "line": 89,
+     "text": "Two forms of one x-only key are one identifier and MUST NOT create two pairs."
+    }
+   ],
+   "target": "host"
+  },
+  {
+   "class": "psbt",
+   "coverage": [
+    "test_positive.Positive.test_each_form_each_version"
+   ],
+   "document": "B",
+   "id": "B-055",
+   "modal": "MUST",
+   "party": "host",
+   "quotes": [
+    {
+     "line": 91,
+     "text": "- an ECDSA pair from `PSBT_IN_BIP32_DERIVATION`"
+    }
+   ],
+   "target": "host"
+  },
+  {
+   "class": "psbt",
+   "coverage": [
+    "test_positive.Positive.test_each_form_each_version",
+    "test_host_response.ChoosingPairs.test_key_path_when_device_holds_internal_key"
+   ],
+   "document": "B",
+   "id": "B-056",
+   "modal": "MUST",
+   "party": "host",
+   "quotes": [
+    {
+     "line": 92,
+     "text": "- a key-path pair from `PSBT_IN_TAP_INTERNAL_KEY`"
+    }
+   ],
+   "target": "host"
+  },
+  {
+   "class": "psbt",
+   "coverage": [
+    "test_positive.Positive.test_each_form_each_version",
+    "test_host_response.ChoosingPairs.test_notices_for_unusable_listed_leaf_and_script_key_without_record",
+    "test_host_response.RuleGaps.test_key_in_two_leaves_forms_two_pairs"
+   ],
+   "document": "B",
+   "id": "B-057",
+   "modal": "MUST",
+   "party": "host",
+   "quotes": [
+    {
+     "line": 93,
+     "text": "- a script-path pair from a leaf hash listed in `PSBT_IN_TAP_BIP32_DERIVATION`, if a matching leaf script is present"
+    }
+   ],
+   "target": "host"
+  },
+  {
+   "class": "psbt",
+   "coverage": [
+    "test_host_response.ChoosingPairs.test_key_path_when_device_holds_internal_key"
+   ],
+   "document": "B",
+   "id": "B-058",
+   "modal": "MUST",
+   "party": "host",
+   "quotes": [
+    {
+     "line": 95,
+     "text": "if the device holds the internal key the host chooses the key-path pair and no script-path pair."
+    }
+   ],
+   "target": "host"
+  },
+  {
+   "class": "psbt",
+   "coverage": [
+    "test_host_response.ChoosingPairs.test_skip_already_signed_and_tell_user"
+   ],
+   "document": "B",
+   "id": "B-059",
+   "modal": "SHOULD",
+   "party": "host",
+   "quotes": [
+    {
+     "line": 97,
+     "text": "The host skips a pair whose signature is already in its PSBT and SHOULD tell the user, because it cannot tell how that signature was made."
+    }
+   ],
+   "target": "host"
+  },
+  {
+   "class": "psbt",
+   "coverage": [
+    "test_host_response.ChoosingPairs.test_notices_for_unusable_listed_leaf_and_script_key_without_record"
+   ],
+   "document": "B",
+   "id": "B-060",
+   "modal": "SHOULD",
+   "party": "host",
+   "quotes": [
+    {
+     "line": 97,
+     "text": "It SHOULD also tell the user about a listed leaf with no script,"
+    }
+   ],
+   "target": "host"
+  },
+  {
+   "class": "psbt",
+   "coverage": [
+    "test_host_response.ChoosingPairs.test_record_with_no_leaf_forms_no_pair_and_is_reported"
+   ],
+   "document": "B",
+   "id": "B-061",
+   "modal": "SHOULD",
+   "party": "host",
+   "quotes": [
+    {
+     "line": 97,
+     "text": "a `PSBT_IN_TAP_BIP32_DERIVATION` record that lists no leaf and names a device key other than the internal key,"
+    }
+   ],
+   "target": "host"
+  },
+  {
+   "class": "psbt",
+   "coverage": [
+    "test_host_response.ChoosingPairs.test_notices_for_unusable_listed_leaf_and_script_key_without_record"
+   ],
+   "document": "B",
+   "id": "B-062",
+   "modal": "SHOULD",
+   "party": "host",
+   "quotes": [
+    {
+     "line": 97,
+     "text": "and a device key found only in a script with no derivation record, since none of these forms a pair."
+    }
+   ],
+   "target": "host"
+  },
+  {
+   "class": "psbt",
+   "coverage": [
+    "test_host_response.ChoosingPairs.test_preexisting_ae_fields"
+   ],
+   "document": "B",
+   "id": "B-063",
+   "modal": "FAIL",
+   "party": "host",
+   "quotes": [
+    {
+     "line": 97,
+     "text": "It fails before recording an attempt if its PSBT already holds these fields,"
+    }
+   ],
+   "target": "host"
+  },
+  {
+   "class": "psbt",
+   "coverage": [
+    "test_host_response.ChoosingPairs.test_ambiguous_or_unsupported",
+    "test_host_response.ChoosingPairs.test_musig_and_aggregate_fail_not_ignored"
+   ],
+   "document": "B",
+   "id": "B-064",
+   "modal": "FAIL",
+   "party": "host",
+   "quotes": [
+    {
+     "line": 97,
+     "text": "if any pair is ambiguous or unsupported,"
+    }
+   ],
+   "target": "host"
+  },
+  {
+   "class": "psbt",
+   "coverage": [
+    "test_signer.MoreRefusals.test_ecdsa_key_must_match_script",
+    "test_host_response.ChoosingPairs.test_ambiguous_or_unsupported",
+    "test_signer.RuleGaps.test_key_hash_must_match_the_script_in_every_hash_form"
+   ],
+   "document": "B",
+   "id": "B-065",
+   "modal": "FAIL",
+   "party": "host",
+   "quotes": [
+    {
+     "line": 97,
+     "text": "if a derivation record names a device key the input's script does not contain,"
+    }
+   ],
+   "target": "spend"
+  },
+  {
+   "class": "psbt",
+   "coverage": [
+    "test_host_response.ChoosingPairs.test_ambiguous_or_unsupported"
+   ],
+   "document": "B",
+   "id": "B-066",
+   "modal": "FAIL",
+   "party": "host",
+   "quotes": [
+    {
+     "line": 97,
+     "text": "or if no pairs remain."
+    }
+   ],
+   "target": "host"
+  },
+  {
+   "class": "psbt",
+   "coverage": [
+    "test_host_response.ChoosingPairs.test_notify_before_first_request",
+    "test_regressions.Unimplemented.test_um2_user_told_before_request"
+   ],
+   "document": "B",
+   "id": "B-067",
+   "modal": "MUST",
+   "party": "host",
+   "quotes": [
+    {
+     "line": 99,
+     "text": "Before sending a request, the host MUST tell the user it is requesting anti-exfil signing."
+    }
+   ],
+   "target": "host"
+  },
+  {
+   "class": "psbt",
+   "coverage": [
+    "test_host_response.HandlingResponse.test_ordinary_signature_is_refused_no_fallback",
+    "test_host_response.HandlingResponse.test_unmodified_echo_is_a_missing_commitment"
+   ],
+   "document": "B",
+   "id": "B-068",
+   "modal": "MUST NOT",
+   "party": "host",
+   "quotes": [
+    {
+     "line": 99,
+     "text": "If the device returns an ordinary signature, or does not recognize the fields, the attempt fails, and the host MUST NOT fall back without a separate user decision."
+    }
+   ],
+   "target": "host"
+  },
+  {
+   "class": "psbt",
+   "coverage": [
+    "test_positive.Positive.test_each_form_each_version",
+    "test_lifecycle.Bullets.test_attempt_recorded_open_before_hc_is_sent"
+   ],
+   "document": "B",
+   "id": "B-069",
+   "modal": "MUST",
+   "party": "host",
+   "quotes": [
+    {
+     "line": 103,
+     "text": "Build a request from the host's PSBT with `PSBT_IN_AE_HOST_COMMITMENT` for each pair, and send it."
+    }
+   ],
+   "target": "host"
+  },
+  {
+   "class": "psbt",
+   "coverage": [
+    "test_host_response.HandlingResponse.test_missing_commitment_and_signature",
+    "test_host_response.HandlingResponse.test_bad_commitment"
+   ],
+   "document": "B",
+   "id": "B-070",
+   "modal": "FAIL",
+   "party": "host",
+   "quotes": [
+    {
+     "line": 104,
+     "text": "Store each `PSBT_IN_AE_NONCE_COMMITMENT`, failing if any is missing or fails `parse33`."
+    }
+   ],
+   "target": "host"
+  },
+  {
+   "class": "psbt",
+   "coverage": [
+    "test_host_response.HandlingResponse.test_result_holds_only_rebuilt_fields_and_no_ae_fields"
+   ],
+   "document": "B",
+   "id": "B-071",
+   "modal": "MUST",
+   "party": "host",
+   "quotes": [
+    {
+     "line": 104,
+     "text": "Discard the response."
+    }
+   ],
+   "target": "host"
+  },
+  {
+   "class": "psbt",
+   "coverage": [
+    "test_positive.Positive.test_each_form_each_version",
+    "test_host_response.HandlingResponse.test_first_pass_holds_randomness"
+   ],
+   "document": "B",
+   "id": "B-072",
+   "modal": "MUST",
+   "party": "host",
+   "quotes": [
+    {
+     "line": 108,
+     "text": "Build a new request with `PSBT_IN_AE_HOST_RANDOMNESS` for each pair and no other anti-exfil field."
+    }
+   ],
+   "target": "host"
+  },
+  {
+   "class": "psbt",
+   "coverage": [
+    "test_host_response.ChoosingPairs.test_step3_same_transaction_and_pair_set",
+    "test_host_response.ChoosingPairs.test_step3_transaction_change_alone"
+   ],
+   "document": "B",
+   "id": "B-073",
+   "modal": "MUST",
+   "party": "host",
+   "quotes": [
+    {
+     "line": 108,
+     "text": "It MUST have the same transaction and pair set as the first."
+    }
+   ],
+   "target": "host"
+  },
+  {
+   "class": "psbt",
+   "coverage": [
+    "test_host_response.ChoosingPairs.test_step3_same_transaction_and_pair_set",
+    "test_host_response.ChoosingPairs.test_step3_transaction_change_alone"
+   ],
+   "document": "B",
+   "id": "B-074",
+   "modal": "MUST",
+   "party": "host",
+   "quotes": [
+    {
+     "line": 108,
+     "text": "If either has changed, end the attempt, erase its values, and start over with new `rho` values. That attempt ends as abandoned unless a failure was already counted for it."
+    }
+   ],
+   "target": "host"
+  },
+  {
+   "class": "psbt",
+   "coverage": [
+    "test_host_response.HandlingResponse.test_valid_signature_with_wrong_nonce",
+    "test_host_response.HandlingResponse.test_signature_by_another_key_or_message",
+    "test_host_response.HandlingResponse.test_flipped_bits"
+   ],
+   "document": "B",
+   "id": "B-075",
+   "modal": "MUST",
+   "party": "host",
+   "quotes": [
+    {
+     "line": 109,
+     "text": "Read the signature for each pair and run step 5 of the protocol with the signature hash the host computed itself."
+    }
+   ],
+   "target": "host"
+  },
+  {
+   "class": "psbt",
+   "coverage": [
+    "test_host_response.HandlingResponse.test_der_must_be_strict"
+   ],
+   "document": "B",
+   "id": "B-076",
+   "modal": "FAIL",
+   "party": "host",
+   "quotes": [
+    {
+     "line": 109,
+     "text": "a field that is not strict DER (BIP 66) fails."
+    }
+   ],
+   "target": "spend"
+  },
+  {
+   "class": "psbt",
+   "coverage": [
+    "test_host_response.HandlingResponse.test_wrong_sighash_byte_each_scheme"
+   ],
+   "document": "B",
+   "id": "B-077",
+   "modal": "MUST",
+   "party": "host",
+   "quotes": [
+    {
+     "line": 109,
+     "text": "For either scheme, the sighash type in the response MUST be the expected one."
+    }
+   ],
+   "target": "host"
+  },
+  {
+   "class": "psbt",
+   "coverage": [
+    "test_host_response.HandlingResponse.test_reject_every_signature_if_one_fails"
+   ],
+   "document": "B",
+   "id": "B-078",
+   "modal": "MUST",
+   "party": "host",
+   "quotes": [
+    {
+     "line": 109,
+     "text": "If any check fails, reject every signature in the response and fail the attempt."
+    }
+   ],
+   "target": "host"
+  },
+  {
+   "class": "psbt",
+   "coverage": [
+    "test_host_response.HandlingResponse.test_result_holds_only_rebuilt_fields_and_no_ae_fields",
+    "test_host_response.HandlingResponse.test_other_differences_ignored_and_never_copied"
+   ],
+   "document": "B",
+   "id": "B-079",
+   "modal": "MUST",
+   "party": "host",
+   "quotes": [
+    {
+     "line": 110,
+     "text": "Add to the host's PSBT only fields it builds from the verified `(r, s)` or `sig` and the expected sighash type."
+    }
+   ],
+   "target": "host"
+  },
+  {
+   "class": "psbt",
+   "coverage": [
+    "test_host_response.HandlingResponse.test_v2_flag_updates_on_hosts_own_psbt",
+    "test_math_codec.Codec.test_modifiable_flags"
+   ],
+   "document": "B",
+   "id": "B-080",
+   "modal": "MUST",
+   "party": "host",
+   "quotes": [
+    {
+     "line": 111,
+     "text": "apply the BIP 370 flag updates to the host's own `PSBT_GLOBAL_TX_MODIFIABLE`, cumulatively for each signature and using its actual sighash type, with `SIGHASH_DEFAULT` counting as `SIGHASH_ALL`."
+    }
+   ],
+   "target": "codec"
+  },
+  {
+   "class": "psbt",
+   "coverage": [
+    "test_math_codec.Codec.test_modifiable_flags",
+    "test_math_codec.RuleGaps.test_absent_flags_field_has_value_zero"
+   ],
+   "document": "B",
+   "id": "B-081",
+   "modal": "MUST",
+   "party": "host",
+   "quotes": [
+    {
+     "line": 111,
+     "text": "An absent field has value zero. Preserve other flags, and create the field if an update needs to record a set flag."
+    }
+   ],
+   "target": "codec"
+  },
+  {
+   "class": "psbt",
+   "coverage": [
+    "test_host_response.HandlingResponse.test_result_holds_only_rebuilt_fields_and_no_ae_fields",
+    "test_host_response.HandlingResponse.test_other_differences_ignored_and_never_copied"
+   ],
+   "document": "B",
+   "id": "B-082",
+   "modal": "MUST",
+   "party": "host",
+   "quotes": [
+    {
+     "line": 115,
+     "text": "The host takes only the requested commitments or signatures from a response, and copies nothing else."
+    }
+   ],
+   "target": "host"
+  },
+  {
+   "class": "psbt",
+   "coverage": [
+    "test_host_response.HandlingResponse.test_core_tx_changed_each_pass"
+   ],
+   "document": "B",
+   "id": "B-083",
+   "modal": "FAIL",
+   "note": "lead-in of the list B-084 to B-089",
+   "party": "host",
+   "quotes": [
+    {
+     "line": 115,
+     "text": "It fails the attempt if:"
+    }
+   ],
+   "target": "host"
+  },
+  {
+   "class": "psbt",
+   "coverage": [
+    "test_host_response.HandlingResponse.test_core_tx_changed_each_pass",
+    "test_math_codec.Codec.test_v2_core_tx_from_fields"
+   ],
+   "document": "B",
+   "id": "B-084",
+   "modal": "FAIL",
+   "party": "host",
+   "quotes": [
+    {
+     "line": 117,
+     "text": "- the core transaction differs from the request, whether read from the PSBT version 0 unsigned transaction or built from the version 2 fields"
+    }
+   ],
+   "target": "host"
+  },
+  {
+   "class": "psbt",
+   "coverage": [
+    "test_host_response.HandlingResponse.test_missing_commitment_and_signature",
+    "test_host_response.HandlingResponse.test_unmodified_echo_is_a_missing_commitment"
+   ],
+   "document": "B",
+   "id": "B-085",
+   "modal": "FAIL",
+   "party": "host",
+   "quotes": [
+    {
+     "line": 118,
+     "text": "- a requested commitment or signature is missing"
+    }
+   ],
+   "target": "host"
+  },
+  {
+   "class": "psbt",
+   "coverage": [
+    "test_host_response.HandlingResponse.test_commitment_differs_from_held_host_commitment",
+    "test_lifecycle.Bullets.test_r0_compared_across_all_responses_including_rejected",
+    "test_regressions.CodeBugs.test_cb2_repeated_step2_must_check_r0_unchanged"
+   ],
+   "document": "B",
+   "id": "B-086",
+   "modal": "FAIL",
+   "party": "host",
+   "quotes": [
+    {
+     "line": 119,
+     "text": "- a host commitment or nonce commitment for a pair differs from one the host holds for this attempt"
+    }
+   ],
+   "target": "host"
+  },
+  {
+   "class": "psbt",
+   "coverage": [
+    "test_host_response.HandlingResponse.test_second_pass_holds_any_ae_field"
+   ],
+   "document": "B",
+   "id": "B-087",
+   "modal": "FAIL",
+   "party": "host",
+   "quotes": [
+    {
+     "line": 120,
+     "text": "- a second-pass response holds any anti-exfil field"
+    }
+   ],
+   "target": "host"
+  },
+  {
+   "class": "psbt",
+   "coverage": [
+    "test_host_response.HandlingResponse.test_first_pass_holds_randomness",
+    "test_host_response.HandlingResponse.test_field_for_pair_not_requested"
+   ],
+   "document": "B",
+   "id": "B-088",
+   "modal": "FAIL",
+   "party": "host",
+   "quotes": [
+    {
+     "line": 121,
+     "text": "- a first-pass response holds `PSBT_IN_AE_HOST_RANDOMNESS`, or either response holds an anti-exfil field for a pair that was not requested"
+    }
+   ],
+   "target": "host"
+  },
+  {
+   "class": "psbt",
+   "coverage": [
+    "test_host_response.HandlingResponse.test_signature_added_or_changed_in_first_pass",
+    "test_host_response.HandlingResponse.test_signature_added_or_changed_in_second_pass",
+    "test_host_response.HandlingResponse.test_signature_dropped_from_finalized_input",
+    "test_host_response.HandlingResponse.test_ordinary_signature_is_refused_no_fallback"
+   ],
+   "document": "B",
+   "id": "B-089",
+   "modal": "FAIL",
+   "party": "host",
+   "quotes": [
+    {
+     "line": 122,
+     "text": "- a signature field is added or changed relative to the request, other than a requested signature in a second-pass response, or is removed from an input that has no final scriptSig or final witness in the request."
+    }
+   ],
+   "target": "host"
+  },
+  {
+   "class": "psbt",
+   "coverage": [
+    "test_math_codec.Codec.test_maps_compared_by_key_not_order",
+    "test_regressions.CodeBugs.test_cb3_field_order_does_not_matter",
+    "test_math_codec.RuleGaps.test_serialization_does_not_depend_on_insertion_order"
+   ],
+   "document": "B",
+   "id": "B-090",
+   "modal": "MUST",
+   "party": "host",
+   "quotes": [
+    {
+     "line": 124,
+     "text": "The host compares maps by key and does not depend on their order."
+    }
+   ],
+   "target": "codec"
+  },
+  {
+   "class": "psbt",
+   "coverage": [
+    "test_host_response.HandlingResponse.test_other_differences_ignored_and_never_copied",
+    "test_host_response.HandlingResponse.test_response_in_another_psbt_version_with_same_core_tx_is_not_in_the_failure_list"
+   ],
+   "document": "B",
+   "id": "B-091",
+   "modal": "MUST",
+   "party": "host",
+   "quotes": [
+    {
+     "line": 124,
+     "text": "It ignores other differences."
+    }
+   ],
+   "target": "host"
+  },
+  {
+   "class": "psbt",
+   "coverage": [
+    "test_signer.Unsupported.test_path_purpose_of_the_other_scheme_fails"
+   ],
+   "document": "B",
+   "id": "B-092",
+   "modal": "SHOULD",
+   "note": "run 2: implemented after run 1 (signer._check_purpose)",
+   "party": "signer",
+   "quotes": [
+    {
+     "line": 128,
+     "text": "A signer SHOULD keep each key to one scheme, by failing on a pair whose derivation path purpose does not match the input's script type where it can tell."
+    }
+   ],
+   "target": "signer"
+  },
+  {
+   "class": "psbt",
+   "coverage": [
+    "test_signer.SignerPhases.test_first_pass_adds_commitment_and_needs_no_approval",
+    "test_signer.SignerPhases.test_no_request_fields"
+   ],
+   "document": "B",
+   "id": "B-093",
+   "modal": "MUST",
+   "party": "signer",
+   "quotes": [
+    {
+     "line": 130,
+     "text": "A PSBT with any of these fields in an input map is a request under this protocol."
+    }
+   ],
+   "target": "signer"
+  },
+  {
+   "class": "psbt",
+   "coverage": [
+    "test_signer.SignerPhases.test_pairs_only_for_named"
+   ],
+   "document": "B",
+   "id": "B-094",
+   "modal": "MUST NOT",
+   "party": "signer",
+   "quotes": [
+    {
+     "line": 130,
+     "text": "A signer handles exactly the pairs named by these fields and MUST NOT add a signature for any other pair."
+    }
+   ],
+   "target": "signer"
+  },
+  {
+   "class": "psbt",
+   "coverage": [
+    "test_signer.SignerPhases.test_whole_request_fails_if_any_pair_fails"
+   ],
+   "document": "B",
+   "id": "B-095",
+   "modal": "FAIL",
+   "note": "run 2: the test asserts the code key_not_in_script",
+   "party": "signer",
+   "quotes": [
+    {
+     "line": 130,
+     "text": "If it fails on any pair, it fails for the whole PSBT and returns nothing."
+    }
+   ],
+   "target": "signer"
+  },
+  {
+   "class": "psbt",
+   "coverage": [
+    "test_signer.SignerPhases.test_whole_request_fails_if_any_pair_fails",
+    "test_signer.SignerPhases.test_approval_rules"
+   ],
+   "document": "B",
+   "id": "B-096",
+   "modal": "MUST",
+   "party": "signer",
+   "quotes": [
+    {
+     "line": 132,
+     "text": "Before prompting or producing output, the signer validates the structure, every pair, key ownership, required transaction data, sighashes and script-path mappings."
+    }
+   ],
+   "target": "signer"
+  },
+  {
+   "class": "psbt",
+   "coverage": [
+    "test_signer.SignerPhases.test_already_signed"
+   ],
+   "document": "B",
+   "id": "B-097",
+   "modal": "FAIL",
+   "party": "signer",
+   "quotes": [
+    {
+     "line": 132,
+     "text": "It fails if a pair already has a signature,"
+    }
+   ],
+   "target": "signer"
+  },
+  {
+   "class": "psbt",
+   "coverage": [
+    "test_signer.SignerPhases.test_key_not_held",
+    "test_signer.RuleGaps.test_missing_xonly_secret"
+   ],
+   "document": "B",
+   "id": "B-098",
+   "modal": "FAIL",
+   "party": "signer",
+   "quotes": [
+    {
+     "line": 132,
+     "text": "if it does not hold the key,"
+    }
+   ],
+   "target": "signer"
+  },
+  {
+   "class": "psbt",
+   "coverage": [
+    "test_signer.ValidationScope.test_key_path_identifier_must_equal_present_internal_key",
+    "test_signer.ValidationScope.test_key_path_secret_must_match_internal_key"
+   ],
+   "document": "B",
+   "id": "B-099",
+   "modal": "FAIL",
+   "party": "signer",
+   "quotes": [
+    {
+     "line": 132,
+     "text": "if a key-path pair's identifier differs from a `PSBT_IN_TAP_INTERNAL_KEY` that is present,"
+    }
+   ],
+   "target": "spend"
+  },
+  {
+   "class": "psbt",
+   "coverage": [
+    "test_signer.SignerPhases.test_both_paths_in_one_input"
+   ],
+   "document": "B",
+   "id": "B-100",
+   "modal": "FAIL",
+   "party": "signer",
+   "quotes": [
+    {
+     "line": 132,
+     "text": "or if one input has both a key-path and a script-path pair."
+    }
+   ],
+   "target": "signer"
+  },
+  {
+   "class": "psbt",
+   "coverage": [
+    "test_signer.SignerPhases.test_signer_independent_of_key_order"
+   ],
+   "document": "B",
+   "id": "B-101",
+   "modal": "MUST",
+   "mutant_exempt": "keys are held in dicts keyed by identifier, so there is no order to depend on; a violating mutant would have to add an ordered structure",
+   "party": "signer",
+   "quotes": [
+    {
+     "line": 132,
+     "text": "It looks up keys by identifier and does not depend on the order it holds them in."
+    }
+   ],
+   "target": "signer"
+  },
+  {
+   "class": "psbt",
+   "coverage": [
+    "test_signer.SignerPhases.test_mixed_phases_fail"
+   ],
+   "document": "B",
+   "id": "B-102",
+   "modal": "FAIL",
+   "party": "signer",
+   "quotes": [
+    {
+     "line": 132,
+     "text": "A request contains one phase; mixed phases fail."
+    }
+   ],
+   "target": "signer"
+  },
+  {
+   "class": "psbt",
+   "coverage": [
+    "test_signer.SignerPhases.test_first_pass_adds_commitment_and_needs_no_approval"
+   ],
+   "document": "B",
+   "id": "B-103",
+   "modal": "MUST",
+   "party": "signer",
+   "quotes": [
+    {
+     "line": 134,
+     "text": "- **Host commitment present, randomness absent (first pass):** run step 2 of the protocol, keep the commitment, and add `PSBT_IN_AE_NONCE_COMMITMENT`."
+    }
+   ],
+   "target": "signer"
+  },
+  {
+   "class": "psbt",
+   "coverage": [
+    "test_signer.SignerPhases.test_stale_commitments_fail"
+   ],
+   "document": "B",
+   "id": "B-104",
+   "modal": "FAIL",
+   "party": "signer",
+   "quotes": [
+    {
+     "line": 134,
+     "text": "If one is already present and differs from the computed value, fail."
+    }
+   ],
+   "target": "signer"
+  },
+  {
+   "class": "psbt",
+   "coverage": [
+    "test_signer.SignerPhases.test_first_pass_adds_commitment_and_needs_no_approval"
+   ],
+   "document": "B",
+   "id": "B-105",
+   "modal": "MUST",
+   "party": "signer",
+   "quotes": [
+    {
+     "line": 134,
+     "text": "Add no signature. No approval is needed."
+    }
+   ],
+   "target": "signer"
+  },
+  {
+   "class": "psbt",
+   "coverage": [
+    "test_signer.SignerPhases.test_stale_commitments_fail"
+   ],
+   "document": "B",
+   "id": "B-106",
+   "modal": "FAIL",
+   "party": "signer",
+   "quotes": [
+    {
+     "line": 135,
+     "text": "- **Randomness present (second pass):** if a host commitment or nonce commitment is present and differs from the computed value, fail."
+    }
+   ],
+   "target": "signer"
+  },
+  {
+   "class": "psbt",
+   "coverage": [
+    "test_signer.SignerPhases.test_approval_rules",
+    "test_positive.Positive.test_each_form_each_version"
+   ],
+   "document": "B",
+   "id": "B-107",
+   "modal": "MUST",
+   "party": "signer",
+   "quotes": [
+    {
+     "line": 135,
+     "text": "After one approval covering the whole PSBT, run step 4 for each pair and add each signature in its field."
+    }
+   ],
+   "target": "signer"
+  },
+  {
+   "class": "psbt",
+   "coverage": [
+    "test_signer.SignerPhases.test_v2_flags_cumulative"
+   ],
+   "document": "B",
+   "id": "B-108",
+   "modal": "MUST",
+   "party": "signer",
+   "quotes": [
+    {
+     "line": 135,
+     "text": "For version 2, apply the BIP 370 flag updates under the same rule as the host, cumulatively."
+    }
+   ],
+   "target": "signer"
+  },
+  {
+   "class": "psbt",
+   "coverage": [
+    "test_signer.SignerPhases.test_second_pass_removes_every_ae_field"
+   ],
+   "document": "B",
+   "id": "B-109",
+   "modal": "MUST",
+   "party": "signer",
+   "quotes": [
+    {
+     "line": 135,
+     "text": "Then remove every anti-exfil field from every input map and return the PSBT."
+    }
+   ],
+   "target": "signer"
+  },
+  {
+   "class": "psbt",
+   "coverage": [
+    "test_signer.SignerPhases.test_nonce_only_fails"
+   ],
+   "document": "B",
+   "id": "B-110",
+   "modal": "FAIL",
+   "party": "signer",
+   "quotes": [
+    {
+     "line": 136,
+     "text": "- **Only a nonce commitment:** fail."
+    }
+   ],
+   "target": "signer"
+  },
+  {
+   "class": "psbt",
+   "coverage": [
+    "test_signer.SignerPhases.test_no_request_fields",
+    "test_host_response.HandlingResponse.test_unmodified_echo_is_a_missing_commitment"
+   ],
+   "document": "B",
+   "id": "B-111",
+   "modal": "MUST",
+   "mutant_exempt": "the reference has no ordinary signing path to enable; the allowed outcomes (fail, or return unsigned) cannot be violated by removing code",
+   "party": "signer",
+   "quotes": [
+    {
+     "line": 138,
+     "text": "An implementation with no ordinary signing path fails or returns the PSBT unsigned, and a host treats either as a failed attempt."
+    }
+   ],
+   "target": "signer"
+  },
+  {
+   "class": "psbt",
+   "coverage": [
+    "test_signer.ValidationScope.test_fee_verification_wording",
+    "test_regressions.Unimplemented.test_um4_fee_not_presented_as_verified_without_amounts"
+   ],
+   "document": "B",
+   "id": "B-112",
+   "modal": "MUST NOT",
+   "party": "any",
+   "quotes": [
+    {
+     "line": 140,
+     "text": "A host or signer MUST NOT present a fee as verified unless it verified every input amount, either against `PSBT_IN_NON_WITNESS_UTXO`, or because the request has at least one Taproot pair without `ANYONECANPAY`"
+    }
+   ],
+   "target": "spend"
+  },
+  {
+   "class": "psbt",
+   "coverage": [
+    "test_signer.ValidationScope.test_fee_verification_wording",
+    "test_regressions.Unimplemented.test_um4_fee_not_presented_as_verified_without_amounts"
+   ],
+   "document": "B",
+   "id": "B-113",
+   "modal": "MUST",
+   "party": "any",
+   "quotes": [
+    {
+     "line": 140,
+     "text": "Otherwise it MUST tell the user the fee is unverified, or fail."
+    }
+   ],
+   "target": "signer"
+  },
+  {
+   "class": "not_machine_testable",
+   "document": "B",
+   "id": "B-114",
+   "modal": "SHOULD",
+   "party": "any",
+   "quotes": [
+    {
+     "line": 144,
+     "text": "A role implementing this document that receives them SHOULD warn its user."
+    }
+   ],
+   "reason": "concerns roles other than host and signer; the reference implements neither"
+  },
+  {
+   "class": "not_machine_testable",
+   "document": "B",
+   "id": "B-115",
+   "modal": "MUST",
+   "party": "any",
+   "quotes": [
+    {
+     "line": 144,
+     "text": "A Finalizer implementing this document MUST remove them and MUST NOT add an annex to a Taproot spend signed under this protocol, because the signature hash was computed with no annex."
+    }
+   ],
+   "reason": "the reference implements no Finalizer role"
+  },
+  {
+   "class": "psbt",
+   "coverage": [
+    "test_host_response.HandlingResponse.test_unmodified_echo_is_a_missing_commitment",
+    "test_host_response.HandlingResponse.test_ordinary_signature_is_refused_no_fallback"
+   ],
+   "document": "B",
+   "id": "B-116",
+   "modal": "MUST",
+   "party": "host",
+   "quotes": [
+    {
+     "line": 164,
+     "text": "The host sees no nonce commitment, fails the attempt, and does not use any signature."
+    }
+   ],
+   "target": "host"
+  },
+  {
+   "class": "not_machine_testable",
+   "document": "B",
+   "id": "B-117",
+   "modal": "MUST NOT",
+   "party": "any",
+   "quotes": [
+    {
+     "line": 170,
+     "text": "They use variable-time arithmetic and MUST NOT be used with real keys."
+    }
+   ],
+   "reason": "a restriction on use of the reference code"
+  },
+  {
+   "class": "operational",
+   "coverage": [
+    "test_lifecycle.Bullets.test_one_durable_increment_at_first_failure"
+   ],
+   "document": "P",
+   "id": "P-075",
+   "modal": "MUST",
+   "party": "host",
+   "quotes": [
+    {
+     "line": 165,
+     "text": "An attempt that ends as failed with no failure event yet counted is counted as it ends."
+    }
+   ],
+   "target": "host"
+  },
+  {
+   "class": "psbt",
+   "coverage": [
+    "test_signer.RuleGaps.test_key_hash_must_match_the_script_in_every_hash_form",
+    "test_signer.MoreRefusals.test_ecdsa_key_must_match_script"
+   ],
+   "document": "B",
+   "id": "B-118",
+   "modal": "FAIL",
+   "party": "signer",
+   "quotes": [
+    {
+     "line": 132,
+     "text": "if the script of a non-Taproot pair neither hashes nor pushes its key,"
+    }
+   ],
+   "target": "spend"
+  }
+ ]
+}

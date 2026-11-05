@@ -1,0 +1,140 @@
+From 50b4b43bb7056b722100aac5fc159fd31fadd534 Mon Sep 17 00:00:00 2001
+From: Connor Avila <Connoravila@gmail.com>
+Date: Wed, 4 Nov 2026 18:31:08 -0500
+Subject: [PATCH] TEST ONLY: measure sign_psbt main task stack use
+
+Not part of the anti-exfil series. Paints the free stack before sign_psbt, reads
+the task stack high water mark after it, and adds a debug message to read it.
+---
+ main/Kconfig.projbuild      |  5 +++++
+ main/process/dashboard.c    | 10 ++++++++++
+ main/process/sign_psbt.c    |  6 ++++++
+ main/process/sign_psbt_ae.c | 16 +++++++++++++++-
+ main/process/sign_psbt_ae.h | 12 +++++++++++-
+ 5 files changed, 47 insertions(+), 2 deletions(-)
+
+diff --git a/main/Kconfig.projbuild b/main/Kconfig.projbuild
+index 5d656073..2f36832d 100644
+--- a/main/Kconfig.projbuild
++++ b/main/Kconfig.projbuild
+@@ -18,6 +18,11 @@ menu "Blockstream Jade"
+             default 0
+             help
+                 Time in milliseconds after which actions are automatically approved and workflows proceed.
++        config AE_STACK_TEST
++            bool "Measure the main task stack used by sign_psbt (anti-exfil stack test)"
++            default n
++            help
++                Test only. Paints the free stack before each sign_psbt, and adds the debug_ae_stack_test message.
+     endmenu
+ 
+     config AMALGAMATED_BUILD
+diff --git a/main/process/dashboard.c b/main/process/dashboard.c
+index 5c6bb46b..fea70481 100644
+--- a/main/process/dashboard.c
++++ b/main/process/dashboard.c
+@@ -24,6 +24,7 @@
+ #include "../utils/util.h"
+ #include "../utils/wally_ext.h"
+ #include "../wallet.h"
++#include "sign_psbt_ae.h"
+ #ifdef CONFIG_IDF_TARGET_ESP32S3
+ #include "usbhmsc/usbhmsc.h"
+ #include "usbhmsc/usbmode.h"
+@@ -521,6 +522,15 @@ static void dispatch_message(jade_process_t* process)
+                 process, CBOR_RPC_HW_LOCKED, "OTA delta is only allowed on new or logged-in device.");
+         }
+ #ifdef CONFIG_DEBUG_MODE
++#ifdef CONFIG_AE_STACK_TEST
++    } else if (IS_METHOD("debug_ae_stack_test")) {
++        // bits 0-23 stack bytes never used in the last sign_psbt, 24-47 the same since this task started,
++        // 48-63 approvals asked
++        const uint64_t result = ((uint64_t)ae_test_prompts << 48) | ((uint64_t)uxTaskGetStackHighWaterMark(NULL) << 24)
++            | (ae_test_stack_free & 0xffffff);
++        uint8_t buf[64];
++        jade_process_reply_to_message_result(&process->ctx, buf, sizeof(buf), &result, cbor_result_uint64_cb);
++#endif
+     } else if (IS_METHOD("debug_selfcheck")) {
+         // Time test run and return to caller
+         const TickType_t start_time = xTaskGetTickCount();
+diff --git a/main/process/sign_psbt.c b/main/process/sign_psbt.c
+index 7889ae9e..e841a075 100644
+--- a/main/process/sign_psbt.c
++++ b/main/process/sign_psbt.c
+@@ -1310,7 +1310,13 @@ void sign_psbt_process(void* process_ptr)
+ 
+     // Sign the psbt - parameter updated with any signatures
+     const char* errmsg = NULL;
++#ifdef CONFIG_AE_STACK_TEST
++    ae_test_paint_stack();
++#endif
+     const int errcode = sign_psbt(process, &params, network_id, psbt, &errmsg);
++#ifdef CONFIG_AE_STACK_TEST
++    ae_test_stack_free = uxTaskGetStackHighWaterMark(NULL);
++#endif
+     if (errcode) {
+         jade_process_reject_message(process, errcode, errmsg);
+         goto cleanup;
+diff --git a/main/process/sign_psbt_ae.c b/main/process/sign_psbt_ae.c
+index b8f10d80..38771665 100644
+--- a/main/process/sign_psbt_ae.c
++++ b/main/process/sign_psbt_ae.c
+@@ -34,10 +34,24 @@
+ #define AE_KEY_ID_KEY_PATH_LEN EC_XONLY_PUBLIC_KEY_LEN
+ #define AE_KEY_ID_SCRIPT_PATH_LEN (EC_XONLY_PUBLIC_KEY_LEN + SHA256_LEN)
+ 
+-#ifdef CONFIG_LIBJADE
++#if defined(CONFIG_LIBJADE) || defined(CONFIG_AE_STACK_TEST)
+ uint32_t ae_test_prompts = 0;
+ #endif
+ 
++#ifdef CONFIG_AE_STACK_TEST
++uint32_t ae_test_stack_free = 0;
++
++// Fill the unused part of this task's stack with the value that freertos fills it with at creation, so that
++// uxTaskGetStackHighWaterMark() afterwards shows the deepest use since this call.
++void ae_test_paint_stack(void)
++{
++    uint8_t* const start = pxTaskGetStackStart(NULL);
++    uint8_t* const sp = __builtin_frame_address(0);
++    JADE_ASSERT(sp > start + 512);
++    memset(start, 0xa5, sp - 256 - start);
++}
++#endif
++
+ bool ae_psbt_source_allowed(const jade_process_t* process)
+ {
+     if (!process) {
+diff --git a/main/process/sign_psbt_ae.h b/main/process/sign_psbt_ae.h
+index 45337e36..19e3e9b6 100644
+--- a/main/process/sign_psbt_ae.h
++++ b/main/process/sign_psbt_ae.h
+@@ -82,7 +82,7 @@ bool ae_psbt_commit(struct wally_psbt* psbt, const ae_request_t* request, const
+ // Every signature is made before the psbt is changed, so on failure nothing is added.
+ WARN_UNUSED_RESULT bool ae_psbt_sign(struct wally_psbt* psbt, const ae_request_t* request, const char** errmsg);
+ 
+-#ifdef CONFIG_LIBJADE
++#if defined(CONFIG_LIBJADE) || defined(CONFIG_AE_STACK_TEST)
+ // Number of times the user was asked to approve outputs (libjade testing)
+ extern uint32_t ae_test_prompts;
+ #define AE_TEST_COUNT_PROMPT() ++ae_test_prompts
+@@ -90,6 +90,16 @@ extern uint32_t ae_test_prompts;
+ #define AE_TEST_COUNT_PROMPT()
+ #endif
+ 
++#ifdef CONFIG_AE_STACK_TEST
++#include <freertos/FreeRTOS.h>
++#include <freertos/idf_additions.h>
++#include <freertos/task.h>
++
++// Main task stack bytes never used during the last sign_psbt (as the task stack high water mark)
++extern uint32_t ae_test_stack_free;
++void ae_test_paint_stack(void);
++#endif
++
+ // Pop, clear and free the pairs of a request
+ void ae_request_free(ae_request_t* request);
+ 
+-- 
+2.53.0
+

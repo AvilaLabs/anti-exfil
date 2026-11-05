@@ -1,0 +1,58 @@
+# residue sensitivity list: the 54 zeroization calls whose removal Mull reports as a surviving mutant (cxx_remove_void_call on a *_clear or *memclear* call).
+# Source: the Mull log of the benma base (82 survivors, of which these 54; the zkp log has the same 54 at the same lines).
+# c/module/src/modules/anti_exfil/main_impl.h sha256 d1294edfdbed3c25711c8ccac2ff0d398641429ccf6a4ed89f26542cbcaafb2b (the line numbers refer to this file).
+# Columns, tab-separated: line, column, function, exact statement at that line. The run removes that statement from a copy of the tree and rebuilds the residue scan.
+81	5	secp256k1_anti_exfil_hash_final	secp256k1_sha256_clear(sha);
+120	5	secp256k1_anti_exfil_tweak	secp256k1_memclear_explicit(buf, sizeof(buf));
+152	5	secp256k1_anti_exfil_ser33_mulgen	secp256k1_gej_clear(&rj);
+153	5	secp256k1_anti_exfil_ser33_mulgen	secp256k1_ge_clear(&r);
+199	5	secp256k1_anti_exfil_schnorr_base	secp256k1_ge_clear(&pk);
+200	5	secp256k1_anti_exfil_schnorr_base	secp256k1_memclear_explicit(t0, sizeof(t0));
+201	5	secp256k1_anti_exfil_schnorr_base	secp256k1_memclear_explicit(mask, sizeof(mask));
+202	5	secp256k1_anti_exfil_schnorr_base	secp256k1_memclear_explicit(buf, sizeof(buf));
+239	5	secp256k1_anti_exfil_schnorr_host_verify_internal	secp256k1_scalar_clear(&t);
+240	5	secp256k1_anti_exfil_schnorr_host_verify_internal	secp256k1_gej_clear(&tj);
+241	5	secp256k1_anti_exfil_schnorr_host_verify_internal	secp256k1_gej_clear(&wj);
+242	5	secp256k1_anti_exfil_schnorr_host_verify_internal	secp256k1_ge_clear(&w);
+243	5	secp256k1_anti_exfil_schnorr_host_verify_internal	secp256k1_ge_clear(&r0);
+244	5	secp256k1_anti_exfil_schnorr_host_verify_internal	secp256k1_fe_clear(&rx);
+295	5	secp256k1_anti_exfil_ecdsa_base	secp256k1_gej_clear(&pj);
+296	5	secp256k1_anti_exfil_ecdsa_base	secp256k1_memclear_explicit(dmask, sizeof(dmask));
+297	5	secp256k1_anti_exfil_ecdsa_base	secp256k1_memclear_explicit(mask, sizeof(mask));
+298	5	secp256k1_anti_exfil_ecdsa_base	secp256k1_memclear_explicit(buf, sizeof(buf));
+356	5	secp256k1_anti_exfil_ecdsa_host_verify_internal	secp256k1_scalar_clear(&t);
+357	5	secp256k1_anti_exfil_ecdsa_host_verify_internal	secp256k1_gej_clear(&tj);
+358	5	secp256k1_anti_exfil_ecdsa_host_verify_internal	secp256k1_gej_clear(&wj);
+359	5	secp256k1_anti_exfil_ecdsa_host_verify_internal	secp256k1_ge_clear(&w);
+360	5	secp256k1_anti_exfil_ecdsa_host_verify_internal	secp256k1_ge_clear(&r0);
+361	5	secp256k1_anti_exfil_ecdsa_host_verify_internal	secp256k1_scalar_clear(&xw);
+362	5	secp256k1_anti_exfil_ecdsa_host_verify_internal	secp256k1_memclear_explicit(xbuf, sizeof(xbuf));
+398	5	secp256k1_anti_exfil_schnorr_signer_commit	secp256k1_scalar_clear(&d);
+399	5	secp256k1_anti_exfil_schnorr_signer_commit	secp256k1_scalar_clear(&k0);
+400	5	secp256k1_anti_exfil_schnorr_signer_commit	secp256k1_memclear_explicit(pk32, sizeof(pk32));
+468	5	secp256k1_anti_exfil_schnorr_sign	secp256k1_scalar_clear(&d);
+469	5	secp256k1_anti_exfil_schnorr_sign	secp256k1_scalar_clear(&k0);
+470	5	secp256k1_anti_exfil_schnorr_sign	secp256k1_scalar_clear(&t);
+471	5	secp256k1_anti_exfil_schnorr_sign	secp256k1_scalar_clear(&k);
+472	5	secp256k1_anti_exfil_schnorr_sign	secp256k1_scalar_clear(&e);
+473	5	secp256k1_anti_exfil_schnorr_sign	secp256k1_gej_clear(&wj);
+474	5	secp256k1_anti_exfil_schnorr_sign	secp256k1_ge_clear(&w);
+475	5	secp256k1_anti_exfil_schnorr_sign	secp256k1_memclear_explicit(hc, sizeof(hc));
+476	5	secp256k1_anti_exfil_schnorr_sign	secp256k1_memclear_explicit(pk32, sizeof(pk32));
+477	5	secp256k1_anti_exfil_schnorr_sign	secp256k1_memclear_explicit(r0, sizeof(r0));
+478	5	secp256k1_anti_exfil_schnorr_sign	secp256k1_memclear_explicit(buf, sizeof(buf));
+510	5	secp256k1_anti_exfil_ecdsa_signer_commit	secp256k1_scalar_clear(&d);
+511	5	secp256k1_anti_exfil_ecdsa_signer_commit	secp256k1_scalar_clear(&k0);
+512	5	secp256k1_anti_exfil_ecdsa_signer_commit	secp256k1_ge_clear(&p);
+513	5	secp256k1_anti_exfil_ecdsa_signer_commit	secp256k1_memclear_explicit(pk33, sizeof(pk33));
+565	5	secp256k1_anti_exfil_ecdsa_sign	secp256k1_scalar_clear(&d);
+566	5	secp256k1_anti_exfil_ecdsa_sign	secp256k1_scalar_clear(&k0);
+567	5	secp256k1_anti_exfil_ecdsa_sign	secp256k1_scalar_clear(&t);
+568	5	secp256k1_anti_exfil_ecdsa_sign	secp256k1_scalar_clear(&k);
+569	5	secp256k1_anti_exfil_ecdsa_sign	secp256k1_scalar_clear(&z);
+570	5	secp256k1_anti_exfil_ecdsa_sign	secp256k1_scalar_clear(&r);
+571	5	secp256k1_anti_exfil_ecdsa_sign	secp256k1_scalar_clear(&s);
+572	5	secp256k1_anti_exfil_ecdsa_sign	secp256k1_ge_clear(&p);
+573	5	secp256k1_anti_exfil_ecdsa_sign	secp256k1_memclear_explicit(hc, sizeof(hc));
+574	5	secp256k1_anti_exfil_ecdsa_sign	secp256k1_memclear_explicit(pk33, sizeof(pk33));
+575	5	secp256k1_anti_exfil_ecdsa_sign	secp256k1_memclear_explicit(r0, sizeof(r0));

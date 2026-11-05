@@ -1,0 +1,27 @@
+From 2da30cba613d3d08cddf6f6d2d18912aeb55d6c2 Mon Sep 17 00:00:00 2001
+From: Connor Avila <Connoravila@gmail.com>
+Date: Wed, 4 Nov 2026 16:03:37 -0500
+Subject: [PATCH] libjade: link zlib after the static libraries that need it
+
+Test build only, not part of the series. libjade.so failed to load with
+--as-needed toolchains because zlib was listed before bcur, which uses it.
+---
+ libjade/CMakeLists.txt | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/libjade/CMakeLists.txt b/libjade/CMakeLists.txt
+index 7ff96af3..84196468 100644
+--- a/libjade/CMakeLists.txt
++++ b/libjade/CMakeLists.txt
+@@ -129,7 +129,7 @@ target_link_libraries(bcur PRIVATE mbedcrypto)
+ 
+ # libjade.so
+ add_library(jade SHARED ${COMMON_SRC})
+-target_link_libraries(jade PRIVATE m z bcur cbor_target otpauth_migrate_target mbedtls mbedcrypto mbedx509)
++target_link_libraries(jade PRIVATE bcur cbor_target otpauth_migrate_target mbedtls mbedcrypto mbedx509 m z)
+ target_include_directories(jade PRIVATE ${COMMON_INCLUDES})
+ 
+ set_source_files_properties(libjade.c PROPERTIES COMPILE_OPTIONS
+-- 
+2.53.0
+

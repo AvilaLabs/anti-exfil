@@ -1,0 +1,29 @@
+{
+ "run": "run1",
+ "cases": 7860,
+ "violations": [],
+ "controls": {
+  "C1_naive_bound_violated": {
+   "pass": true,
+   "kl": 0.001409570254670837,
+   "ef": 0.0009775171065493637,
+   "ratio": 1.4419903705282675
+  },
+  "C2_wrong_bound_detected": {
+   "pass": true,
+   "hits": 218
+  },
+  "C3_always_accept": {
+   "pass": true
+  },
+  "C4_parity": {
+   "pass": true,
+   "mi": 1.0,
+   "ef": 1.0
+  }
+ },
+ "max_observed_kl_per_expected_failure": 1.2451124978365313,
+ "limit_1_over_ln2": 1.4426950408889634,
+ "max_capped_mi": 0.6627099333829861,
+ "verdict": "PASS"
+}

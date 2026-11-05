@@ -1,0 +1,68 @@
+From d38359c1e41513fab425ae3f8b01af00e116d64b Mon Sep 17 00:00:00 2001
+From: Connor Avila <Connoravila@gmail.com>
+Date: Wed, 4 Nov 2026 16:57:39 -0500
+Subject: [PATCH 10/10] docs: describe anti-exfil signing in sign_psbt
+
+State the limits of this signing, and add a changelog entry.
+---
+ CHANGELOG.md   |  9 +++++++++
+ docs/index.rst | 23 +++++++++++++++++++++++
+ 2 files changed, 32 insertions(+)
+
+diff --git a/CHANGELOG.md b/CHANGELOG.md
+index f88a30dc..3e429765 100644
+--- a/CHANGELOG.md
++++ b/CHANGELOG.md
+@@ -4,6 +4,15 @@ All notable changes to this project will be documented in this file.
+ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
+ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+ 
++## [Unreleased]
++
++Added:
++- Add anti-exfil signing of psbts (revision 0.16) over USB, for the common ECDSA forms and the taproot key path.
++
++Changed:
++- Wipe received messages before freeing them.
++- Fail psbts holding anti-exfil fields on QR and USB storage, instead of signing them in the ordinary way.
++
+ ## [1.0.41] - 2026-08-22
+ 
+ Note: This release contains important security updates; All users should
+diff --git a/docs/index.rst b/docs/index.rst
+index cdada62a..2169ea0a 100644
+--- a/docs/index.rst
++++ b/docs/index.rst
+@@ -1782,6 +1782,29 @@ sign_psbt reply
+ * 'result' is the input psbt updated with any generated signatures.
+ * NOTE: if 'get_extended_data' calls are needed, the bytes payload of the messages must be concatenated to yield the complete psbt.
+ 
++.. _sign_psbt_anti_exfil:
++
++sign_psbt anti-exfil signing
++----------------------------
++
++A psbt can ask for anti-exfil signatures (revision 0.16 of the anti-exfil psbt proposal) with three per-input fields. Each is keyed by the key identifier, the 33 byte public key for ECDSA or the 32 byte x-only internal key for a taproot key path spend.
++
++* 0x21 host commitment (32 bytes), 0x22 nonce commitment (33 bytes), 0x23 host randomness (32 bytes).
++* First pass: the request holds a host commitment for every pair and no host randomness. Jade adds a nonce commitment to each pair, adds no signature, and does not ask the user to approve.
++* Second pass: the request holds the host randomness for every pair (and may still hold the host commitment and nonce commitment, which are checked). Jade asks the user to approve once, signs every pair, adds the signatures, and removes every anti-exfil field from every input.
++* Any invalid pair, a request in mixed phases, or a nonce commitment without a host commitment fails the whole psbt with 'bad parameters'. Nothing is returned.
++* Only available over USB (serial). BLE, QR and USB storage fail on any psbt holding these fields, and so does a Liquid psbt.
++
++Limits, in addition to those of ordinary psbt signing:
++
++* P2PKH, P2WPKH, P2SH-P2WPKH, P2WSH and P2SH-P2WSH (a single key and OP_CHECKSIG, or OP_CHECKMULTISIG with the key once) and the taproot key path (with or without a merkle root). The optional forms (legacy P2SH, taproot script path) fail.
++* Sighash ALL (ECDSA) and DEFAULT or ALL (taproot) only. A present zero sighash type is read as absent.
++* Every input needs a utxo, and the outputs may not exceed the inputs. A taproot pair needs every input's utxo.
++* The fee is verified if every input has a matching non-witness utxo, or a taproot pair is signed. Otherwise the user is warned that the fee could not be verified.
++* An uncompressed derivation record or a MuSig2 participants field on an input with a pair fails, as Jade holds a seed and not a list of keys.
++* The parse rejections of the library apply to every input: flags beyond 0x07, a sighash that conflicts with existing signatures, a version 2 psbt with a transaction version below 2, trailing data and an all zero txid.
++* At most 256 inputs and 64 outputs, and the maximum message size.
++
+ 
+ Blockstream Liquid specific
+ ===========================
+-- 
+2.53.0
+

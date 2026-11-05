@@ -1,0 +1,104 @@
+(* G-A (ecdsa)
+   Nonce text of the specification: k0 = H_nonce(mask(d,hc) || pk || m || hc), mask(d,hc) = d xor H_aux(hc).
+   Abstractions: nin is an injective structured constructor (no byte encoding, no SHA-256);
+   aux and hdata are opaque public functions; scalar is a type of canonical scalars with
+   tobytes injective; pubbytes is injective (assumption A1 in README.md); the base-output
+   validity branch (range failure, k0 = 0), points, signatures and ECDSA equations are omitted. *)
+param qHash, qO1, qO2.
+
+type scalar [large,fixed].
+type bytes32 [large,fixed].
+type pkey [large,fixed].
+type message [fixed].
+type rho [fixed].
+type hc [fixed].
+type nonceinput [large,fixed].
+type nonceout [large,fixed].
+
+fun tobytes(scalar):bytes32 [data].
+fun pubbytes(bytes32):pkey [data].
+fun canonical(bytes32):bool.
+equation forall s:scalar; canonical(tobytes(s)) = true.
+fun xor(bytes32,bytes32):bytes32.
+equation forall x:bytes32, y:bytes32; xor(xor(x,y),y) = x.
+fun aux(hc):bytes32.
+fun hdata(rho):hc.
+fun nin(bytes32,pkey,message,hc):nonceinput [data].
+
+table nonceRO(nonceinput,nonceout).
+
+event KeyGenerated(bytes32,pkey).
+event KeyExtracted(pkey,bytes32).
+event ExtractedAt(nonceinput).
+event HiddenInput(nonceinput).
+event NonceROUsed(nonceinput,nonceout).
+event AdversaryHashQuery(nonceinput,nonceout).
+event AdvQueryAt(nonceinput).
+event ContextLookup(message,hc,nonceinput,nonceout).
+
+query p:pkey, g:bytes32;
+  event(KeyExtracted(p,g)) ==> event(KeyGenerated(g,p)).
+query x:nonceinput;
+  event(AdvQueryAt(x)) && event(HiddenInput(x)) ==> event(ExtractedAt(x)).
+query m:message, c:hc, x:nonceinput, y:nonceout, y2:nonceout;
+  event(ContextLookup(m,c,x,y)) && event(AdversaryHashQuery(x,y2)) ==> y = y2.
+query m:message, c:hc, x:nonceinput, y:nonceout, x2:nonceinput, y2:nonceout;
+  event(ContextLookup(m,c,x,y)) && event(ContextLookup(m,c,x2,y2)) ==> y = y2.
+query x:nonceinput, y:nonceout, y2:nonceout;
+  event(AdversaryHashQuery(x,y)) && event(AdversaryHashQuery(x,y2)) ==> y = y2.
+query m:message, c:hc, x:nonceinput, y:nonceout;
+  event(ContextLookup(m,c,x,y)) ==> event(NonceROUsed(x,y)).
+
+letfun lazyH(x:nonceinput) =
+  get nonceRO(=x, y:nonceout) in
+    (event NonceROUsed(x,y); y)
+  else
+    (y <-R nonceout;
+     insert nonceRO(x,y);
+     event NonceROUsed(x,y);
+     y).
+
+letfun base(sk:scalar, p:pkey, m:message, c:hc) =
+  let dmask = xor(tobytes(sk),aux(c)) in
+  let x = nin(dmask,p,m,c) in
+  event HiddenInput(x);
+  let y = lazyH(x) in
+  event ContextLookup(m,c,x,y);
+  y.
+
+(* AdvQueryAt is emitted after the extraction test so that ExtractedAt precedes it *)
+let QueryOracle(p:pkey) =
+  foreach i <= qHash do
+  QNonce(dmask:bytes32, pquery:pkey, m:message, c:hc) :=
+    let guess = xor(dmask,aux(c)) in
+    let x = nin(dmask,pquery,m,c) in
+    if canonical(guess) && pubbytes(guess) = p then (
+      event KeyExtracted(p,guess);
+      event ExtractedAt(x);
+      event AdvQueryAt(x);
+      let y = lazyH(x) in
+      event AdversaryHashQuery(x,y);
+      return(y)
+    ) else (
+      event AdvQueryAt(x);
+      let y = lazyH(x) in
+      event AdversaryHashQuery(x,y);
+      return(y)
+    ).
+
+let O1Oracle(sk:scalar, p:pkey) =
+  foreach i <= qO1 do
+  O1(m:message, c:hc) := return(base(sk,p,m,c)).
+
+let O2Oracle(sk:scalar, p:pkey) =
+  foreach j <= qO2 do
+  O2(m:message, r:rho) := let c = hdata(r) in return(base(sk,p,m,c)).
+
+process
+  Ostart() :=
+    sk <-R scalar;
+    let skbytes = tobytes(sk) in
+    let p = pubbytes(skbytes) in
+    event KeyGenerated(skbytes,p);
+    return(p);
+    (run QueryOracle(p) | run O1Oracle(sk,p) | run O2Oracle(sk,p))

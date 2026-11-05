@@ -1,0 +1,37 @@
+(* Shared declarations for the protocol 67 models. Free constructors only:
+   no curve, no hash strength, no nonce bias. Distinct terms are distinct
+   values; the only equation is signature verification. *)
+free net: channel.
+type skey.
+type pkey.
+fun pk(skey): pkey.
+fun sign(bitstring, skey): bitstring.
+reduc forall m:bitstring, w:bitstring, sk:skey;
+  checksign(sign((m,w),sk), pk(sk)) = (m,w).
+
+fun hdata(bitstring): bitstring.                 (* hc = hdata(rho) *)
+fun base_nonce(skey, bitstring, bitstring): bitstring.   (* k0 from sk, m, hc *)
+fun point(bitstring): bitstring.                 (* R0 = k0*G *)
+fun tweak(bitstring, bitstring): bitstring.      (* t from R0, rho *)
+fun add(bitstring, bitstring): bitstring.        (* W = R0 + t*G *)
+
+(* Host events. att names one attempt. *)
+event HostDraw(bitstring, bitstring).            (* att, rho *)
+event HostRecv(bitstring, bitstring).            (* att, R0 stored *)
+event HostRelease(bitstring, bitstring).         (* att, rho, just before it is sent *)
+event HostAccept(bitstring, bitstring, bitstring, bitstring, bitstring, bitstring).
+                                                 (* att, m, rho, R0, W, sig *)
+(* Device events. *)
+event DeviceCommit(bitstring, bitstring, bitstring).  (* m, hc, R0 *)
+event DeviceR0(bitstring, bitstring, bitstring).      (* m, hc, R0 recomputed in the second pass *)
+event DeviceApproved(bitstring, bitstring).      (* m, rho *)
+event DeviceRelease(bitstring, bitstring).       (* m, rho, just before sig is sent *)
+event DeviceOut(bitstring, bitstring, bitstring, bitstring).  (* m, rho, W, sig *)
+
+(* Device, honest. First pass is a function of (sk, m, hc); second pass of
+   (sk, m, rho). Neither keeps state. *)
+let dev1(sk:skey) =
+  in(net, (m:bitstring, hc:bitstring));
+  let r0 = point(base_nonce(sk, m, hc)) in
+  event DeviceCommit(m, hc, r0);
+  out(net, r0).

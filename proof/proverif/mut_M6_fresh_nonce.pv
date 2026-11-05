@@ -1,0 +1,37 @@
+(* Control M6: the device mixes fresh randomness into the nonce. Q6b must be false. *)
+set preciseActions = true.
+
+(* Q6a, Q6b: a replayed first or second pass gets the identical answer. *)
+query m:bitstring, hc:bitstring, r1:bitstring, r2:bitstring;
+  event(DeviceCommit(m,hc,r1)) && event(DeviceCommit(m,hc,r2)) ==> r1 = r2.
+query m:bitstring, rho:bitstring, w1:bitstring, w2:bitstring, s1:bitstring, s2:bitstring;
+  event(DeviceOut(m,rho,w1,s1)) && event(DeviceOut(m,rho,w2,s2)) ==> w1 = w2 && s1 = s2.
+
+let dev2(sk:skey) =
+  in(net, (m:bitstring, rho:bitstring));
+  let r0 = point(base_nonce(sk, m, hdata(rho))) in
+  event DeviceR0(m, hdata(rho), r0);
+  new z:bitstring;                           (* MUTATION: fresh randomness *)
+  let w = add(add(r0, tweak(r0, rho)), z) in
+  event DeviceApproved(m, rho);              (* user approval, abstract *)
+  let sg = sign((m,w), sk) in
+  event DeviceRelease(m, rho);
+  event DeviceOut(m, rho, w, sg);
+  out(net, sg).
+
+let host(pkdev:pkey) =
+  in(net, m:bitstring);
+  new att:bitstring;
+  new rho:bitstring;
+  event HostDraw(att, rho);
+  out(net, (m, hdata(rho)));
+  in(net, r0:bitstring);
+  event HostRecv(att, r0);
+  event HostRelease(att, rho);
+  out(net, (m, rho));
+  in(net, sg:bitstring);
+  let (=m, w:bitstring) = checksign(sg, pkdev) in
+  if w = add(r0, tweak(r0, rho)) then
+  event HostAccept(att, m, rho, r0, w, sg).
+
+process new sk:skey; out(net, pk(sk)); (!dev1(sk) | !dev2(sk) | !host(pk(sk)))

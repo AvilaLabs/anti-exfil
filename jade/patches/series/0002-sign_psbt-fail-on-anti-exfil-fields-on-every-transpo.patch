@@ -1,0 +1,260 @@
+From ed09a29734555ac99dfa8dcee8dc52878784096a Mon Sep 17 00:00:00 2001
+From: Connor Avila <Connoravila@gmail.com>
+Date: Wed, 4 Nov 2026 16:15:01 -0500
+Subject: [PATCH 02/10] sign_psbt: fail on anti-exfil fields on every transport
+
+Requests for anti-exfil signing carry host randomness in unknown input
+fields, and were signed in the ordinary way, with the fields kept in the
+result. Over QR and USB storage that result is displayed or written out.
+Detect the fields from the decoded key type on the parsed keys, since the
+shortest form of the type is not enforced when parsing, and reject the
+request before any signing.
+---
+ libjade/libjade.c                      | 24 ++++++++++
+ main/amalgamated.c                     |  1 +
+ main/process/sign_psbt.c               | 12 +++++
+ main/process/sign_psbt_ae.c            | 63 ++++++++++++++++++++++++++
+ main/process/sign_psbt_ae.h            | 21 +++++++++
+ tests/rpc/test_sign_psbt_anti_exfil.py | 55 ++++++++++++++++++++++
+ 6 files changed, 176 insertions(+)
+ create mode 100644 main/process/sign_psbt_ae.c
+ create mode 100644 main/process/sign_psbt_ae.h
+ create mode 100644 tests/rpc/test_sign_psbt_anti_exfil.py
+
+diff --git a/libjade/libjade.c b/libjade/libjade.c
+index af627b02..8bc01aaa 100644
+--- a/libjade/libjade.c
++++ b/libjade/libjade.c
+@@ -442,6 +442,30 @@ void process_libjade_request(const cbor_msg_t* const ctx)
+             jade_process_reply_to_message_ok_ex(ctx);
+             return;
+         }
++    } else if (IS_JADE_REQUEST("test_sign_psbt_no_process")) {
++        // Sign as the QR and USB storage modes do, ie. with no process or params
++        const uint8_t* bytes = NULL;
++        size_t bytes_len = 0;
++        rpc_get_bytes_ptr("bytes", &params, &bytes, &bytes_len);
++        struct wally_psbt* psbt = NULL;
++        if (bytes_len && deserialise_psbt(bytes, bytes_len, &psbt)) {
++            const char* errmsg = NULL;
++            const int errcode = sign_psbt(NULL, NULL, network_from_psbt_type(psbt), psbt, &errmsg);
++            uint8_t* output = NULL;
++            size_t output_len = 0;
++            if (errcode) {
++                jade_process_reject_message_ex(ctx, errcode, errmsg, NULL, 0, buf, sizeof(buf));
++                JADE_WALLY_VERIFY(wally_psbt_free(psbt));
++                return;
++            }
++            if (serialise_psbt(psbt, &output, &output_len)) {
++                jade_process_reply_to_message_bytes(ctx, output, output_len);
++                free(output);
++                JADE_WALLY_VERIFY(wally_psbt_free(psbt));
++                return;
++            }
++            JADE_WALLY_VERIFY(wally_psbt_free(psbt));
++        }
+     } else if (IS_JADE_REQUEST("get_nvs")) {
+         uint8_t* output;
+         size_t output_len;
+diff --git a/main/amalgamated.c b/main/amalgamated.c
+index 3c6a9f55..5263008d 100644
+--- a/main/amalgamated.c
++++ b/main/amalgamated.c
+@@ -111,6 +111,7 @@ void __wrap_abort(void);
+ #include "./process/sign_identity.c"
+ #include "./process/sign_message.c"
+ #include "./process/sign_psbt.c"
++#include "./process/sign_psbt_ae.c"
+ #include "./process/sign_tx.c"
+ #include "./process/sign_utils.c"
+ #include "./process/update_pinserver.c"
+diff --git a/main/process/sign_psbt.c b/main/process/sign_psbt.c
+index 4ef846e9..001f6aef 100644
+--- a/main/process/sign_psbt.c
++++ b/main/process/sign_psbt.c
+@@ -25,6 +25,7 @@
+ #include <wally_psbt_members.h>
+ #include <wally_script.h>
+ 
++#include "sign_psbt_ae.h"
+ #include "sign_utils.h"
+ 
+ // From https://github.com/bitcoin/bips/blob/master/bip-0174.mediawiki
+@@ -725,6 +726,17 @@ int sign_psbt(jade_process_t* process, CborValue* params, const network_t networ
+     JADE_ASSERT(network_id != NETWORK_NONE);
+     int retval = 0;
+ 
++    // Fail closed: a request for anti-exfil signing must never be signed in the ordinary way,
++    // whichever transport it arrived on (including those without process/params, ie. QR and
++    // USB storage, which would also display the host randomness).
++    bool has_ae_fields = false;
++    if (!ae_psbt_has_fields(psbt, &has_ae_fields, errmsg) || has_ae_fields) {
++        if (!*errmsg) {
++            *errmsg = "Anti-exfil signing is not supported";
++        }
++        return CBOR_RPC_BAD_PARAMETERS;
++    }
++
+     size_t is_elements = 0;
+     JADE_WALLY_VERIFY(wally_psbt_is_elements(psbt, &is_elements));
+     if (!is_elements != !network_is_liquid(network_id)) {
+diff --git a/main/process/sign_psbt_ae.c b/main/process/sign_psbt_ae.c
+new file mode 100644
+index 00000000..d0e2feb1
+--- /dev/null
++++ b/main/process/sign_psbt_ae.c
+@@ -0,0 +1,63 @@
++#ifndef AMALGAMATED_BUILD
++#include "sign_psbt_ae.h"
++
++#include <wally_core.h>
++#include <wally_map.h>
++#include <wally_psbt.h>
++
++// Read the compact size at the start of a psbt key (the key type). Wally does not
++// insist on the shortest encoding, so 0xfd2100 reaches us as an unknown field of type 0x21.
++// Returns false if the key is truncated.
++static bool ae_read_key_type(const uint8_t* key, const size_t key_len, uint64_t* type, bool* is_canonical)
++{
++    JADE_ASSERT(key);
++    JADE_ASSERT(type);
++    JADE_ASSERT(is_canonical);
++
++    if (!key_len) {
++        return false;
++    }
++    *is_canonical = true;
++    if (key[0] < 0xfd) {
++        *type = key[0];
++        return true;
++    }
++    const size_t num_bytes = key[0] == 0xfd ? 2 : (key[0] == 0xfe ? 4 : 8);
++    if (key_len < 1 + num_bytes) {
++        return false;
++    }
++    uint64_t value = 0;
++    for (size_t i = num_bytes; i > 0; --i) {
++        value = (value << 8) | key[i];
++    }
++    *type = value;
++    *is_canonical = value >= (num_bytes == 2 ? 0xfd : (num_bytes == 4 ? 0x10000 : 0x100000000));
++    return true;
++}
++
++bool ae_psbt_has_fields(const struct wally_psbt* psbt, bool* found, const char** errmsg)
++{
++    JADE_ASSERT(psbt);
++    JADE_INIT_OUT_PPTR(errmsg);
++    JADE_ASSERT(found);
++
++    *found = false;
++    for (size_t i = 0; i < psbt->num_inputs; ++i) {
++        const struct wally_map* unknowns = &psbt->inputs[i].unknowns;
++        for (size_t j = 0; j < unknowns->num_items; ++j) {
++            uint64_t type;
++            bool is_canonical;
++            if (!ae_read_key_type(unknowns->items[j].key, unknowns->items[j].key_len, &type, &is_canonical)
++                || type < PSBT_IN_AE_HOST_COMMITMENT || type > PSBT_IN_AE_HOST_RANDOMNESS) {
++                continue;
++            }
++            if (!is_canonical) {
++                *errmsg = "Non-canonical anti-exfil field";
++                return false;
++            }
++            *found = true;
++        }
++    }
++    return true;
++}
++#endif // AMALGAMATED_BUILD
+diff --git a/main/process/sign_psbt_ae.h b/main/process/sign_psbt_ae.h
+new file mode 100644
+index 00000000..aa4c9167
+--- /dev/null
++++ b/main/process/sign_psbt_ae.h
+@@ -0,0 +1,21 @@
++#ifndef SIGN_PSBT_AE_H_
++#define SIGN_PSBT_AE_H_
++
++#include <stdbool.h>
++#include <stddef.h>
++#include <stdint.h>
++
++#include "../jade_assert.h"
++
++struct wally_psbt;
++
++// Fields of the anti-exfil signing protocol, defined for psbt input maps only
++#define PSBT_IN_AE_HOST_COMMITMENT 0x21
++#define PSBT_IN_AE_NONCE_COMMITMENT 0x22
++#define PSBT_IN_AE_HOST_RANDOMNESS 0x23
++
++// Set `found` if any input holds an anti-exfil field.
++// Returns false (with errmsg set) if one is present in a non-canonical encoding.
++WARN_UNUSED_RESULT bool ae_psbt_has_fields(const struct wally_psbt* psbt, bool* found, const char** errmsg);
++
++#endif /* SIGN_PSBT_AE_H_ */
+diff --git a/tests/rpc/test_sign_psbt_anti_exfil.py b/tests/rpc/test_sign_psbt_anti_exfil.py
+new file mode 100644
+index 00000000..c64de7ed
+--- /dev/null
++++ b/tests/rpc/test_sign_psbt_anti_exfil.py
+@@ -0,0 +1,55 @@
++from . import *
++
++
++# A key identifier (a pubkey) as used by the anti-exfil psbt input fields
++KEY_ID = bytes.fromhex('0396bf2d7dd1301b22c56c05d90d7ab0f5dee20f4d6e56b2d6eeaa3a6a2d52c9b8')
++
++AE_HOST_COMMITMENT = 0x21
++AE_NONCE_COMMITMENT = 0x22
++AE_HOST_RANDOMNESS = 0x23
++
++
++def _psbt_with_input_unknown(psbt_bin, key, value):
++    psbt = wally.psbt_from_bytes(psbt_bin, 0)
++    unknowns = wally.map_init(1, None)
++    wally.map_add(unknowns, key, value)
++    wally.psbt_set_input_unknowns(psbt, 0, unknowns)
++    return wally.psbt_to_bytes(psbt, 0)
++
++
++def _noncanonical_key(key_type):
++    # The key type as a three byte compact size instead of one byte
++    return b'\xfd' + key_type.to_bytes(2, 'little') + KEY_ID
++
++
++@pytest.mark.mnemonic(mnemonics.singlesig)
++@with_test_cases('tests/rpc/data/sign_psbt/psbt_ss_p2wpkh.json')
++def test_sign_psbt_ae_fields_not_supported(jade, mnemonic, test_case):
++    # Requests for anti-exfil signing are never signed in the ordinary way
++    psbt_bin = test_case['input']['psbt']
++    values = {
++        AE_HOST_COMMITMENT: bytes(32),
++        AE_NONCE_COMMITMENT: bytes(33),
++        AE_HOST_RANDOMNESS: bytes(32),
++    }
++    for key_type, value in values.items():
++        for key in [bytes([key_type]) + KEY_ID, _noncanonical_key(key_type)]:
++            psbt = _psbt_with_input_unknown(psbt_bin, key, value)
++            with pytest.raises(JadeError) as err:
++                jade.sign_psbt(test_case['input']['network'], psbt)
++            assert err.value.code == JadeError.BAD_PARAMETERS, key.hex()
++
++
++@pytest.mark.skipif(transport_is_not('libjade'), reason='libjade only')
++@pytest.mark.mnemonic(mnemonics.singlesig)
++@with_test_cases('tests/rpc/data/sign_psbt/psbt_ss_p2wpkh.json')
++def test_sign_psbt_ae_fields_not_supported_without_process(jade, mnemonic, test_case):
++    # The QR and USB storage modes sign without a process (and display the result)
++    psbt_bin = test_case['input']['psbt']
++    for key_type in [AE_HOST_COMMITMENT, AE_NONCE_COMMITMENT, AE_HOST_RANDOMNESS]:
++        for key in [bytes([key_type]) + KEY_ID, _noncanonical_key(key_type)]:
++            psbt = _psbt_with_input_unknown(psbt_bin, key, bytes(33))
++            params = {'request': 'test_sign_psbt_no_process', 'bytes': psbt}
++            with pytest.raises(JadeError) as err:
++                jade._jadeRpc('libjade_request', params)
++            assert err.value.code == JadeError.BAD_PARAMETERS, key.hex()
+-- 
+2.53.0
+

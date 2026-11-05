@@ -1,0 +1,27 @@
+(* Public-opening whole-trace control, same process as pre-open model. *)
+(* Pre-opening observer property only. rho is intentionally published in phase
+   1, so whole-trace secrecy is expected to fail. Hash/curve terms are ideal
+   free constructors and no malicious-device behavior is represented. *)
+free net: channel.
+fun hdata(bitstring): bitstring.
+type skey.
+fun base_nonce(skey, bitstring, bitstring): bitstring.
+fun point(bitstring): bitstring.
+
+query attacker(new rho[]).
+
+let serviceO1(sk:skey) =
+  in(net,(m:bitstring,hc:bitstring));
+  let k0 = base_nonce(sk,m,hc) in
+  out(net,point(k0)).
+
+let host =
+  new rho:bitstring;
+  new m:bitstring;
+  let hc = hdata(rho) in
+  out(net,(m,hc));
+  in(net,r0:bitstring);
+  phase 1;
+  out(net,rho).
+
+process new sk:skey; (!serviceO1(sk) | !host)

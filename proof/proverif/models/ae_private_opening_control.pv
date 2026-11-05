@@ -1,0 +1,34 @@
+(* Control: move only the host->device O2 opening onto an ideal private
+   channel. Whole-trace rho secrecy is expected to hold in this abstraction.
+   This is a transport-confidentiality assumption; it is not the public
+   transport behavior and makes no claim about encrypted QR/USB deployments. *)
+free net: channel.
+free opening: channel [private].
+type skey.
+fun hdata(bitstring):bitstring.
+fun base_nonce(skey,bitstring,bitstring):bitstring.
+fun point(bitstring):bitstring.
+fun tweak(bitstring,bitstring):bitstring.
+fun add_nonce(bitstring,bitstring):bitstring.
+query attacker(new rho[]).
+
+let serviceO1(sk:skey) =
+  in(net,(m:bitstring,hc:bitstring));
+  let k0=base_nonce(sk,m,hc) in out(net,point(k0)).
+let serviceO2(sk:skey) =
+  in(net,m:bitstring);
+  in(opening,rho:bitstring);
+  let hc=hdata(rho) in
+  let k0=base_nonce(sk,m,hc) in
+  let r0=point(k0) in
+  out(net,add_nonce(r0,tweak(r0,rho))).
+let host =
+  new rho:bitstring;
+  new m:bitstring;
+  let hc=hdata(rho) in
+  out(net,(m,hc));
+  in(net,r0:bitstring);
+  out(net,m);
+  out(opening,rho);
+  0.
+process new sk:skey; (!serviceO1(sk) | !serviceO2(sk) | !host)

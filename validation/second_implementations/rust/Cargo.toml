@@ -1,0 +1,19 @@
+[package]
+name = "aexf"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+name = "aexf"
+path = "src/lib.rs"
+
+[[bin]]
+name = "aexf"
+path = "src/main.rs"
+
+[dependencies]
+k256 = { version = "=0.13.4", default-features = false, features = ["arithmetic", "std"] }
+sha2 = "=0.10.9"
+
+[profile.release]
+opt-level = 2

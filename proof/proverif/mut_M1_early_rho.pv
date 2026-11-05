@@ -1,0 +1,27 @@
+(* Control M1: the host releases rho before it receives R0. Q1 must be false. *)
+set preciseActions = true.
+free skB: skey.
+
+(* Q1: the R0 the host accepts was received before rho was released, and
+   rho was released before acceptance. *)
+query att:bitstring, m:bitstring, rho:bitstring, r0:bitstring, w:bitstring, sg:bitstring,
+      i:time, j:time, k:time;
+  event(HostAccept(att,m,rho,r0,w,sg))@k ==>
+    event(HostRecv(att,r0))@i && event(HostRelease(att,rho))@j && i < j && j < k.
+
+let host(pkdev:pkey) =
+  in(net, m:bitstring);                      (* request, attacker-chosen *)
+  new att:bitstring;
+  new rho:bitstring;
+  event HostDraw(att, rho);
+  out(net, (m, hdata(rho)));                 (* step 1 *)
+  event HostRelease(att, rho);               (* MUTATION: rho before R0 *)
+  out(net, (m, rho));
+  in(net, r0:bitstring);
+  event HostRecv(att, r0);
+  in(net, (r0b:bitstring, sg:bitstring));    (* step 4: R0 field ignored *)
+  let (=m, w:bitstring) = checksign(sg, pkdev) in
+  if w = add(r0, tweak(r0, rho)) then        (* step 5 *)
+  event HostAccept(att, m, rho, r0, w, sg).
+
+process out(net, skB); !host(pk(skB))

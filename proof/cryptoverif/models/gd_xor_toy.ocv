@@ -1,0 +1,31 @@
+(* G-D toy: exponent group Z is the Xor macro (exponent 2, with its one-time-pad equivalence),
+   NOT secp256k1. Point group G is builtin commut_group, with mulg a homomorphism. Goal: the (k0,u) -> (k0+u,u)
+   coupling as an equivalence of two games. No custom OTP equivalence is added. *)
+param qs.
+type Z [large,fixed].
+type G [large,fixed].
+expand Xor(Z, zadd, zzero).
+fun padd(G,G):G.
+fun pneg(G):G.
+const pzero:G.
+equation builtin commut_group(padd, pneg, pzero).
+const g:G.
+fun mulg(Z):G.
+equation forall a:Z, b:Z; mulg(zadd(a,b)) = padd(mulg(a),mulg(b)).
+
+(* left: base nonce k0 and tweak u uniform, output R0 = k0 G and W = (k0+u) G *)
+let Left() =
+  foreach i <= qs do
+  S(x:bitstring) :=
+    k0 <-R Z; u <-R Z;
+    return(mulg(k0), u, mulg(zadd(k0,u))).
+(* right: W' uniform and u uniform, output R0 = W' - u G *)
+let Right() =
+  foreach i <= qs do
+  S(x:bitstring) :=
+    k1 <-R Z; u <-R Z;
+    return(padd(mulg(k1), mulg(u)), u, mulg(k1)).
+
+equivalence
+  Ostart() := return(); run Left()
+  Ostart() := return(); run Right()

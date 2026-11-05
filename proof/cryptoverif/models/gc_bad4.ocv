@@ -1,0 +1,73 @@
+(* G-C: the G2 game of the theorem as shared random-oracle tables, with only the
+   detector for one event of the G2 to G3 hop switched on (Bad4).
+   Abstractions: R0 is a uniform element of type point (|point| stands for n - 1), the
+   nonce base outcome, validity branch, u_full >= n and k' = 0 branches are omitted,
+   and H_data, H_point are lazily sampled tables with no concrete encoding.
+   Bad2: a fresh H_data output equals an earlier output. Bad3: a fresh H_data output equals an
+   unresolved hc. Bad4: at first touch of a resolved context the address ser33(R0)||rho is already
+   defined. O2Unres: O2 reaches a context that was unresolved at its first touch. *)
+param qD, qT, qO1, qO2.
+
+type hc [large,fixed].
+type rho [fixed].
+type message [fixed].
+type point [large,fixed].
+type tweak [large,fixed].
+type addr [large,fixed].
+
+fun mkaddr(point,rho):addr [data].
+
+table hdataTab(rho,hc).
+table unresTab(hc).
+table ctxTab(message,hc,point).
+table pointTab(addr,tweak).
+
+event Bad2.
+event Bad3.
+event Bad4.
+event O2Unres.
+
+query event(Bad4) ==> false.
+
+letfun hdataEval(r:rho) =
+  get hdataTab(=r, o:hc) in o
+  else (
+    o <-R hc;
+    let z2 = true in
+    let z3 = true in
+    insert hdataTab(r,o);
+    o).
+
+letfun pointEval(a:addr) =
+  get pointTab(=a, u:tweak) in u
+  else (u <-R tweak; insert pointTab(a,u); u).
+
+letfun touch(m:message, c:hc) =
+  get ctxTab(=m, =c, R:point) in R
+  else (
+    R <-R point;
+    insert ctxTab(m,c,R);
+    let z4 = (get hdataTab(r1, =c) in
+       (get pointTab(=mkaddr(R,r1), u1:tweak) in (event Bad4; true) else true)
+     else (insert unresTab(c); true)) in
+    R).
+
+let DataOracle() =
+  foreach i <= qD do HD(r:rho) := return(hdataEval(r)).
+
+let PointOracle() =
+  foreach i <= qT do HP(a:addr) := return(pointEval(a)).
+
+let O1Oracle() =
+  foreach i <= qO1 do O1(m:message, c:hc) := return(touch(m,c)).
+
+let O2Oracle() =
+  foreach j <= qO2 do
+  O2(m:message, r:rho) :=
+    let c = hdataEval(r) in
+    let R = touch(m,c) in
+    let z5 = true in
+    return(R, pointEval(mkaddr(R,r))).
+
+process
+  Ostart() := return(); (run DataOracle() | run PointOracle() | run O1Oracle() | run O2Oracle())

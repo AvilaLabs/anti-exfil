@@ -1,0 +1,27 @@
+(* Setup A with a private host-device link for the second pass (rho). The
+   first pass (m, hc) and the replies use the attacker-controlled channel.
+   Q5a: rho is secret from the network attacker over the whole trace, which
+   includes the time after the exchange and after acceptance. The private
+   channel is an assumption about the transport, not a property proved. *)
+free link: channel [private].
+query attacker(new rho[]).
+
+let dev2(sk:skey) =
+  in(link, (m:bitstring, rho:bitstring));
+  let r0 = point(base_nonce(sk, m, hdata(rho))) in
+  let w = add(r0, tweak(r0, rho)) in
+  out(net, sign((m,w), sk)).
+
+let host(pkdev:pkey) =
+  in(net, m:bitstring);
+  new rho:bitstring;
+  out(net, (m, hdata(rho)));
+  in(net, r0:bitstring);
+  out(link, (m, rho));
+  in(net, sg:bitstring);
+  let (=m, w:bitstring) = checksign(sg, pkdev) in
+  if w = add(r0, tweak(r0, rho)) then
+  phase 1;                                   (* after acceptance *)
+  0.
+
+process new sk:skey; out(net, pk(sk)); (!dev1(sk) | !dev2(sk) | !host(pk(sk)))

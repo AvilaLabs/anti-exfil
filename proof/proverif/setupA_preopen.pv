@@ -1,0 +1,20 @@
+(* Setup A, public link. Q5c: before the host sends rho (phase 0) the
+   attacker cannot know it. rho is then sent in the clear in phase 1, which
+   Q5b in setupA.pv shows leaks it. Together they match the spec: rho must
+   stay off a public link. *)
+query attacker(new rho[]) phase 0.
+
+let dev2(sk:skey) =
+  in(net, (m:bitstring, rho:bitstring));
+  let r0 = point(base_nonce(sk, m, hdata(rho))) in
+  out(net, sign((m, add(r0, tweak(r0, rho))), sk)).
+
+let host =
+  in(net, m:bitstring);
+  new rho:bitstring;
+  out(net, (m, hdata(rho)));
+  in(net, r0:bitstring);
+  phase 1;
+  out(net, (m, rho)).
+
+process new sk:skey; out(net, pk(sk)); (!dev1(sk) | !dev2(sk) | !host)
