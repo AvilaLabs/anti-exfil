@@ -2,6 +2,8 @@
 
 A proposed standard that stops a signing device from leaking its keys through the nonces of its signatures. The host contributes randomness to each nonce and checks the result, so the device can't choose the nonce on its own. It covers BIP340 and ECDSA, and adds PSBT fields so wallets and devices can use it without a private extension.
 
+**[Read the handbook](https://anti-exfil.avilalabs.org)** for a guide to the attack, the protocol, the PSBT fields and the checks.
+
 From Avila Labs. Draft, with no BIP number. No cryptographer has reviewed it and it has had no outside audit. **The Python code here is for reading and test generation only: it uses variable-time arithmetic and must not be used with real keys.**
 
 ## What's here

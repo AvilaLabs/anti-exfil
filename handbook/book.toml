@@ -1,0 +1,19 @@
+[book]
+title = "Anti-Exfil Signing Handbook"
+authors = ["Avila Labs"]
+description = "A guide to the draft anti-exfil BIPs: the attack, the protocol, the PSBT fields, the test vectors and the checks."
+language = "en"
+src = "src"
+
+[build]
+create-missing = false
+
+[output.html]
+default-theme = "light"
+preferred-dark-theme = "navy"
+git-repository-url = "https://github.com/AvilaLabs/anti-exfil"
+edit-url-template = "https://github.com/AvilaLabs/anti-exfil/edit/main/handbook/{path}"
+site-url = "/"
+
+[output.html.playground]
+runnable = false
