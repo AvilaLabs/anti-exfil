@@ -56,7 +56,7 @@ The one-round form is Wuille's Scheme 2, and the Delving "level 2" proposal is i
 | Attacker with chain only, device never refuses | Nothing through the nonce, under the argument's assumptions | Grinding: the device sees the host's value before it commits |
 | Detection | Refusals show as failures | Not as failures. Delving discusses timing checks and factory or user tests, which limit a device that grinds noticeably. There is no host-side check that bounds it |
 
-One round does not avoid exposing a secret on screen, so its advantage is fewer displays. In the Delving thread, Wuille pointed out that a 4-bit grind leaks a secret in 64 signatures, and wrote that where interaction is not possible, a scheme like this is "probably the best possible". His 2020 overview says Scheme 2 "could be used", with grinding protection "reduced to spot checking". Two rounds appear possible on QR, subject to the open questions below.
+One round does not avoid exposing a secret on screen, so its advantage is fewer displays. In the Delving thread, Wuille pointed out that a 4-bit grind leaks a secret in 64 signatures, and wrote that where interaction is not possible, a scheme like this is "probably the best possible". Wuille's 2020 overview says Scheme 2 "could be used", with grinding protection "reduced to spot checking". Two rounds appear possible on QR, subject to the open questions below.
 
 ## Cost
 
