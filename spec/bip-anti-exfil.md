@@ -232,7 +232,7 @@ Protocol arithmetic is in `reference/anti_exfil.py`. It is for reading and test 
 
 ## Acknowledgements
 
-The protocol follows Scheme 6 in Pieter Wuille's 2020 overview of anti-covert-channel signing, which credits earlier work by Stepan Snigirev and Andrew Poelstra among others. Prior art includes True2F's firewalled ECDSA. Marko Bencun and Jonas Nick wrote the library implementation in pull request 1140.
+The protocol follows the sign-to-contract variant of Scheme 6 in Pieter Wuille's 2020 overview of anti-covert-channel signing, which credits earlier work by Stepan Snigirev and Andrew Poelstra among others. Prior art includes True2F's firewalled ECDSA. Marko Bencun and Jonas Nick wrote the library implementation in pull request 1140.
 
 ## References
 

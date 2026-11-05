@@ -6,7 +6,7 @@
   },
   "P": {
    "path": "spec/bip-anti-exfil.md",
-   "sha256": "3f71412766d6fcb6b2bfc0a14ebf33ab3ef637b6a0a2d5b6b25b81cd3b238ec4"
+   "sha256": "f93de9fa8683e64e6b4d6866d36b3eac629348fd255c3636de0d42491d1e9cff"
   }
  },
  "exclusions": [
