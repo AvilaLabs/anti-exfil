@@ -1716,7 +1716,7 @@ def build_seed():
 
 def readme(doc, seed_doc):
     n_ex = len(doc["exchanges"])
-    return """# Anti-exfil PSBT test vectors (revision 0.16)
+    return """# Anti-exfil PSBT test vectors
 
 `bip-anti-exfil-psbt.json` holds the vectors for `bip-anti-exfil-psbt.md`. License: CC0-1.0 or MIT, at your option. All keys are artificial, derived from
 labelled seeds, and have no value. `scripts/gen_psbt_vectors.py` writes both files; `--check` compares them with the disk.
