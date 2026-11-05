@@ -19,7 +19,7 @@ A signing device chooses the nonce in every signature it makes, so a compromised
 
 A device that controls its nonce can reveal its key to anyone who knows how it chooses nonces. The output looks like any other valid signature, and neither the owner nor a verifier can tell. Dark Skippy showed that a seed can leak in two signatures. Without help from the host, a device can always grind: Pieter Wuille noted in the Delving thread listed under References that `2^b` grinding steps per signature leak `b` bits per signature.
 
-Wuille's 2020 overview describes several schemes, and this document follows its Scheme 6. Devices already deploy versions of it, and bitcoin-core/secp256k1 pull request 1140 proposes library support. There is no shared specification. Each implementer has to decide its own byte formats, failure rules and host checks, and several of those decisions affect what is protected, such as whether the host compares a repeated `R0_bytes` or counts a failed attempt.
+Wuille's 2020 overview describes several schemes, and this document follows its Scheme 6, with a sign-to-contract tweak. Devices already deploy versions of it, and bitcoin-core/secp256k1 pull request 1140 proposes library support. There is no agreed specification. [Sjors Provoost's draft](https://github.com/Sjors/bips/pull/2) of October 2026 covers two-round signing for a single Taproot key path, with proprietary PSBT fields and a plain added tweak, so it does not interoperate with this document. Each implementer has to decide its own byte formats, failure rules and host checks, and several of those decisions affect what is protected, such as whether the host compares a repeated `R0_bytes` or counts a failed attempt.
 
 ## Specification
 
