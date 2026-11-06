@@ -652,6 +652,32 @@ class RuleFixes(LifeBase):
             a.commit()
         self.assertEqual(rig.store.failures("dev-A"), 1)
 
+    def test_two_hosts_on_one_store_file_keep_each_others_failures(self):
+        """Attempts: "The host keeps a durable failure count per device"; a second host on the same file sees it."""
+        shared = os.path.join(self.tmp, "shared.json")
+        a = self.mkrig([T.refuse], max_retries=0, store_path=shared)
+        b = K.Rig(a.inputs, self.tmp, link_cls=T.ScriptedLink, store_path=shared, ui=K.AckUI(ack=False))
+        a.host.failure_limit = b.host.failure_limit = 1
+        with self.assertRaises(H.AttemptFailed):
+            a.host.sign(a.request_bytes)
+        with self.assertRaises(H.HostRefusal) as cm:
+            b.host.start(b.request_bytes)
+        self.assertEqual(cm.exception.code, "failure_limit")
+        self.assertEqual(H.Store(shared).failures("dev-A"), 1)
+        b.host.failure_limit = None
+        with self.assertRaises(H.WarningNotAcknowledged):
+            b.host.start(b.request_bytes)
+        self.assertTrue(H.Store(shared).needs_warning("dev-A"))
+
+    def test_attempt_does_not_start_on_a_record_changed_by_another_host(self):
+        """Attempts: the checks before an attempt and the record that starts it see the same count."""
+        rig = self.mkrig()
+        seen = rig.store.view("dev-A")
+        H.Store(rig.store_path).count_failure("dev-A", H.Store(rig.store_path).begin_attempt("dev-A", "t"))
+        with self.assertRaises(H.StoreError):
+            rig.store.begin_attempt("dev-A", "t", seen)
+        self.assertEqual(rig.store.failures("dev-A"), 1)
+
     def test_partly_readable_record_keeps_its_count(self):
         """Attempts: "MUST treat that device as having a count of at least one"; a count still readable is not lowered."""
         rig = self.mkrig()

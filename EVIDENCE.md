@@ -1,13 +1,13 @@
 # Evidence
 
-What was tested, what failed and what wasn't tested. None of this shows the protocol is secure. No cryptographer has reviewed it, and it has had no outside audit. Unless a row says otherwise, you can rerun it with `./check.sh` and the options in the README.
+What was tested, what failed and what wasn't tested. None of this shows the protocol is secure. No cryptographer has reviewed it, and it has had no outside audit. `./check.sh` and the options in the README rerun the protocol vectors, the reference suite, the regtest spends, the shortcuts, the requirement mutants, the C module, PR 1140, the host lifecycle model and the Jade seed-vector replay. The other rows (the mechanical mutants, the two extra implementations, btclib, CodeQL, the Jade firmware builds and the proof tools) were run on their own and aren't part of it.
 
 ## What was tested
 
 | Check | Result | What it doesn't show |
 |---|---|---|
 | Protocol vectors, recomputed by separate curve code | 768 checks, 0 failures | Generator and checker share an author |
-| Reference suite | 262 tests pass, including the invalid and valid PSBT lists in BIP 174, 370 and 371, BIP 341's wallet vectors, BIP 143's examples and Core's `sighash.json` | Core rows with hash types the reference refuses are left out |
+| Reference suite | 264 tests pass, including the invalid and valid PSBT lists in BIP 174, 370 and 371, BIP 341's wallet vectors, BIP 143's examples and Core's `sighash.json` | Core rows with hash types the reference refuses are left out |
 | Each required and optional form spent on Bitcoin Core 31.1 regtest | Accepted and mined | Core 31.1 can't read PSBT version 2, so those transactions come from our own finalizer. Some exchanges, such as required locktimes and 1-of-2 multisig, ran through the reference and weren't mined |
 | Vector strength: 272 shortcuts planted in a command-line implementation | 207 caught. The other 65 are listed with reasons as beyond the vectors, equivalent or not required. None is an open vector gap | Only shortcuts we thought of. The full set ran before the last refusal vector was added, and the two cases that vector affects were rerun on the final file |
 | Requirements: mutants for each testable rule in the reference, 238 in all | 232 killed. The other 6 read by hand as equivalent, with the reasons in the classes file | The reference only |

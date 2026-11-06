@@ -5,7 +5,9 @@ protocol's "Attempts and failures". The failure store is keyed by the device
 identity in the host's own wallet data. `rho` and `R0_bytes` live in memory
 only. Every refusal carries a reason code.
 """
+import contextlib
 import copy
+import fcntl
 import json
 import os
 import secrets
@@ -108,11 +110,38 @@ def _valid_rec(r):
 
 
 class Store:
-    """Durable JSON store: write temp file, fsync, atomic rename, fsync directory."""
+    """Durable JSON store: write temp file, fsync, atomic rename, fsync directory.
+
+    Several Store objects, in one process or several, may share a path. Every read and update
+    takes an exclusive lock on PATH.lock and rereads the file, so none writes back a stale copy."""
 
     def __init__(self, path):
         self.path = os.fspath(path)
-        self.data = self._load()
+        self._depth = 0
+        with self._locked():
+            pass
+
+    @contextlib.contextmanager
+    def _locked(self):
+        """Hold the lock and refresh self.data from the file (reentrant within one Store)."""
+        if self._depth:
+            self._depth += 1
+            try:
+                yield
+            finally:
+                self._depth -= 1
+            return
+        fd = os.open(self.path + ".lock", os.O_RDWR | os.O_CREAT, 0o600)
+        try:
+            fcntl.flock(fd, fcntl.LOCK_EX)
+            self._depth = 1
+            try:
+                self.data = self._load()
+                yield
+            finally:
+                self._depth = 0
+        finally:
+            os.close(fd)                # closing releases the lock
 
     def _load(self):
         if not os.path.exists(self.path):
@@ -154,11 +183,12 @@ class Store:
             os.close(fd)
 
     def _mutate(self, fn):
-        new = copy.deepcopy(self.data)
-        out = fn(new)
-        self._write(new)
-        self.data = new
-        return out
+        with self._locked():
+            new = copy.deepcopy(self.data)
+            out = fn(new)
+            self._write(new)
+            self.data = new
+            return out
 
     def _rec(self, data, dev):
         r = data["devices"].get(dev)
@@ -172,8 +202,9 @@ class Store:
         return r
 
     def view(self, dev):
-        d = copy.deepcopy(self.data)
-        return self._rec(d, dev)
+        with self._locked():
+            d = copy.deepcopy(self.data)
+            return self._rec(d, dev)
 
     def needs_warning(self, dev):
         r = self.view(dev)
@@ -191,9 +222,10 @@ class Store:
                     r["failures"] += 1
                 r["last"] = {"tx": v.get("tx", ""), "failed": True}
             r["open"] = {}
-        rec = self.data["devices"].get(dev)
-        if rec is not None and (not _valid_rec(rec) or rec["open"]):
-            self._mutate(fn)
+        with self._locked():
+            rec = self.data["devices"].get(dev)
+            if rec is not None and (not _valid_rec(rec) or rec["open"]):
+                self._mutate(fn)
 
     def last(self, dev):
         """{"tx": hash of the core transaction, "failed": bool} for the latest attempt, or None."""
@@ -202,12 +234,16 @@ class Store:
             return last
         return None
 
-    def begin_attempt(self, dev, tx):
+    def begin_attempt(self, dev, tx, seen=None):
         """Record an attempt as open and consume the acknowledgement, in one durable write.
         `tx` is a hash of the core transaction (not secret). A changed transaction after a failure
-        has been chosen by the user by the time this is called, and clears the failed mark."""
+        has been chosen by the user by the time this is called, and clears the failed mark.
+        `seen` is the record the caller's checks were made on; if another host has changed its
+        count, acknowledgement or last attempt since, nothing is written and StoreError is raised."""
         def fn(d):
             r = self._rec(d, dev)
+            if seen is not None and any(r.get(k) != seen.get(k) for k in ("failures", "warned", "last")):
+                raise StoreError("another host changed this device's record; start again")
             d["seq"] += 1
             r["warned"] = r["failures"]
             r["open"][str(d["seq"])] = {"counted": False, "tx": tx}
@@ -219,10 +255,6 @@ class Store:
 
     def count_failure(self, dev, seq):
         """One durable increment per attempt. Returns False if already counted."""
-        o = self.view(dev)["open"].get(seq)
-        if o is None or o["counted"]:
-            return False            # no open record: recovery has already charged this attempt
-
         def fn(d):
             r = self._rec(d, dev)
             o = r["open"].get(seq)
@@ -231,7 +263,11 @@ class Store:
                 o["counted"] = True
                 r["last"] = {"tx": o.get("tx", ""), "failed": True}
             return True
-        return self._mutate(fn)
+        with self._locked():
+            o = self.view(dev)["open"].get(seq)
+            if o is None or o["counted"]:
+                return False            # no open record: recovery has already charged this attempt
+            return self._mutate(fn)
 
     def end_attempt(self, dev, seq, completed=False):
         def fn(d):
@@ -354,6 +390,7 @@ class Host:
                 self.ui.notice(n)
         dev = self.wallet.device_id
         txh = C.sha256(C.ser_tx(C.core_tx(p))).hex()
+        seen = self.store.view(dev)    # begin_attempt refuses if another host changes this record meanwhile
         last = self.store.last(dev)
         if last and last["failed"] and last["tx"] != txh:
             if not (user_chose_change or self.ui.confirm_change_after_failure({"previous": last["tx"], "new": txh}) is True):
@@ -371,7 +408,7 @@ class Host:
             if self.ui.warn(dev, fails) is not True:
                 raise WarningNotAcknowledged("warning_not_acknowledged", "the user did not acknowledge the warning")
         rhos = {(pr.index, pr.keyid): self._rho_source() for pr in pairs}
-        seq = self.store.begin_attempt(dev, txh)  # durable BEFORE hc is sent
+        seq = self.store.begin_attempt(dev, txh, seen)  # durable BEFORE hc is sent
         return Attempt(self, p, pairs, rhos, seq, notes)
 
     def discard_unsolicited(self):

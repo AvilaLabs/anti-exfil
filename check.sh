@@ -186,6 +186,9 @@ step_cmodule() {
     export C_BUILD=$ROOT/.work/c/build
     r=$(flipped_root ctl-c bip-anti-exfil.json sig) && "${PY[@]}" "$r/c/gen_test_vectors.py" >/dev/null &&
         control c-vectors "c/check_vectors.py on a vector file with one signature digit changed" heavy "${PY[@]}" "$r/c/check_vectors.py"
+    # the control: the driver's last result row dropped
+    C_RUNNER='sh -c '\''"$0" "$@" | head -n -1'\''' \
+        control c-vectors "c/check_vectors.py when the driver's last result row is missing" heavy "${PY[@]}" c/check_vectors.py
     unset C_BUILD
 }
 

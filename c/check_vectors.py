@@ -24,7 +24,11 @@ def h(x):
 
 def run(exe, lines):
     p = subprocess.run(RUNNER + [str(exe)], input="\n".join(lines) + "\n", capture_output=True, text=True, check=True, timeout=600)
-    return p.stdout.strip().split("\n")
+    out = p.stdout.strip().split("\n") if p.stdout.strip() else []
+    # one result row per input, in order, each naming its command and vector id
+    if [l.split()[:2] for l in out] != [l.split()[:2] for l in lines]:
+        raise SystemExit("%s: %d result rows for %d inputs, or rows out of order" % (exe, len(out), len(lines)))
+    return out
 
 
 # C_RUNNER: command prefix for foreign-CPU binaries, for example "qemu-s390x" (cross_arch)
