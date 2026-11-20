@@ -839,5 +839,46 @@ class EdgeCases(HostBase):
         self.assertEqual(len(rig.host.select_pairs(rig.psbt, [])), 1)
 
 
+class OpeningSet(HostBase):
+    """First pass, step 2: no two pairs may have nonce commitments with the same x-coordinate, whichever keys they use."""
+
+    @staticmethod
+    def copy_first_r0(flip):
+        def edit(p):
+            keys = sorted((i, k) for i, m in enumerate(p.inputs) for k in m if k[:1] == b"\x22")
+            (i0, k0), (i1, k1) = keys[0], keys[1]
+            v = p.inputs[i0][k0]
+            if flip:
+                v = bytes([5 - v[0]]) + v[1:]
+            p.inputs[i1][k1] = v
+        return T.tamper(edit)
+
+    def test_same_key_two_inputs_repeated_r0(self):
+        form = K.Form("p2wpkh")
+        rig = self.mkrig([K.Inp(form), K.Inp(form)], [self.copy_first_r0(False)])
+        self.fails_with(rig, "nonce_commitment_repeated")
+        self.assertEqual(len(rig.link.transcript), 1)       # no second request, so no rho left the host
+        self.assertEqual(rig.store.failures(rig.wallet.device_id), 1)
+
+    def test_negated_r0_across_two_keys(self):
+        rig = self.mkrig([K.Form("p2wsh-2of3")], [self.copy_first_r0(True)])
+        self.fails_with(rig, "nonce_commitment_repeated")
+        self.assertEqual(len(rig.link.transcript), 1)
+        self.assertEqual(rig.store.failures(rig.wallet.device_id), 1)
+
+    def test_same_r0_across_two_keys(self):
+        rig = self.mkrig([K.Form("p2wsh-2of3")], [self.copy_first_r0(False)])
+        self.fails_with(rig, "nonce_commitment_repeated")
+        self.assertEqual(len(rig.link.transcript), 1)
+
+    def test_honest_multi_pair_passes(self):
+        form = K.Form("p2wpkh")
+        for forms in ([K.Inp(form), K.Inp(form)], [K.Form("p2wsh-2of3")], [K.Form("p2wpkh"), K.Form("p2tr-key"), K.Form("p2wsh-2of3")]):
+            rig = self.mkrig(forms)
+            self.ok(rig)
+            self.assertEqual(len(rig.link.transcript), 2)
+            self.assertEqual(rig.store.failures(rig.wallet.device_id), 0)
+
+
 if __name__ == "__main__":
     unittest.main()

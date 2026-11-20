@@ -7,7 +7,7 @@ Status: Draft
 Type: Specification
 Assigned: ?
 License: MIT
-Version: 0.16.0
+Version: 0.17.0
 Requires: 66, 143, 174, 340, 341, 342, 370, 371, 373
 ```
 
@@ -101,7 +101,7 @@ Before sending a request, the host MUST tell the user it is requesting anti-exfi
 **First pass.**
 
 1. Build a request from the host's PSBT with `PSBT_IN_AE_HOST_COMMITMENT` for each pair, and send it.
-2. Handle the response as below. Store each `PSBT_IN_AE_NONCE_COMMITMENT`, failing if any is missing or fails `parse33`. Discard the response.
+2. Handle the response as below. Store each `PSBT_IN_AE_NONCE_COMMITMENT`, failing if any is missing or fails `parse33`. If two pairs have nonce commitments with the same x-coordinate, whichever keys they use, the attempt fails. Discard the response.
 
 **Second pass.**
 
@@ -154,6 +154,8 @@ This document assumes a direct link that keeps the exchange from third parties. 
 **Why a signer removes fields.** A Signer normally only adds data. Returning `rho` in a response would serve no purpose and would leave a copy of a value that has to stay secret in another buffer.
 
 **Why the host rebuilds its result and ignores the rest.** Anything copied from a response is device-chosen data that could later be published. Rebuilding removes that channel, so an exact comparison of the response would add nothing to security. It would fail honest exchanges whenever a library reserializes a field or adds metadata, and each such failure would count against the device.
+
+**Why nonce commitments must differ.** An honest device derives each base nonce from a fresh host commitment, so two pairs share an x-coordinate only with negligible probability. A device that reuses a base nonce, or its negation, for two pairs makes the two final nonces differ by an amount anyone holding both `rho` values can compute, and the two signatures then give that party the key without any knowledge of the device's backdoor. This holds across non-hardened BIP32 siblings, whose keys differ by a public offset. The host checks the whole first response before step 3, so no `rho` is sent. The check does not catch other relations between nonce points or reuse across attempts. It matters most where `rho` can be seen, as on QR. FractalEncrypt proposed it, and his Airgap Anti-Exfil specification has the same rule.
 
 **Why one spend path per input.** Only one path can spend an input, so nothing is lost. This does not make related keys safe across inputs or requests; see the protocol's Security considerations.
 

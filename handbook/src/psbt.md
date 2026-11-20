@@ -20,7 +20,7 @@ The key identifier is the 33-byte public key for ECDSA, the 32-byte x-only inter
 
 ## Two passes
 
-**First pass.** The host sends a request with a host commitment for each pair. The signer runs step 2 and adds a nonce commitment for each one. It adds no signature and needs no approval. The host stores the nonce commitments and discards the response.
+**First pass.** The host sends a request with a host commitment for each pair. The signer runs step 2 and adds a nonce commitment for each one. It adds no signature and needs no approval. The host stores the nonce commitments and discards the response. If any two of them share an x-coordinate, even under different keys, the host fails the attempt before it sends any `rho`. An honest device never repeats one, and a repeat would let anyone who sees both `rho` values work out the key.
 
 **Second pass.** The host sends a new request with the same transaction and pairs, holding only the randomness field for each pair. The signer gets one approval for the whole PSBT, runs step 4 for each pair, adds the signatures, removes every anti-exfil field and returns the PSBT. The host runs step 5 on each signature and adds to its own PSBT only fields it builds itself from the verified signatures.
 

@@ -624,6 +624,10 @@ class Attempt:
             if len(v) != 33 or AE._parse33(v) is AE._INF:
                 raise ResponseRejected("bad_commitment")
             self._r0[k] = v
+        # opening set: no two pairs may share a nonce commitment x-coordinate, whichever keys they use
+        xs = [self._r0[k][1:33] for k in self.keys]
+        if len(set(xs)) != len(xs):
+            raise ResponseRejected("nonce_commitment_repeated")
         return r
 
     # ------------------------------------------------------------ step 3-4

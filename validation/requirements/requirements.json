@@ -2,7 +2,7 @@
  "documents": {
   "B": {
    "path": "spec/bip-anti-exfil-psbt.md",
-   "sha256": "9c2d648d93a3d0dbd94172abcb4be75b155ff0435ce4bcc763a0a6bfbfdbc9df"
+   "sha256": "281b628e3cc3f05e2e5328c2371f8d17b009d9ed43b972fead02589270429890"
   },
   "P": {
    "path": "spec/bip-anti-exfil.md",

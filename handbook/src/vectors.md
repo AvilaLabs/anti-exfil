@@ -20,7 +20,7 @@ All vector files are in `vectors/`, and each has a README with its exact layout.
 |---|---|---|
 | `exchanges` | 86 | Full exchanges for each spend form and PSBT version: both requests, both responses, the host's result and the finalized transaction |
 | `signer_refusals` | 79 | Requests a signer must fail, each with the rule it tests |
-| `host_refusals` | 40 | Responses a host must reject |
+| `host_refusals` | 42 | Responses a host must reject |
 | `host_accepts` | 4 | Responses that differ from the request in an allowed way |
 | `request_refusals` | 26 | Host PSBTs the host must refuse before starting |
 | `lifecycle_scenarios` | 18 | Runs against one store, with restarts, stops and resets, and the expected outcome and count |

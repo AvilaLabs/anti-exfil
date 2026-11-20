@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Generate vectors/bip-anti-exfil-psbt.json, vectors/bip-anti-exfil-psbt-seed.json and vectors/bip-anti-exfil-psbt.README.md, the PSBT test
-vectors for revision 0.16 of the anti-exfil PSBT document.
+vectors for revision 0.17 of the anti-exfil PSBT document.
 
 Every key is artificial and derived from a labelled seed with SHA256, and `rho` is derived from a labelled
 seed too. `rho` is injected only here, through the host's `rho_source` argument; the host's normal path draws
@@ -799,9 +799,9 @@ class Gen:
     def host_cases(self):
         cases = []
 
-        def run(cid, rule, reason, names, version, steps, sighashes=None, max_retries=0, prepare=None, replay_note=""):
+        def run(cid, rule, reason, names, version, steps, sighashes=None, max_retries=0, prepare=None, replay_note="", make_forms=None, one_exchange=False):
             K._counter[0] = 0
-            forms = [K.Form(n, "vec") for n in names]
+            forms = make_forms() if make_forms else [K.Form(n, "vec") for n in names]
             inputs = [K.Inp(f, sighash=(sighashes or [None] * len(forms))[j]) for j, f in enumerate(forms)]
             rig = K.Rig(inputs, self.tmp, version=version, link_cls=T.ScriptedLink, steps=list(steps), max_retries=max_retries,
                         rho_source=rho_source(cid), device_id="vector-device-" + cid)
@@ -814,6 +814,8 @@ class Gen:
             else:
                 raise AssertionError("host accepted " + cid)
             assert rig.store.failures(rig.wallet.device_id) == 1, cid
+            if one_exchange:
+                assert len(rig.link.transcript) == 1, (cid, "a second request went out")      # no rho was sent
             cases.append({"id": cid, "rule": rule, "psbt_version": version, "host_psbt": hx(rig.request_bytes),
                           "device_keys": sorted(hx(k) for k in rig.wallet.keys), "max_retries": max_retries,
                           "exchanges": [{"request": hx(q), "response": hx(r) if r is not None else None} for q, r in rig.link.transcript],
@@ -829,6 +831,23 @@ class Gen:
             [T.tamper(lambda p: p.inputs[0].pop([k for k in p.inputs[0] if k[:1] == b"\x22"][0]))])
         run("host-commitment-not-a-point", "Store each nonce commitment, failing if one fails parse33.", "bad_commitment", ["p2wpkh"], 0,
             [T.change_r0(new=b"\x05" + b"\x01" * 32)])
+        opening_rule = "If two pairs have nonce commitments with the same x-coordinate, whichever keys they use, the attempt fails."
+
+        def second_r0_from_first(flip):
+            def edit(p):
+                keys = sorted((i, k) for i, m in enumerate(p.inputs) for k in m if k[:1] == b"\x22")
+                (i0, k0), (i1, k1) = keys[0], keys[1]
+                v = p.inputs[i0][k0]
+                p.inputs[i1][k1] = bytes([5 - v[0]]) + v[1:] if flip else v
+            return T.tamper(edit)
+        same_key = K.Form("p2wpkh", "vec")
+        run("host-nonce-commitment-repeated-same-key", opening_rule, "nonce_commitment_repeated", ["p2wpkh", "p2wpkh"], 0,
+            [second_r0_from_first(False)], make_forms=lambda: [same_key, same_key], one_exchange=True,
+            replay_note="one key spends two inputs; the second pair's nonce commitment is the first pair's")
+        run("host-nonce-commitment-negated-sibling-keys", opening_rule, "nonce_commitment_repeated", ["p2wsh-2of3"], 0,
+            [second_r0_from_first(True)], make_forms=lambda: [SeedForm("p2wsh-2of3")], one_exchange=True,
+            replay_note="the two keys are non-hardened siblings m/48'/0'/0'/2'/0/0 and m/48'/0'/0'/2'/0/1 of one account; the second pair's nonce "
+                        "commitment is the negation of the first (same x-coordinate, other prefix byte)")
         run("host-signature-missing", "The host fails the attempt if a requested signature is missing.", "signature_missing", ["p2wsh-2of3"], 0,
             [T.honest, T.tamper(lambda p: p.inputs[0].pop([k for k in p.inputs[0] if k[:1] == b"\x02"][0]))])
 
@@ -1627,7 +1646,7 @@ def build(signer_side_only=False):
         facts = g.user_facts(ex)
         doc = {
             "title": "Anti-exfil PSBT fields: test vectors",
-            "specification_revision": "0.16",
+            "specification_revision": "0.17",
             "license": "MIT",
             "keys_are_artificial": True,
             "encoding": "All byte strings are lowercase hex. PSBTs are serialized with keys sorted within each map; a reader must not depend on order.",

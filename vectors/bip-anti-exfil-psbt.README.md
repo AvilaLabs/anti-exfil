@@ -9,7 +9,7 @@ labelled seeds, and have no value. `scripts/gen_psbt_vectors.py` writes both fil
   host's result and the finalized transaction. Further exchanges cover every accepted sighash type for a segwit v0 key and a
   Taproot key path, and a transaction with all thirteen forms.
 - `signer_refusals` (79): requests a signer must fail, each with the rule it tests.
-- `host_refusals` (40): exchanges in which a response breaks a rule under "Handling a response" or fails step 5.
+- `host_refusals` (42): exchanges in which a response breaks a rule under "Handling a response" or fails step 5.
 - `host_accepts` (4): responses that differ from the request in an allowed way, which the host must accept.
 - `request_refusals` (26): host PSBTs the host must refuse before it records an attempt.
 - `lifecycle_scenarios` (18): host runs against one store in order (restart after a kill, an unreadable store, an unsolicited
