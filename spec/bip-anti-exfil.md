@@ -19,7 +19,7 @@ A signing device chooses the nonce in every signature it makes, so a compromised
 
 A device that controls its nonce can reveal its key to anyone who knows how it chooses nonces. The output looks like any other valid signature, and neither the owner nor a verifier can tell. Dark Skippy showed that a seed can leak in two signatures. Without help from the host, a device can always grind: Pieter Wuille noted in the Delving thread listed under References that `2^b` grinding steps per signature leak `b` bits per signature.
 
-Wuille's 2020 overview describes several schemes, and this document follows its Scheme 6, with a sign-to-contract tweak. Devices already deploy versions of it, and bitcoin-core/secp256k1 pull request 1140 proposes library support. There is no agreed specification. [Sjors Provoost's draft](https://github.com/Sjors/bips/pull/2) of October 2026 covers two-round signing for a single Taproot key path, with proprietary PSBT fields and a plain added tweak, so it does not interoperate with this document. Each implementer has to decide its own byte formats, failure rules and host checks, and several of those decisions affect what is protected, such as whether the host compares a repeated `R0_bytes` or counts a failed attempt.
+Wuille's 2020 overview describes several schemes, and this document follows its Scheme 6, with a sign-to-contract tweak. Devices already deploy versions of it, and bitcoin-core/secp256k1 pull request 1140 proposes library support. There is no agreed specification. [Sjors Provoost's draft](https://github.com/Sjors/bips/pull/2) of October 2026 covers two-round signing for a single Taproot key path, with proprietary PSBT fields and a plain added tweak, so it does not interoperate with this document. FractalEncrypt's [Airgap Anti-Exfil](https://github.com/FractalEncrypt/seedsigner-anti-exfil-review) project runs ECDSA anti-exfil over animated QR for SeedSigner, Kern and Sparrow, with its own message format. Each implementer has to decide its own byte formats, failure rules and host checks, and several of those decisions affect what is protected, such as whether the host compares a repeated `R0_bytes` or counts a failed attempt.
 
 ## Specification
 
@@ -240,6 +240,7 @@ The protocol follows the sign-to-contract variant of Scheme 6 in Pieter Wuille's
 - Dark Skippy disclosure: <https://darkskippy.com/>
 - BIP 461, Deterministic ECDSA Signatures: <https://github.com/bitcoin/bips/blob/master/bip-0461.md>
 - "Non-interactive anti-exfil (airgap compatible)", Delving Bitcoin, 2024: <https://delvingbitcoin.org/t/non-interactive-anti-exfil-airgap-compatible/1081>
+- FractalEncrypt, "Airgap Anti-Exfil", two-round ECDSA anti-exfil over animated QR for SeedSigner, Kern and Sparrow: <https://github.com/FractalEncrypt/seedsigner-anti-exfil-review>
 - bitcoin-core/secp256k1 pull request 1140: <https://github.com/bitcoin-core/secp256k1/pull/1140>
 - Dauterman et al., "True2F: Backdoor-resistant authentication tokens", IEEE S&P 2019, section 4.4 of the full version: <https://arxiv.org/abs/1810.04660v4>
 - BIP340, Schnorr Signatures for secp256k1: <https://github.com/bitcoin/bips/blob/master/bip-0340.mediawiki>
